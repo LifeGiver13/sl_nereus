@@ -11,6 +11,7 @@ import Applications from "./pages/Applications";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import Candidates from "./pages/Candidates";
 import Clients from "./pages/Clients";
+import ClientDetail from "./pages/ClientDetail";
 import Jobs from "./pages/Jobs";
 import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -65,6 +66,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Clients />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/:id"
+              element={
+                <ProtectedRoute>
+                  <ClientDetail />
                 </ProtectedRoute>
               }
             />
