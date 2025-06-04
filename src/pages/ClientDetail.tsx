@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-const API_BASE_URL = 'https://api.example.com';
+import { API_BASE_URL } from '../config/env';
 
 interface Client {
   id: number;
