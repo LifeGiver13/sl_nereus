@@ -30,6 +30,11 @@ interface Application {
   updatedAt: string;
 }
 
+interface ApplicationsResponse {
+  total: number;
+  results: Application[];
+}
+
 const Applications = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,8 +56,8 @@ const Applications = () => {
           throw new Error('Failed to fetch applications');
         }
 
-        const data = await response.json();
-        setApplications(data);
+        const data: ApplicationsResponse = await response.json();
+        setApplications(data.results); // Extract the results array
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
