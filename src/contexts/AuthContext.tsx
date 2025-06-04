@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config/env';
 
 interface User {
   id: string;
@@ -46,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'https://exm323qtc6.execute-api.eu-west-2.amazonaws.com'}/auth/session`, {
+      const response = await fetch(`${API_BASE_URL}/auth/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const userData = await response.json();
-      const authToken = response.headers.get('X_SERVICE-USER');
+      const authToken = response.headers.get('X-Service-User');
 
       if (!authToken) {
         throw new Error('No auth token received');
