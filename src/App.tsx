@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
+import ApplicationDetail from "./pages/ApplicationDetail";
 import Candidates from "./pages/Candidates";
 import Clients from "./pages/Clients";
 import Jobs from "./pages/Jobs";
@@ -40,6 +41,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Applications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/application/:id"
+              element={
+                <ProtectedRoute>
+                  <ApplicationDetail />
                 </ProtectedRoute>
               }
             />
