@@ -133,6 +133,7 @@ export const PreRegistrationWizard: WizardFormConfig = {
         type: 'boolean',
         name: 'isBritishCitizen',
         required: true,
+        value: '',
         condition: {
           field: 'eligibleToWorkInUK',
           value: 'true',

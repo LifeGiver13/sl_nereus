@@ -46,7 +46,7 @@ const ApplicationDetail = () => {
     const fetchApplicationDetail = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/applications/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/application/${id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
