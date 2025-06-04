@@ -37,7 +37,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
 
   return (
     <div className={cn(
-      "bg-[#000009] border-r border-[#712B71] transition-all duration-300 flex flex-col h-full",
+      "bg-[#000009] border-r border-[#712B71] transition-all duration-300 flex flex-col min-h-screen",
       isCollapsed ? "w-16" : "w-64"
     )}>
       {/* Header */}
