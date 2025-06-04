@@ -9,7 +9,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
 import ApplicationDetail from "./pages/ApplicationDetail";
-import Candidates from "./pages/Candidates";
+import People from "./pages/People";
+import UserDetail from "./pages/UserDetail";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import Jobs from "./pages/Jobs";
@@ -54,10 +55,18 @@ const App = () => (
               }
             />
             <Route
-              path="/candidates"
+              path="/people"
               element={
                 <ProtectedRoute>
-                  <Candidates />
+                  <People />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/user/:id"
+              element={
+                <ProtectedRoute>
+                  <UserDetail />
                 </ProtectedRoute>
               }
             />

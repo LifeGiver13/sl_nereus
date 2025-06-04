@@ -25,9 +25,9 @@ interface AdminSidebarProps {
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: FileText, label: 'Applications', href: '/applications' },
-  { icon: Users, label: 'Candidates', href: '/candidates' },
   { icon: Building2, label: 'Clients', href: '/clients' },
   { icon: Briefcase, label: 'Jobs', href: '/jobs' },
+  { icon: Users, label: 'People', href: '/people' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
