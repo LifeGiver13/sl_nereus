@@ -38,7 +38,7 @@ const Clients = () => {
   const fetchClients = async (page = 1, search = '') => {
     try {
       setIsLoading(true);
-      let url = `${API_BASE_URL}/clients?page=${page}&limit=${pageSize}`;
+      let url = `${API_BASE_URL}/clients?offset=${(page - 1) * pageSize}&limit=${pageSize}`;
       
       if (search.trim()) {
         const searchObject = {
