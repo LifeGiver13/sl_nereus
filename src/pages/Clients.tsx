@@ -9,8 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Eye, Edit, Briefcase, Trash2, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-const API_BASE_URL = 'https://api.example.com';
+import { API_BASE_URL } from '../config/env';
 
 interface Client {
   id: number;
