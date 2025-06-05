@@ -11,6 +11,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Search, Plus, Eye, Edit, UserPlus, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { API_BASE_URL } from '../config/env';
 
 interface Job {
   id: number;
@@ -33,6 +34,7 @@ interface Job {
 
 const Jobs = () => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [searchFilters, setSearchFilters] = useState({
     clientId: '',
     postedBy: '',
@@ -83,7 +85,7 @@ const Jobs = () => {
     queryKey: ['jobs', currentPage, searchFilters],
     queryFn: async () => {
       const searchQuery = buildSearchQuery();
-      const response = await fetch(`/jobs?page=${currentPage}${searchQuery}`);
+      const response = await fetch(`${API_BASE_URL}/jobs?limit=${pageSize}&offset=${(currentPage - 1 * pageSize)}${searchQuery}`);
       if (!response.ok) {
         throw new Error('Failed to fetch jobs');
       }
