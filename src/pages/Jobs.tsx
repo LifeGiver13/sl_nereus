@@ -85,7 +85,7 @@ const Jobs = () => {
     queryKey: ['jobs', currentPage, searchFilters],
     queryFn: async () => {
       const searchQuery = buildSearchQuery();
-      const response = await fetch(`${API_BASE_URL}/jobs?limit=${pageSize}&offset=${(currentPage - 1 * pageSize)}${searchQuery}`);
+      const response = await fetch(`${API_BASE_URL}/jobs?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}${searchQuery}`);
       if (!response.ok) {
         throw new Error('Failed to fetch jobs');
       }
