@@ -14,6 +14,8 @@ import UserDetail from "./pages/UserDetail";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import Jobs from "./pages/Jobs";
+import JobDetail from "./pages/JobDetail";
+import JobCreate from "./pages/JobCreate";
 import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
