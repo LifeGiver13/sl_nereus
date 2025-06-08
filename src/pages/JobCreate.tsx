@@ -42,7 +42,7 @@ const JobCreate = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(searchTerm)}`);
+      const response = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(searchTerm)}`);
       if (response.ok) {
         const clientData = await response.json();
         // Convert the dictionary to an array of clients
