@@ -21,7 +21,7 @@ const JobsCalendar = () => {
   const startDate = startOfMonth(currentDate);
   const endDate = endOfMonth(currentDate);
 
-  const { data: jobs = [], isLoading } = useQuery({
+  const { data: jobsData = { results: [], total: 0 }, isLoading } = useQuery({
     queryKey: ['calendar-jobs', format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
     queryFn: async () => {
       const searchParams = {
@@ -40,6 +40,8 @@ const JobsCalendar = () => {
       return response.json();
     }
   });
+
+  const jobs = jobsData.results || [];
 
   const handleMonthChange = (direction: 'next' | 'prev') => {
     if (direction === 'next') {
