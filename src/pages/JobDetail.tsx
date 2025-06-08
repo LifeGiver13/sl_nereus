@@ -29,6 +29,11 @@ interface Job {
   updatedAt: string;
 }
 
+interface Skill {
+  id: number;
+  name: string;
+}
+
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
 
@@ -43,12 +48,36 @@ const JobDetail = () => {
     }
   });
 
+  const { data: skillsData } = useQuery({
+    queryKey: ['skills'],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/candidate/skills/indexed`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch skills');
+      }
+      return response.json();
+    }
+  });
+
+  const getSkillNames = (skillIds: number[]) => {
+    if (!skillsData || !skillIds) return [];
+    
+    const allSkills: Skill[] = [];
+    Object.values(skillsData).forEach((categorySkills: any) => {
+      allSkills.push(...categorySkills);
+    });
+    
+    return skillIds.map(id => {
+      const skill = allSkills.find(s => s.id === id);
+      return skill ? skill.name : `Skill ID: ${id}`;
+    });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-red-100 text-red-800';
-      case 'draft': return 'bg-yellow-100 text-yellow-800';
-      case 'closed': return 'bg-gray-100 text-gray-800';
+      case 'open': return 'bg-green-100 text-green-800';
+      case 'closed': return 'bg-red-100 text-red-800';
+      case 'cancelled': return 'bg-gray-100 text-gray-800';
       default: return 'bg-blue-100 text-blue-800';
     }
   };
@@ -73,6 +102,8 @@ const JobDetail = () => {
     );
   }
 
+  const skillNames = getSkillNames(job.skills || []);
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -90,10 +121,12 @@ const JobDetail = () => {
             </div>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
+            <Link to={`/jobs/edit/${job.id}`}>
+              <Button variant="outline">
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            </Link>
             <Button className="bg-[#712B71] hover:bg-[#712B71]/90">
               <UserPlus className="h-4 w-4 mr-2" />
               Fill
@@ -223,7 +256,7 @@ const JobDetail = () => {
           </Card>
         )}
 
-        {job.skills && job.skills.length > 0 && (
+        {skillNames.length > 0 && (
           <Card className="border-0 shadow-lg">
             <CardHeader>
               <CardTitle className="text-[#000009]">Required Skills</CardTitle>
@@ -231,9 +264,9 @@ const JobDetail = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {job.skills.map((skillId: number) => (
-                  <Badge key={skillId} variant="outline">
-                    Skill ID: {skillId}
+                {skillNames.map((skillName, index) => (
+                  <Badge key={index} variant="outline">
+                    {skillName}
                   </Badge>
                 ))}
               </div>

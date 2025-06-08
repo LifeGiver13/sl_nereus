@@ -1,6 +1,6 @@
-
 import React from 'react';
 import AdminLayout from '../components/AdminLayout';
+import JobsCalendar from '../components/JobsCalendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, FileText, Building2, Briefcase } from 'lucide-react';
 
@@ -74,8 +74,8 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Quick Actions and Calendar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="border-0 shadow-lg">
             <CardHeader>
               <CardTitle className="text-[#000009]">Recent Activity</CardTitle>
@@ -137,6 +137,8 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          <JobsCalendar />
         </div>
       </div>
     </AdminLayout>

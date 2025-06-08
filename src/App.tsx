@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import ClientDetail from "./pages/ClientDetail";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import JobCreate from "./pages/JobCreate";
+import JobEdit from "./pages/JobEdit";
 import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -101,6 +101,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <JobCreate />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/jobs/edit/:id"
+              element={
+                <ProtectedRoute>
+                  <JobEdit />
                 </ProtectedRoute>
               }
             />

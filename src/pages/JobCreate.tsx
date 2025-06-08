@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,12 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Save, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 
 interface Client {
+  id: number;
+  name: string;
+}
+
+interface Skill {
   id: number;
   name: string;
 }
@@ -25,15 +32,40 @@ const JobCreate = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
+  const [skillSearchTerm, setSkillSearchTerm] = useState('');
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     startDate: '',
     endDate: '',
     vacancies: '',
-    status: 'open',
-    skills: ''
+    status: 'open'
   });
+
+  // Fetch skills data
+  const { data: skillsData } = useQuery({
+    queryKey: ['skills'],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/candidate/skills/indexed`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch skills');
+      }
+      return response.json();
+    }
+  });
+
+  // Process skills data when loaded
+  useEffect(() => {
+    if (skillsData) {
+      const allSkills: Skill[] = [];
+      Object.values(skillsData).forEach((categorySkills: any) => {
+        allSkills.push(...categorySkills);
+      });
+      setAvailableSkills(allSkills);
+    }
+  }, [skillsData]);
 
   const searchClients = async (searchTerm: string) => {
     if (searchTerm.length < 2) {
@@ -66,6 +98,20 @@ const JobCreate = () => {
     setSelectedClientId(client.id);
     setClientSearchTerm(client.name);
     setClients([]);
+  };
+
+  const filteredSkills = availableSkills.filter(skill =>
+    skill.name.toLowerCase().includes(skillSearchTerm.toLowerCase()) &&
+    !selectedSkills.some(selected => selected.id === skill.id)
+  );
+
+  const handleSkillSelect = (skill: Skill) => {
+    setSelectedSkills([...selectedSkills, skill]);
+    setSkillSearchTerm('');
+  };
+
+  const handleSkillRemove = (skillToRemove: Skill) => {
+    setSelectedSkills(selectedSkills.filter(skill => skill.id !== skillToRemove.id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,7 +147,7 @@ const JobCreate = () => {
         endDate: formData.endDate,
         vacancies: parseInt(formData.vacancies),
         status: formData.status,
-        skills: formData.skills ? formData.skills.split(',').map(s => parseInt(s.trim())).filter(Boolean) : [],
+        skills: selectedSkills.map(skill => skill.id),
         filled: false,
         assignees: []
       };
@@ -267,13 +313,40 @@ const JobCreate = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Skills (Skill IDs)</label>
-                  <Input
-                    value={formData.skills}
-                    onChange={(e) => handleInputChange('skills', e.target.value)}
-                    placeholder="Enter skill IDs separated by commas (e.g., 1, 2, 3)"
-                  />
-                  <p className="text-xs text-gray-500">Optional: Enter skill IDs separated by commas</p>
+                  <label className="text-sm font-medium">Skills</label>
+                  <div className="relative">
+                    <Input
+                      value={skillSearchTerm}
+                      onChange={(e) => setSkillSearchTerm(e.target.value)}
+                      placeholder="Search and select skills..."
+                    />
+                    {skillSearchTerm && filteredSkills.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {filteredSkills.slice(0, 10).map((skill) => (
+                          <div
+                            key={skill.id}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                            onClick={() => handleSkillSelect(skill)}
+                          >
+                            {skill.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {selectedSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedSkills.map((skill) => (
+                        <Badge key={skill.id} variant="outline" className="flex items-center gap-1">
+                          {skill.name}
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={() => handleSkillRemove(skill)}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

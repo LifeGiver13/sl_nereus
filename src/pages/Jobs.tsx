@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -256,12 +255,12 @@ const Jobs = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {jobs.map((job: Job) => (
+                  {jobs.map((job) => (
                     <TableRow key={job.id}>
-                      <TableCell className="font-medium">{job.id}</TableCell>
+                      <TableCell>{job.id}</TableCell>
                       <TableCell>{job.clientId}</TableCell>
                       <TableCell>{job.postedBy}</TableCell>
-                      <TableCell className="max-w-xs truncate">{job.title}</TableCell>
+                      <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(job.endDate).toLocaleDateString()}</TableCell>
                       <TableCell>{job.vacancies}</TableCell>
@@ -280,17 +279,19 @@ const Jobs = () => {
                         <div className="flex space-x-2">
                           <Link to={`/job/${job.id}`}>
                             <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
+                              View
+                            </Button>
+                          </Link>
+                          <Link to={`/jobs/edit/${job.id}`}>
+                            <Button variant="ghost" size="sm">
+                              Edit
                             </Button>
                           </Link>
                           <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
+                            Fill
                           </Button>
                           <Button variant="ghost" size="sm">
-                            <UserPlus className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <X className="h-4 w-4" />
+                            Cancel
                           </Button>
                         </div>
                       </TableCell>
