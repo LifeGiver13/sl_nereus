@@ -9,41 +9,104 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/env';
+
+interface Client {
+  id: number;
+  name: string;
+}
 
 const JobCreate = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
-    clientId: '',
-    postedBy: '',
     title: '',
     description: '',
     startDate: '',
     endDate: '',
     vacancies: '',
-    status: 'draft',
-    skills: '',
-    body: ''
+    status: 'open',
+    skills: ''
   });
+
+  const searchClients = async (searchTerm: string) => {
+    if (searchTerm.length < 2) {
+      setClients([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(searchTerm)}`);
+      if (response.ok) {
+        const clientData = await response.json();
+        // Convert the dictionary to an array of clients
+        const clientArray = Object.entries(clientData).map(([id, name]) => ({
+          id: parseInt(id),
+          name: name as string
+        }));
+        setClients(clientArray);
+      }
+    } catch (error) {
+      console.error('Error searching clients:', error);
+    }
+  };
+
+  const handleClientSearch = (value: string) => {
+    setClientSearchTerm(value);
+    searchClients(value);
+  };
+
+  const handleClientSelect = (client: Client) => {
+    setSelectedClientId(client.id);
+    setClientSearchTerm(client.name);
+    setClients([]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedClientId) {
+      toast({
+        title: "Error",
+        description: "Please select a client",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User session invalid",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const payload = {
-        ...formData,
-        clientId: parseInt(formData.clientId),
-        postedBy: parseInt(formData.postedBy),
+        clientId: selectedClientId,
+        postedBy: parseInt(user.id),
+        title: formData.title,
+        description: formData.description,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
         vacancies: parseInt(formData.vacancies),
+        status: formData.status,
         skills: formData.skills ? formData.skills.split(',').map(s => parseInt(s.trim())).filter(Boolean) : [],
-        body: formData.body ? JSON.parse(formData.body) : null,
         filled: false,
         assignees: []
       };
 
-      const response = await fetch('/job', {
+      const response = await fetch(`${API_BASE_URL}/job`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,25 +167,28 @@ const JobCreate = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Client ID *</label>
-                  <Input
-                    type="number"
-                    required
-                    value={formData.clientId}
-                    onChange={(e) => handleInputChange('clientId', e.target.value)}
-                    placeholder="Enter client ID"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Posted By (User ID) *</label>
-                  <Input
-                    type="number"
-                    required
-                    value={formData.postedBy}
-                    onChange={(e) => handleInputChange('postedBy', e.target.value)}
-                    placeholder="Enter user ID"
-                  />
+                  <label className="text-sm font-medium">Client *</label>
+                  <div className="relative">
+                    <Input
+                      required
+                      value={clientSearchTerm}
+                      onChange={(e) => handleClientSearch(e.target.value)}
+                      placeholder="Start typing client name..."
+                    />
+                    {clients.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                        {clients.map((client) => (
+                          <div
+                            key={client.id}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                            onClick={() => handleClientSelect(client)}
+                          >
+                            {client.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -153,10 +219,9 @@ const JobCreate = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
                       <SelectItem value="closed">Closed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -208,18 +273,7 @@ const JobCreate = () => {
                     onChange={(e) => handleInputChange('skills', e.target.value)}
                     placeholder="Enter skill IDs separated by commas (e.g., 1, 2, 3)"
                   />
-                  <p className="text-xs text-gray-500">Note: This will be improved to use a proper skill selector</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Job Body (JSON)</label>
-                  <Textarea
-                    value={formData.body}
-                    onChange={(e) => handleInputChange('body', e.target.value)}
-                    placeholder='Enter additional job data as JSON (e.g., {"requirements": ["Experience"], "benefits": ["Health"]})'
-                    rows={4}
-                  />
-                  <p className="text-xs text-gray-500">Optional: Additional job data in JSON format</p>
+                  <p className="text-xs text-gray-500">Optional: Enter skill IDs separated by commas</p>
                 </div>
               </CardContent>
             </Card>

@@ -97,6 +97,22 @@ const App = () => (
               }
             />
             <Route
+              path="/jobs/create"
+              element={
+                <ProtectedRoute>
+                  <JobCreate />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/job/:id"
+              element={
+                <ProtectedRoute>
+                  <JobDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/settings"
               element={
                 <ProtectedRoute>
