@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Edit, UserPlus, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { API_BASE_URL } from '../config/env';
 
 interface Job {
   id: number;
@@ -34,7 +35,7 @@ const JobDetail = () => {
   const { data: job, isLoading, error } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
-      const response = await fetch(`/job/${id}`);
+      const response = await fetch(`${API_BASE_URL}/job/${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch job details');
       }
