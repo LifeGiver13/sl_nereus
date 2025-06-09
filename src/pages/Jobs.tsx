@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,10 +26,20 @@ interface Job {
   vacancies: number;
   status: string;
   filled: boolean;
-  skills: number[];
+  skills: any[];
   assignees: number[];
   createdAt: string;
   updatedAt: string;
+}
+
+interface Client {
+  id: number;
+  name: string;
+}
+
+interface User {
+  id: number;
+  name: string;
 }
 
 const Jobs = () => {
@@ -44,14 +55,36 @@ const Jobs = () => {
     endDateTo: ''
   });
 
+  // Client search state
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+
+  // User search state
+  const [users, setUsers] = useState<User[]>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
+  // Fetch skills data for displaying skill names
+  const { data: skillsData } = useQuery({
+    queryKey: ['skills'],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/candidate/skills/indexed`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch skills');
+      }
+      return response.json();
+    }
+  });
+
   const buildSearchQuery = () => {
     const searchObject: any = {};
     
-    if (searchFilters.clientId) {
-      searchObject.clientId = parseInt(searchFilters.clientId);
+    if (selectedClientId) {
+      searchObject.clientId = selectedClientId;
     }
-    if (searchFilters.postedBy) {
-      searchObject.postedBy = parseInt(searchFilters.postedBy);
+    if (selectedUserId) {
+      searchObject.postedBy = selectedUserId;
     }
     if (searchFilters.title) {
       searchObject.title = { "like": `%${searchFilters.title}%` };
@@ -81,7 +114,7 @@ const Jobs = () => {
   };
 
   const { data: jobsData, isLoading, error } = useQuery({
-    queryKey: ['jobs', currentPage, searchFilters],
+    queryKey: ['jobs', currentPage, selectedClientId, selectedUserId, searchFilters],
     queryFn: async () => {
       const searchQuery = buildSearchQuery();
       const response = await fetch(`${API_BASE_URL}/jobs?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}${searchQuery}`);
@@ -94,6 +127,72 @@ const Jobs = () => {
 
   const jobs = jobsData?.results || [];
   const totalPages = Math.ceil((jobsData?.total || 0) / 10);
+
+  // Client search functions
+  const searchClients = async (searchTerm: string) => {
+    if (searchTerm.length < 2) {
+      setClients([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(searchTerm)}`);
+      if (response.ok) {
+        const clientData = await response.json();
+        const clientArray = Object.entries(clientData).map(([id, name]) => ({
+          id: parseInt(id),
+          name: name as string
+        }));
+        setClients(clientArray);
+      }
+    } catch (error) {
+      console.error('Error searching clients:', error);
+    }
+  };
+
+  const handleClientSearch = (value: string) => {
+    setClientSearchTerm(value);
+    searchClients(value);
+  };
+
+  const handleClientSelect = (client: Client) => {
+    setSelectedClientId(client.id);
+    setClientSearchTerm(client.name);
+    setClients([]);
+  };
+
+  // User search functions
+  const searchUsers = async (searchTerm: string) => {
+    if (searchTerm.length < 2) {
+      setUsers([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(searchTerm)}`);
+      if (response.ok) {
+        const userData = await response.json();
+        const userArray = Object.entries(userData).map(([id, name]) => ({
+          id: parseInt(id),
+          name: name as string
+        }));
+        setUsers(userArray);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+    }
+  };
+
+  const handleUserSearch = (value: string) => {
+    setUserSearchTerm(value);
+    searchUsers(value);
+  };
+
+  const handleUserSelect = (user: User) => {
+    setSelectedUserId(user.id);
+    setUserSearchTerm(user.name);
+    setUsers([]);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -119,7 +218,26 @@ const Jobs = () => {
       endDateFrom: '',
       endDateTo: ''
     });
+    setSelectedClientId(null);
+    setSelectedUserId(null);
+    setClientSearchTerm('');
+    setUserSearchTerm('');
     setCurrentPage(1);
+  };
+
+  // Helper function to get skill names from IDs
+  const getSkillNames = (skillIds: number[]) => {
+    if (!skillsData || !skillIds || skillIds.length === 0) return [];
+    
+    const allSkills: any[] = [];
+    Object.values(skillsData).forEach((categorySkills: any) => {
+      allSkills.push(...categorySkills);
+    });
+    
+    return skillIds.map(id => {
+      const skill = allSkills.find(s => s.id === id);
+      return skill ? skill.name : `Skill ${id}`;
+    });
   };
 
   if (isLoading) {
@@ -165,18 +283,54 @@ const Jobs = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <Input
-                placeholder="Client ID"
-                type="number"
-                value={searchFilters.clientId}
-                onChange={(e) => setSearchFilters({ ...searchFilters, clientId: e.target.value })}
-              />
-              <Input
-                placeholder="Posted By (User ID)"
-                type="number"
-                value={searchFilters.postedBy}
-                onChange={(e) => setSearchFilters({ ...searchFilters, postedBy: e.target.value })}
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Client</label>
+                <div className="relative">
+                  <Input
+                    value={clientSearchTerm}
+                    onChange={(e) => handleClientSearch(e.target.value)}
+                    placeholder="Start typing client name..."
+                  />
+                  {clients.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {clients.map((client) => (
+                        <div
+                          key={client.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleClientSelect(client)}
+                        >
+                          {client.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Posted By</label>
+                <div className="relative">
+                  <Input
+                    value={userSearchTerm}
+                    onChange={(e) => handleUserSearch(e.target.value)}
+                    placeholder="Start typing user name..."
+                  />
+                  {users.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {users.map((user) => (
+                        <div
+                          key={user.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleUserSelect(user)}
+                        >
+                          {user.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
               <Input
                 placeholder="Job Title"
                 value={searchFilters.title}
@@ -250,7 +404,7 @@ const Jobs = () => {
                     <TableHead>Vacancies</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Filled</TableHead>
-                    <TableHead>Assigned</TableHead>
+                    <TableHead>Skills</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -274,7 +428,15 @@ const Jobs = () => {
                           {job.filled ? 'Yes' : 'No'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{job.assignees?.length || 0}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {getSkillNames(job.skills || []).map((skillName, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {skillName}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Link to={`/job/${job.id}`}>

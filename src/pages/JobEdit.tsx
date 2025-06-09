@@ -13,11 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 
-interface Client {
-  id: number;
-  name: string;
-}
-
 interface Skill {
   id: number;
   name: string;
@@ -36,6 +31,10 @@ interface Job {
   skills: number[];
   filled: boolean;
   assignees: number[];
+  client: {
+    id: number;
+    name: string;
+  };
 }
 
 const JobEdit = () => {
@@ -43,9 +42,6 @@ const JobEdit = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [clientSearchTerm, setClientSearchTerm] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [skillSearchTerm, setSkillSearchTerm] = useState('');
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
@@ -93,12 +89,6 @@ const JobEdit = () => {
         vacancies: job.vacancies?.toString() || '',
         status: job.status || 'open'
       });
-      setSelectedClientId(job.clientId);
-      
-      // Find client name for display
-      if (job.clientId) {
-        searchClients('', job.clientId);
-      }
     }
   }, [job]);
 
@@ -117,46 +107,6 @@ const JobEdit = () => {
     }
   }, [skillsData, job]);
 
-  const searchClients = async (searchTerm: string, clientId?: number) => {
-    if (searchTerm.length < 2 && !clientId) {
-      setClients([]);
-      return;
-    }
-
-    try {
-      const endpoint = clientId 
-        ? `${API_BASE_URL}/utils/client-list/${clientId}` 
-        : `${API_BASE_URL}/utils/client-list/${encodeURIComponent(searchTerm)}`;
-      
-      const response = await fetch(endpoint);
-      if (response.ok) {
-        const clientData = await response.json();
-        const clientArray = Object.entries(clientData).map(([id, name]) => ({
-          id: parseInt(id),
-          name: name as string
-        }));
-        setClients(clientArray);
-        
-        if (clientId && clientArray.length > 0) {
-          setClientSearchTerm(clientArray[0].name);
-        }
-      }
-    } catch (error) {
-      console.error('Error searching clients:', error);
-    }
-  };
-
-  const handleClientSearch = (value: string) => {
-    setClientSearchTerm(value);
-    searchClients(value);
-  };
-
-  const handleClientSelect = (client: Client) => {
-    setSelectedClientId(client.id);
-    setClientSearchTerm(client.name);
-    setClients([]);
-  };
-
   const filteredSkills = availableSkills.filter(skill =>
     skill.name.toLowerCase().includes(skillSearchTerm.toLowerCase()) &&
     !selectedSkills.some(selected => selected.id === skill.id)
@@ -174,10 +124,11 @@ const JobEdit = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedClientId) {
+    // Validate that end date is after start date
+    if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
       toast({
         title: "Error",
-        description: "Please select a client",
+        description: "End date must be later than start date",
         variant: "destructive",
       });
       return;
@@ -187,7 +138,7 @@ const JobEdit = () => {
 
     try {
       const payload = {
-        clientId: selectedClientId,
+        clientId: job?.clientId,
         title: formData.title,
         description: formData.description,
         startDate: formData.startDate,
@@ -268,28 +219,13 @@ const JobEdit = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Client *</label>
-                  <div className="relative">
-                    <Input
-                      required
-                      value={clientSearchTerm}
-                      onChange={(e) => handleClientSearch(e.target.value)}
-                      placeholder="Start typing client name..."
-                    />
-                    {clients.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                        {clients.map((client) => (
-                          <div
-                            key={client.id}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => handleClientSelect(client)}
-                          >
-                            {client.name}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <label className="text-sm font-medium">Client</label>
+                  <Input
+                    value={job?.client?.name || ''}
+                    readOnly
+                    className="bg-gray-50 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500">Client cannot be changed after job creation</p>
                 </div>
 
                 <div className="space-y-2">
@@ -352,7 +288,9 @@ const JobEdit = () => {
                     required
                     value={formData.endDate}
                     onChange={(e) => handleInputChange('endDate', e.target.value)}
+                    min={formData.startDate}
                   />
+                  <p className="text-xs text-gray-500">Must be later than start date</p>
                 </div>
 
                 <div className="space-y-2">

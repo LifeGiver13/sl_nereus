@@ -56,7 +56,7 @@ const JobCreate = () => {
     }
   });
 
-  // Process skills data when loaded
+  // Load skills when data is available
   useEffect(() => {
     if (skillsData) {
       const allSkills: Skill[] = [];
@@ -77,7 +77,6 @@ const JobCreate = () => {
       const response = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(searchTerm)}`);
       if (response.ok) {
         const clientData = await response.json();
-        // Convert the dictionary to an array of clients
         const clientArray = Object.entries(clientData).map(([id, name]) => ({
           id: parseInt(id),
           name: name as string
@@ -126,10 +125,11 @@ const JobCreate = () => {
       return;
     }
 
-    if (!user?.id) {
+    // Validate that end date is after start date
+    if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
       toast({
         title: "Error",
-        description: "User session invalid",
+        description: "End date must be later than start date",
         variant: "destructive",
       });
       return;
@@ -140,7 +140,7 @@ const JobCreate = () => {
     try {
       const payload = {
         clientId: selectedClientId,
-        postedBy: parseInt(user.id),
+        postedBy: user?.id,
         title: formData.title,
         description: formData.description,
         startDate: formData.startDate,
@@ -164,14 +164,14 @@ const JobCreate = () => {
         throw new Error('Failed to create job');
       }
 
-      const result = await response.json();
-      
+      const newJob = await response.json();
+
       toast({
         title: "Success",
         description: "Job created successfully",
       });
 
-      navigate(`/job/${result.id}`);
+      navigate(`/job/${newJob.id}`);
     } catch (error) {
       console.error('Error creating job:', error);
       toast({
@@ -199,8 +199,8 @@ const JobCreate = () => {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-[#000009]">Create New Job</h1>
-            <p className="text-gray-600 mt-1">Add a new job posting</p>
+            <h1 className="text-3xl font-bold text-[#000009]">Create Job</h1>
+            <p className="text-gray-600 mt-1">Create a new job posting</p>
           </div>
         </div>
 
@@ -297,7 +297,9 @@ const JobCreate = () => {
                     required
                     value={formData.endDate}
                     onChange={(e) => handleInputChange('endDate', e.target.value)}
+                    min={formData.startDate}
                   />
+                  <p className="text-xs text-gray-500">Must be later than start date</p>
                 </div>
 
                 <div className="space-y-2">
