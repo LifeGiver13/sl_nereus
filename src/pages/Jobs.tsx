@@ -258,8 +258,8 @@ const Jobs = () => {
                   {jobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell>{job.id}</TableCell>
-                      <TableCell>{job.clientId}</TableCell>
-                      <TableCell>{job.postedBy}</TableCell>
+                      <TableCell>{job.client.name}</TableCell>
+                      <TableCell>{job.owner.id}</TableCell>
                       <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(job.endDate).toLocaleDateString()}</TableCell>
