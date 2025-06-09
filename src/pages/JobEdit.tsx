@@ -82,6 +82,7 @@ const JobEdit = () => {
   useEffect(() => {
     if (job) {
       setFormData({
+        ...job,
         title: job.title || '',
         description: job.description || '',
         startDate: job.startDate ? job.startDate.split('T')[0] : '',
