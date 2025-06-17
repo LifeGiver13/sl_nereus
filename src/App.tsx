@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +13,7 @@ import People from "./pages/People";
 import UserDetail from "./pages/UserDetail";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
+import ShiftManagement from "./pages/ShiftManagement";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import JobCreate from "./pages/JobCreate";
@@ -85,6 +87,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ClientDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/:clientId/shifts"
+              element={
+                <ProtectedRoute>
+                  <ShiftManagement />
                 </ProtectedRoute>
               }
             />
