@@ -217,7 +217,7 @@ const DepartmentManagement = () => {
                 )}
               </TableCell>
               <TableCell>
-                <Badge variant={department.status === 'active' ? 'Active' : 'Inactive'}>
+                <Badge variant={department.status === 'active' ? 'active' : 'default'}>
                   {department.status}
                 </Badge>
               </TableCell>
