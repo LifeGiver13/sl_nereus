@@ -1,7 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import DepartmentManagement from '../components/DepartmentManagement';
 
 const Settings = () => {
   return (
@@ -18,9 +20,16 @@ const Settings = () => {
             <CardDescription>Manage your application preferences and configuration</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12">
-              <p className="text-gray-500">Settings module coming soon...</p>
-            </div>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="departments">
+                <AccordionTrigger className="text-lg font-semibold">
+                  Department Management
+                </AccordionTrigger>
+                <AccordionContent>
+                  <DepartmentManagement />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
       </div>
