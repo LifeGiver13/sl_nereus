@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -12,8 +13,16 @@ import { API_BASE_URL } from '../config/env';
 interface Job {
   id: number;
   clientId: number;
+  client?: {
+    id: number;
+    name: string;
+  };
   postedBy: number;
   departmentId: number;
+  department?: {
+    id: number;
+    name: string;
+  };
   title: string;
   description: string;
   body: any;
@@ -21,6 +30,12 @@ interface Job {
   startDate: string;
   endDate: string;
   shiftId: number;
+  shift?: {
+    id: number;
+    name: string;
+    startTime: string;
+    endTime: string;
+  };
   vacancies: number;
   status: string;
   filled: boolean;
@@ -33,18 +48,6 @@ interface Job {
 interface Skill {
   id: number;
   name: string;
-}
-
-interface Department {
-  id: number;
-  name: string;
-}
-
-interface Shift {
-  id: number;
-  name: string;
-  startTime: string;
-  endTime: string;
 }
 
 const JobDetail = () => {
@@ -72,46 +75,6 @@ const JobDetail = () => {
     }
   });
 
-  // Fetch departments
-  const { data: departmentsData } = useQuery({
-    queryKey: ['departments-list'],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/utils/department-list`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch departments');
-      }
-      return response.json();
-    }
-  });
-
-  // Transform departments data to array if it's an object, otherwise use as-is
-  const departments = departmentsData ? (Array.isArray(departmentsData) ? departmentsData : Object.entries(departmentsData).map(([id, deptData]: [string, any]) => ({
-    id: parseInt(id),
-    name: deptData.name || deptData
-  }))) : [];
-
-  // Fetch shifts for the job's client
-  const { data: shiftsData } = useQuery({
-    queryKey: ['client-shifts', job?.clientId],
-    queryFn: async () => {
-      if (!job?.clientId) return [];
-      const response = await fetch(`${API_BASE_URL}/utils/client/${job.clientId}/shifts`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch shifts');
-      }
-      return response.json();
-    },
-    enabled: !!job?.clientId
-  });
-
-  // Transform shifts data to array if it's an object, otherwise use as-is
-  const shifts = shiftsData ? (Array.isArray(shiftsData) ? shiftsData : Object.entries(shiftsData).map(([id, shiftData]: [string, any]) => ({
-    id: parseInt(id),
-    name: shiftData.name,
-    startTime: shiftData.startTime,
-    endTime: shiftData.endTime
-  }))) : [];
-
   const getSkillNames = (skillIds: number[]) => {
     if (!skillsData || !skillIds) return [];
     
@@ -126,16 +89,25 @@ const JobDetail = () => {
     });
   };
 
-  const getDepartmentName = (departmentId: number) => {
-    if (!departments || !departmentId) return 'Not assigned';
-    const department = departments.find(d => d.id === departmentId);
-    return department ? department.name : `Department ID: ${departmentId}`;
+  const getDepartmentName = (departmentId: number, department?: { id: number; name: string }) => {
+    if (department) {
+      return department.name;
+    }
+    return `Department ID: ${departmentId}`;
   };
 
-  const getShiftName = (shiftId: number) => {
-    if (!shifts || !shiftId) return 'Not assigned';
-    const shift = shifts.find(s => s.id === shiftId);
-    return shift ? `${shift.name} (${shift.startTime} - ${shift.endTime})` : `Shift ID: ${shiftId}`;
+  const getClientName = (clientId: number, client?: { id: number; name: string }) => {
+    if (client) {
+      return client.name;
+    }
+    return `Client ID: ${clientId}`;
+  };
+
+  const getShiftName = (shiftId: number, shift?: { id: number; name: string; startTime: string; endTime: string }) => {
+    if (shift) {
+      return `${shift.name} (${shift.startTime} - ${shift.endTime})`;
+    }
+    return `Shift ID: ${shiftId}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -221,12 +193,12 @@ const JobDetail = () => {
                     <TableCell>{job.description}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableHead>Client ID</TableHead>
-                    <TableCell>{job.clientId}</TableCell>
+                    <TableHead>Client</TableHead>
+                    <TableCell>{getClientName(job.clientId, job.client)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>Department</TableHead>
-                    <TableCell>{getDepartmentName(job.departmentId)}</TableCell>
+                    <TableCell>{getDepartmentName(job.departmentId, job.department)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>Posted By</TableHead>
@@ -271,7 +243,7 @@ const JobDetail = () => {
                   </TableRow>
                   <TableRow>
                     <TableHead>Shift</TableHead>
-                    <TableCell>{getShiftName(job.shiftId)}</TableCell>
+                    <TableCell>{getShiftName(job.shiftId, job.shift)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>Vacancies</TableHead>
