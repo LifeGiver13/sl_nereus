@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -91,7 +90,7 @@ const JobCreate = () => {
   })) : [];
 
   // Fetch shifts for selected client
-  const { data: shifts, refetch: refetchShifts } = useQuery({
+  const { data: shiftsData, refetch: refetchShifts } = useQuery({
     queryKey: ['client-shifts', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return [];
@@ -99,10 +98,18 @@ const JobCreate = () => {
       if (!response.ok) {
         throw new Error('Failed to fetch shifts');
       }
-      return response.json() as Promise<Shift[]>;
+      return response.json();
     },
     enabled: !!selectedClientId
   });
+
+  // Transform shifts data to array if it's an object, otherwise use as-is
+  const shifts = shiftsData ? (Array.isArray(shiftsData) ? shiftsData : Object.entries(shiftsData).map(([id, shiftData]: [string, any]) => ({
+    id: parseInt(id),
+    name: shiftData.name,
+    startTime: shiftData.startTime,
+    endTime: shiftData.endTime
+  }))) : [];
 
   // Load skills when data is available
   useEffect(() => {
