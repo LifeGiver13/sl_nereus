@@ -73,16 +73,22 @@ const JobCreate = () => {
   });
 
   // Fetch departments
-  const { data: departments } = useQuery({
+  const { data: departmentsData } = useQuery({
     queryKey: ['departments-list'],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/utils/department-list`);
       if (!response.ok) {
         throw new Error('Failed to fetch departments');
       }
-      return response.json() as Promise<Department[]>;
+      return response.json();
     }
   });
+
+  // Transform departments object to array
+  const departments = departmentsData ? Object.entries(departmentsData).map(([id, name]) => ({
+    id: parseInt(id),
+    name: name as string
+  })) : [];
 
   // Fetch shifts for selected client
   const { data: shifts, refetch: refetchShifts } = useQuery({
@@ -298,7 +304,7 @@ const JobCreate = () => {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments?.map((department) => (
+                      {departments.map((department) => (
                         <SelectItem key={department.id} value={department.id.toString()}>
                           {department.name}
                         </SelectItem>
