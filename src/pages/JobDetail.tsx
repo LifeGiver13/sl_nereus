@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -74,19 +73,25 @@ const JobDetail = () => {
   });
 
   // Fetch departments
-  const { data: departments } = useQuery({
+  const { data: departmentsData } = useQuery({
     queryKey: ['departments-list'],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/utils/department-list`);
       if (!response.ok) {
         throw new Error('Failed to fetch departments');
       }
-      return response.json() as Promise<Department[]>;
+      return response.json();
     }
   });
 
+  // Transform departments data to array if it's an object, otherwise use as-is
+  const departments = departmentsData ? (Array.isArray(departmentsData) ? departmentsData : Object.entries(departmentsData).map(([id, deptData]: [string, any]) => ({
+    id: parseInt(id),
+    name: deptData.name || deptData
+  }))) : [];
+
   // Fetch shifts for the job's client
-  const { data: shifts } = useQuery({
+  const { data: shiftsData } = useQuery({
     queryKey: ['client-shifts', job?.clientId],
     queryFn: async () => {
       if (!job?.clientId) return [];
@@ -94,10 +99,18 @@ const JobDetail = () => {
       if (!response.ok) {
         throw new Error('Failed to fetch shifts');
       }
-      return response.json() as Promise<Shift[]>;
+      return response.json();
     },
     enabled: !!job?.clientId
   });
+
+  // Transform shifts data to array if it's an object, otherwise use as-is
+  const shifts = shiftsData ? (Array.isArray(shiftsData) ? shiftsData : Object.entries(shiftsData).map(([id, shiftData]: [string, any]) => ({
+    id: parseInt(id),
+    name: shiftData.name,
+    startTime: shiftData.startTime,
+    endTime: shiftData.endTime
+  }))) : [];
 
   const getSkillNames = (skillIds: number[]) => {
     if (!skillsData || !skillIds) return [];
