@@ -14,12 +14,14 @@ interface Job {
   id: number;
   clientId: number;
   postedBy: number;
+  departmentId: number;
   title: string;
   description: string;
   body: any;
   meta: any;
   startDate: string;
   endDate: string;
+  shiftId: number;
   vacancies: number;
   status: string;
   filled: boolean;
@@ -32,6 +34,18 @@ interface Job {
 interface Skill {
   id: number;
   name: string;
+}
+
+interface Department {
+  id: number;
+  name: string;
+}
+
+interface Shift {
+  id: number;
+  name: string;
+  startTime: string;
+  endTime: string;
 }
 
 const JobDetail = () => {
@@ -59,6 +73,32 @@ const JobDetail = () => {
     }
   });
 
+  // Fetch departments
+  const { data: departments } = useQuery({
+    queryKey: ['departments-list'],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/utils/department-list`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch departments');
+      }
+      return response.json() as Promise<Department[]>;
+    }
+  });
+
+  // Fetch shifts for the job's client
+  const { data: shifts } = useQuery({
+    queryKey: ['client-shifts', job?.clientId],
+    queryFn: async () => {
+      if (!job?.clientId) return [];
+      const response = await fetch(`${API_BASE_URL}/utils/client/${job.clientId}/shifts`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch shifts');
+      }
+      return response.json() as Promise<Shift[]>;
+    },
+    enabled: !!job?.clientId
+  });
+
   const getSkillNames = (skillIds: number[]) => {
     if (!skillsData || !skillIds) return [];
     
@@ -71,6 +111,18 @@ const JobDetail = () => {
       const skill = allSkills.find(s => s.id === id);
       return skill ? skill.name : `Skill ID: ${id}`;
     });
+  };
+
+  const getDepartmentName = (departmentId: number) => {
+    if (!departments || !departmentId) return 'Not assigned';
+    const department = departments.find(d => d.id === departmentId);
+    return department ? department.name : `Department ID: ${departmentId}`;
+  };
+
+  const getShiftName = (shiftId: number) => {
+    if (!shifts || !shiftId) return 'Not assigned';
+    const shift = shifts.find(s => s.id === shiftId);
+    return shift ? `${shift.name} (${shift.startTime} - ${shift.endTime})` : `Shift ID: ${shiftId}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -160,6 +212,10 @@ const JobDetail = () => {
                     <TableCell>{job.clientId}</TableCell>
                   </TableRow>
                   <TableRow>
+                    <TableHead>Department</TableHead>
+                    <TableCell>{getDepartmentName(job.departmentId)}</TableCell>
+                  </TableRow>
+                  <TableRow>
                     <TableHead>Posted By</TableHead>
                     <TableCell>{job.postedBy}</TableCell>
                   </TableRow>
@@ -201,6 +257,10 @@ const JobDetail = () => {
                     <TableCell>{new Date(job.endDate).toLocaleDateString()}</TableCell>
                   </TableRow>
                   <TableRow>
+                    <TableHead>Shift</TableHead>
+                    <TableCell>{getShiftName(job.shiftId)}</TableCell>
+                  </TableRow>
+                  <TableRow>
                     <TableHead>Vacancies</TableHead>
                     <TableCell>{job.vacancies}</TableCell>
                   </TableRow>
@@ -210,7 +270,7 @@ const JobDetail = () => {
                   </TableRow>
                   <TableRow>
                     <TableHead>Skills Required</TableHead>
-                    <TableCell>{job.skills?.length || 0} skills</TableCell>
+                    <TableCell>{skillNames.join(', ') || 'None'}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>Created</TableHead>

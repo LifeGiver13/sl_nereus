@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Check, X, Trash2 } from 'lucide-react';
 
 interface Department {
@@ -217,7 +217,7 @@ const DepartmentManagement = () => {
                 )}
               </TableCell>
               <TableCell>
-                <Badge variant={department.status === 'active' ? 'active' : 'default'}>
+                <Badge variant={department.status === 'active' ? 'secondary' : 'outline'}>
                   {department.status}
                 </Badge>
               </TableCell>
