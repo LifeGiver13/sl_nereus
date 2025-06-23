@@ -66,7 +66,7 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
             <TableCell>
               <div>
                 <p className="font-medium">
-                  {placement.user.firstName} {placement.user.lastName}
+                  {placement.user.profile.Forename} {placement.user.profile.Surname}
                 </p>
                 <p className="text-sm text-gray-500">{placement.user.email}</p>
               </div>
