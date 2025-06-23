@@ -104,7 +104,7 @@ const JobEdit = () => {
       if (!response.ok) {
         throw new Error('Failed to fetch departments');
       }
-      return response.json() as Promise<Department[]>;
+      return response.json();
     }
   });
 
@@ -289,9 +289,9 @@ const JobEdit = () => {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.keys(departments? || []).map((department) => (
-                        <SelectItem key={department} value={department}>
-                          {departments[department]}
+                      {departments && Object.entries(departments).map(([departmentId, departmentName]) => (
+                        <SelectItem key={departmentId} value={departmentId}>
+                          {departmentName as string}
                         </SelectItem>
                       ))}
                     </SelectContent>
