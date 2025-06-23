@@ -46,6 +46,7 @@ interface PlacementRow {
   userId: number;
   user: {
     id: number;
+    username: string;
     firstName: string;
     lastName: string;
     email: string;
@@ -101,9 +102,10 @@ const JobFill = () => {
         userId: placement.userId,
         user: {
           id: placement.user?.id || placement.userId,
-          firstName: placement.user?.firstName || 'Unknown',
-          lastName: placement.user?.lastName || 'User',
-          email: placement.user?.email || ''
+          username: placement.user?.username || '',
+          firstName: placement.user?.profile?.Forename || placement.user?.firstName || 'Unknown',
+          lastName: placement.user?.profile?.Surname || placement.user?.lastName || 'User',
+          email: placement.user?.username || placement.user?.email || ''
         },
         instructions: placement.meta?.instructions || '',
         notes: placement.meta?.notes || '',
@@ -132,6 +134,7 @@ const JobFill = () => {
       userId: user.id,
       user: {
         id: user.id,
+        username: user.username || user.email || '',
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email
