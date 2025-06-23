@@ -52,6 +52,7 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
   });
 
   const renderCandidateList = (candidates: User[], isLoading: boolean, emptyMessage: string) => {
+    console.log(candidates, "Candidates");
     if (isLoading) {
       return <div className="text-center py-4 text-sm text-gray-500">Loading...</div>;
     }
