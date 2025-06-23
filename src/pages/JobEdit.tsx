@@ -289,9 +289,9 @@ const JobEdit = () => {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments?.map((department) => (
-                        <SelectItem key={department.id} value={department.id.toString()}>
-                          {department.name}
+                      {Object.keys(departments? || []).map((department) => (
+                        <SelectItem key={department} value={department}>
+                          {departments[department]}
                         </SelectItem>
                       ))}
                     </SelectContent>
