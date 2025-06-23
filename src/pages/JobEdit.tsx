@@ -375,9 +375,9 @@ const JobEdit = () => {
                         <SelectValue placeholder={shifts?.length ? "Select shift" : "No shifts available"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {shifts?.map((shift) => (
-                          <SelectItem key={shift.id} value={shift.id.toString()}>
-                            {shift.name} ({shift.startTime} - {shift.endTime})
+                        {Object,keys( || []).map((shift) => (
+                          <SelectItem key={shift} value={shift}>
+                            {shifts[shift]}
                           </SelectItem>
                         ))}
                       </SelectContent>
