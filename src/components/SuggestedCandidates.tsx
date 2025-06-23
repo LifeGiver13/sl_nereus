@@ -52,7 +52,6 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
   });
 
   const renderCandidateList = (candidates: User[], isLoading: boolean, emptyMessage: string) => {
-    console.log(candidates, "Candidates");
     if (isLoading) {
       return <div className="text-center py-4 text-sm text-gray-500">Loading...</div>;
     }
@@ -72,8 +71,8 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
             className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
           >
             <div>
-              <p className="font-medium">{candidate.firstName} {candidate.lastName}</p>
-              <p className="text-sm text-gray-500">{candidate.email}</p>
+              <p className="font-medium">{candidate.profile.Forename} {candidate.profile.Surname}</p>
+              <p className="text-sm text-gray-500">{candidate.username}</p>
             </div>
             <Button
               size="sm"
