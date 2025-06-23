@@ -18,6 +18,7 @@ import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import JobCreate from "./pages/JobCreate";
 import JobEdit from "./pages/JobEdit";
+import JobFill from "./pages/JobFill";
 import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -127,6 +128,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <JobDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/job/:id/fill"
+              element={
+                <ProtectedRoute>
+                  <JobFill />
                 </ProtectedRoute>
               }
             />

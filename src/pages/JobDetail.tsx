@@ -164,10 +164,12 @@ const JobDetail = () => {
                 Edit
               </Button>
             </Link>
-            <Button className="bg-[#712B71] hover:bg-[#712B71]/90">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Fill
-            </Button>
+            <Link to={`/job/${job.id}/fill`}>
+              <Button className="bg-[#712B71] hover:bg-[#712B71]/90">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Fill
+              </Button>
+            </Link>
             <Button variant="destructive">
               <X className="h-4 w-4 mr-2" />
               Cancel
