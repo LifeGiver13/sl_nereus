@@ -134,10 +134,10 @@ const JobFill = () => {
       userId: user.id,
       user: {
         id: user.id,
-        username: user.username || user.email || '',
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email
+        username: user.username '',
+        firstName: user.profile.Forename,
+        lastName: user.profile.Surname,
+        email: user.username
       },
       instructions: '',
       notes: '',
