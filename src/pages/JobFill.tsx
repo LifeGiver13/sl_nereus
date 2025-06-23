@@ -137,7 +137,7 @@ const JobFill = () => {
             }
           };
 
-          await fetch(`${API_BASE_URL}/placements`, {
+          await fetch(`${API_BASE_URL}/placement`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
