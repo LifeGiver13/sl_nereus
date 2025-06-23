@@ -104,7 +104,6 @@ const UserSearchForm: React.FC<UserSearchFormProps> = ({ onUserSelect, disabled 
             >
               <div>
                 <p className="font-medium">{user.firstName} {user.lastName}</p>
-                <p className="text-sm text-gray-500">ID: {user.id}</p>
               </div>
               <Button
                 size="sm"

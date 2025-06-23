@@ -43,7 +43,6 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
       const data = await response.json();
       console.log('Matching candidates response:', data);
       
-      // Ensure we always return an object with a results array
       return {
         results: Array.isArray(data?.results) ? data.results : []
       };
@@ -51,12 +50,11 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
     enabled: skillIds && skillIds.length > 0
   });
 
-  const renderCandidateList = (candidates: User[], isLoading: boolean, emptyMessage: string) => {
+  const renderCandidateList = (candidates: any[], isLoading: boolean, emptyMessage: string) => {
     if (isLoading) {
       return <div className="text-center py-4 text-sm text-gray-500">Loading...</div>;
     }
 
-    // Ensure candidates is always an array
     const candidateArray = Array.isArray(candidates) ? candidates : [];
 
     if (candidateArray.length === 0) {
@@ -65,31 +63,35 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
 
     return (
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {candidateArray.map((candidate) => (
-          <div
-            key={candidate.id}
-            className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-          >
-            <div>
-              <p className="font-medium">{candidate.profile.Forename} {candidate.profile.Surname}</p>
-              <p className="text-sm text-gray-500">{candidate.username}</p>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => onCandidateSelect(candidate)}
-              disabled={disabled}
-              variant="outline"
+        {candidateArray.map((candidate) => {
+          const firstName = candidate.profile?.Forename || 'Unknown';
+          const lastName = candidate.profile?.Surname || 'User';
+          const email = candidate.username || '';
+          
+          return (
+            <div
+              key={candidate.id}
+              className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
             >
-              <Plus className="h-4 w-4 mr-1" />
-              Add
-            </Button>
-          </div>
-        ))}
+              <div>
+                <p className="font-medium">{firstName} {lastName} ({email})</p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => onCandidateSelect(candidate)}
+                disabled={disabled}
+                variant="outline"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </div>
+          );
+        })}
       </div>
     );
   };
 
-  // Ensure we always have an array for results
   const results = Array.isArray(matchingCandidates?.results) ? matchingCandidates.results : [];
 
   return (

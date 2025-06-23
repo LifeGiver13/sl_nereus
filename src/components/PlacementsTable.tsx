@@ -14,10 +14,7 @@ interface PlacementRow {
   userId: number;
   user: {
     id: number;
-    username: string;
-    firstName: string;
-    lastName: string;
-    email: string;
+    displayName: string;
   };
   instructions: string;
   notes: string;
@@ -66,10 +63,7 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
           <TableRow key={placement.userId}>
             <TableCell>
               <div>
-                <p className="font-medium">
-                  {placement.user.firstName} {placement.user.lastName}
-                </p>
-                <p className="text-sm text-gray-500">{placement.user.email}</p>
+                <p className="font-medium">{placement.user.displayName}</p>
               </div>
             </TableCell>
             <TableCell>

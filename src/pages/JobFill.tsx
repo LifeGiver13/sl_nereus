@@ -46,10 +46,7 @@ interface PlacementRow {
   userId: number;
   user: {
     id: number;
-    username: string;
-    firstName: string;
-    lastName: string;
-    email: string;
+    displayName: string;
   };
   instructions: string;
   notes: string;
@@ -77,14 +74,13 @@ const JobFill = () => {
   const { data: existingPlacements, refetch: refetchPlacements } = useQuery({
     queryKey: ['placements', id],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
+      const response = await fetch(`${API_BASE_URL}/job/${id}/placements`);
       if (!response.ok) {
         return { results: [] };
       }
       const data = await response.json();
       console.log('Existing placements response:', data);
       
-      // Ensure we always return an object with a results array
       return {
         results: Array.isArray(data?.results) ? data.results : []
       };
@@ -97,29 +93,33 @@ const JobFill = () => {
     console.log('Existing placements data:', existingPlacements);
     
     if (existingPlacements?.results && Array.isArray(existingPlacements.results)) {
-      const existingPlacementRows = existingPlacements.results.map((placement: any) => ({
-        id: placement.id,
-        userId: placement.userId,
-        user: {
-          id: placement.user?.id || placement.userId,
-          username: placement.user?.username || '',
-          firstName: placement.user?.profile?.Forename || placement.user?.firstName || 'Unknown',
-          lastName: placement.user?.profile?.Surname || placement.user?.lastName || 'User',
-          email: placement.user?.username || placement.user?.email || ''
-        },
-        instructions: placement.meta?.instructions || '',
-        notes: placement.meta?.notes || '',
-        status: placement.status || 'awaiting_confirmation',
-        confirmed: placement.confirmed || false,
-        isPlaceholder: false
-      }));
+      const existingPlacementRows = existingPlacements.results.map((placement: any) => {
+        const firstName = placement.user?.profile?.Forename || 'Unknown';
+        const lastName = placement.user?.profile?.Surname || 'User';
+        const email = placement.user?.username || '';
+        const displayName = `${firstName} ${lastName} (${email})`;
+        
+        return {
+          id: placement.id,
+          userId: placement.userId,
+          user: {
+            id: placement.user?.id || placement.userId,
+            displayName: displayName
+          },
+          instructions: placement.meta?.instructions || '',
+          notes: placement.meta?.notes || '',
+          status: placement.status || 'awaiting_confirmation',
+          confirmed: placement.confirmed || false,
+          isPlaceholder: false
+        };
+      });
       setPlacements(existingPlacementRows);
     } else {
       setPlacements([]);
     }
   }, [existingPlacements]);
 
-  const handleAddUser = (user: any) => {
+  const handleAddUser = (user: any, source: 'search' | 'suggested') => {
     const totalPlacements = placements.length;
     if (totalPlacements >= (job?.vacancies || 0)) {
       return;
@@ -130,14 +130,24 @@ const JobFill = () => {
       return;
     }
 
+    let displayName: string;
+    
+    if (source === 'search') {
+      // For search results, use the name as provided
+      displayName = `${user.firstName} ${user.lastName}`;
+    } else {
+      // For suggested candidates, use profile data with email
+      const firstName = user.profile?.Forename || 'Unknown';
+      const lastName = user.profile?.Surname || 'User';
+      const email = user.username || '';
+      displayName = `${firstName} ${lastName} (${email})`;
+    }
+
     const newPlacement: PlacementRow = {
       userId: user.id,
       user: {
         id: user.id,
-        username: user.username '',
-        firstName: user.profile.Forename,
-        lastName: user.profile.Surname,
-        email: user.username
+        displayName: displayName
       },
       instructions: '',
       notes: '',
@@ -312,7 +322,7 @@ const JobFill = () => {
             </CardHeader>
             <CardContent>
               <UserSearchForm 
-                onUserSelect={handleAddUser}
+                onUserSelect={(user) => handleAddUser(user, 'search')}
                 disabled={remainingVacancies <= 0}
               />
             </CardContent>
@@ -327,7 +337,7 @@ const JobFill = () => {
             <CardContent>
               <SuggestedCandidates 
                 skillIds={jobSkills}
-                onCandidateSelect={handleAddUser}
+                onCandidateSelect={(user) => handleAddUser(user, 'suggested')}
                 disabled={remainingVacancies <= 0}
               />
             </CardContent>
