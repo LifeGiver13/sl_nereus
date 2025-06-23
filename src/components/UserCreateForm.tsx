@@ -69,7 +69,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
       console.log('Sending user creation request to:', `${API_BASE_URL}/users`);
       console.log('Payload:', payload);
 
-      const response = await fetch(`${API_BASE_URL}/users`, {
+      const response = await fetch(`${API_BASE_URL}/user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
