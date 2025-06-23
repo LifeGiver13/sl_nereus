@@ -375,7 +375,7 @@ const JobEdit = () => {
                         <SelectValue placeholder={shifts?.length ? "Select shift" : "No shifts available"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object,keys( || []).map((shift) => (
+                        {Object.keys( || []).map((shift) => (
                           <SelectItem key={shift} value={shift}>
                             {shifts[shift]}
                           </SelectItem>
