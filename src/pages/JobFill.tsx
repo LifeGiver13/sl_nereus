@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,6 +51,8 @@ interface PlacementRow {
   };
   instructions: string;
   notes: string;
+  status: string;
+  confirmed: boolean;
   isPlaceholder: boolean;
 }
 
@@ -70,7 +72,7 @@ const JobFill = () => {
   });
 
   // Fetch existing placements for this job
-  const { data: existingPlacements } = useQuery({
+  const { data: existingPlacements, refetch: refetchPlacements } = useQuery({
     queryKey: ['placements', id],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
@@ -82,8 +84,31 @@ const JobFill = () => {
     enabled: !!id
   });
 
+  // Update placements state when existing placements are loaded
+  useEffect(() => {
+    if (existingPlacements?.results) {
+      const existingPlacementRows = existingPlacements.results.map((placement: any) => ({
+        id: placement.id,
+        userId: placement.userId,
+        user: {
+          id: placement.user.id,
+          firstName: placement.user.firstName,
+          lastName: placement.user.lastName,
+          email: placement.user.email
+        },
+        instructions: placement.meta?.instructions || '',
+        notes: placement.meta?.notes || '',
+        status: placement.status,
+        confirmed: placement.confirmed,
+        isPlaceholder: false
+      }));
+      setPlacements(existingPlacementRows);
+    }
+  }, [existingPlacements]);
+
   const handleAddUser = (user: any) => {
-    if (placements.length >= (job?.vacancies || 0)) {
+    const totalPlacements = placements.length;
+    if (totalPlacements >= (job?.vacancies || 0)) {
       return;
     }
 
@@ -102,6 +127,8 @@ const JobFill = () => {
       },
       instructions: '',
       notes: '',
+      status: 'awaiting_confirmation',
+      confirmed: false,
       isPlaceholder: true
     };
 
@@ -112,7 +139,7 @@ const JobFill = () => {
     setPlacements(placements.filter(p => p.userId !== userId));
   };
 
-  const handleUpdatePlacement = (userId: number, field: 'instructions' | 'notes', value: string) => {
+  const handleUpdatePlacement = (userId: number, field: 'instructions' | 'notes' | 'status' | 'confirmed', value: string | boolean) => {
     setPlacements(placements.map(p => 
       p.userId === userId ? { ...p, [field]: value } : p
     ));
@@ -122,33 +149,33 @@ const JobFill = () => {
     if (!job) return;
 
     try {
-      for (const placement of placements) {
-        if (placement.isPlaceholder) {
-          const placementData = {
-            userId: placement.userId,
-            jobId: job.id,
-            departmentId: job.departmentId,
-            shiftId: job.shiftId,
-            confirmed: false,
-            status: 'pending',
-            meta: {
-              instructions: placement.instructions,
-              notes: placement.notes
-            }
-          };
+      const placeholderPlacements = placements.filter(p => p.isPlaceholder);
+      
+      for (const placement of placeholderPlacements) {
+        const placementData = {
+          userId: placement.userId,
+          jobId: job.id,
+          departmentId: job.departmentId,
+          shiftId: job.shiftId,
+          confirmed: placement.confirmed,
+          status: placement.status,
+          meta: {
+            instructions: placement.instructions,
+            notes: placement.notes
+          }
+        };
 
-          await fetch(`${API_BASE_URL}/placement`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(placementData)
-          });
-        }
+        await fetch(`${API_BASE_URL}/placement`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(placementData)
+        });
       }
 
       // Refresh placements to show confirmed ones
-      window.location.reload();
+      await refetchPlacements();
     } catch (error) {
       console.error('Error creating placements:', error);
     }
@@ -174,7 +201,10 @@ const JobFill = () => {
     );
   }
 
-  const remainingVacancies = job.vacancies - placements.length - (existingPlacements?.results?.length || 0);
+  const placeholderPlacements = placements.filter(p => p.isPlaceholder);
+  const existingPlacementsCount = placements.filter(p => !p.isPlaceholder).length;
+  const remainingVacancies = job?.vacancies - placements.length || 0;
+  const hasExistingPlacements = existingPlacementsCount > 0;
 
   return (
     <AdminLayout>
@@ -194,10 +224,10 @@ const JobFill = () => {
           </div>
           <Button 
             onClick={handleConfirmPlacements}
-            disabled={placements.length === 0}
+            disabled={placeholderPlacements.length === 0}
             className="bg-[#712B71] hover:bg-[#712B71]/90"
           >
-            Confirm Placements ({placements.length})
+            Confirm Placements ({placeholderPlacements.length})
           </Button>
         </div>
 
@@ -236,6 +266,24 @@ const JobFill = () => {
           </CardContent>
         </Card>
 
+        {/* Existing Placements */}
+        {hasExistingPlacements && (
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-[#000009]">Current Placements</CardTitle>
+              <CardDescription>Existing placements for this job</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PlacementsTable 
+                placements={placements.filter(p => !p.isPlaceholder)}
+                onRemoveUser={handleRemoveUser}
+                onUpdatePlacement={handleUpdatePlacement}
+                showStatusControls={false}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* User Search */}
           <Card className="border-0 shadow-lg">
@@ -267,16 +315,16 @@ const JobFill = () => {
           </Card>
         </div>
 
-        {/* Placements Table */}
-        {placements.length > 0 && (
+        {/* New Placements Table */}
+        {placeholderPlacements.length > 0 && (
           <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-[#000009]">Selected Placements</CardTitle>
-              <CardDescription>Review and add instructions for selected users</CardDescription>
+              <CardTitle className="text-[#000009]">New Placements</CardTitle>
+              <CardDescription>Review and configure new placements before confirming</CardDescription>
             </CardHeader>
             <CardContent>
               <PlacementsTable 
-                placements={placements}
+                placements={placeholderPlacements}
                 onRemoveUser={handleRemoveUser}
                 onUpdatePlacement={handleUpdatePlacement}
               />

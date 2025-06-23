@@ -30,17 +30,10 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
     queryFn: async () => {
       if (!skillIds || skillIds.length === 0) return { results: [] };
       
-      const searchParams = {
-        id: skillIds
-      };
+      const searchParams = new URLSearchParams();
+      searchParams.append('search', JSON.stringify({ id: skillIds }));
       
-      const response = await fetch(`${API_BASE_URL}/candidates/match`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(searchParams)
-      });
+      const response = await fetch(`${API_BASE_URL}/candidates/match?${searchParams.toString()}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch matching candidates');
