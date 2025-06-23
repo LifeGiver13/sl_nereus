@@ -74,7 +74,7 @@ const JobFill = () => {
   const { data: existingPlacements, refetch: refetchPlacements } = useQuery({
     queryKey: ['placements', id],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/job/${id}/placements`);
+      const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
       if (!response.ok) {
         return { results: [] };
       }
