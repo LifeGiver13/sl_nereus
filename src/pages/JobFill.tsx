@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -68,6 +67,19 @@ const JobFill = () => {
       }
       return response.json();
     }
+  });
+
+  // Fetch existing placements for this job
+  const { data: existingPlacements } = useQuery({
+    queryKey: ['placements', id],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
+      if (!response.ok) {
+        return { results: [] };
+      }
+      return response.json();
+    },
+    enabled: !!id
   });
 
   const handleAddUser = (user: any) => {
@@ -162,7 +174,7 @@ const JobFill = () => {
     );
   }
 
-  const remainingVacancies = job.vacancies - placements.length;
+  const remainingVacancies = job.vacancies - placements.length - (existingPlacements?.results?.length || 0);
 
   return (
     <AdminLayout>

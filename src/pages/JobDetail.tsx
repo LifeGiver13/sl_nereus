@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, X, Eye } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 
@@ -75,6 +74,18 @@ const JobDetail = () => {
     }
   });
 
+  const { data: placementsData } = useQuery({
+    queryKey: ['placements', id],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
+      if (!response.ok) {
+        return { results: [] };
+      }
+      return response.json();
+    },
+    enabled: !!id
+  });
+
   const getSkillNames = (skillIds: number[]) => {
     if (!skillsData || !skillIds) return [];
     
@@ -140,6 +151,8 @@ const JobDetail = () => {
   }
 
   const skillNames = getSkillNames(job.skills || []);
+
+  const placements = placementsData?.results || [];
 
   return (
     <AdminLayout>
@@ -272,6 +285,70 @@ const JobDetail = () => {
             </CardContent>
           </Card>
         </div>
+
+        {placements.length > 0 && (
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-[#000009]">Current Placements</CardTitle>
+              <CardDescription>People assigned to this job</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Placement ID</TableHead>
+                    <TableHead>Candidate ID</TableHead>
+                    <TableHead>Candidate Name</TableHead>
+                    <TableHead>Shift</TableHead>
+                    <TableHead>Confirmed</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {placements.map((placement: any) => (
+                    <TableRow key={placement.id}>
+                      <TableCell className="font-medium">#{placement.id}</TableCell>
+                      <TableCell>{placement.userId}</TableCell>
+                      <TableCell>
+                        {placement.user?.profile?.Forename && placement.user?.profile?.Surname 
+                          ? `${placement.user.profile.Forename} ${placement.user.profile.Surname}`
+                          : placement.user?.username || 'N/A'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {placement.shift 
+                          ? `${placement.shift.name} (${placement.shift.startTime} - ${placement.shift.endTime})`
+                          : 'N/A'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={placement.confirmed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                          {placement.confirmed ? 'Yes' : 'No'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {placement.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
         {job.body && (
           <Card className="border-0 shadow-lg">

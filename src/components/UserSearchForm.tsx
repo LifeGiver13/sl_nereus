@@ -21,27 +21,43 @@ interface UserSearchFormProps {
 
 const UserSearchForm: React.FC<UserSearchFormProps> = ({ onUserSelect, disabled }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const { data: searchResults, refetch } = useQuery({
-    queryKey: ['userSearch', searchTerm],
-    queryFn: async () => {
-      if (!searchTerm.trim()) return [];
-      
-      const response = await fetch(`${API_BASE_URL}/users?search=${encodeURIComponent(searchTerm)}`);
-      if (!response.ok) {
-        throw new Error('Failed to search users');
-      }
-      return response.json();
-    },
-    enabled: false
-  });
+  const searchUsers = async (term: string) => {
+    if (!term.trim() || term.length < 2) {
+      setSearchResults([]);
+      return;
+    }
 
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
     setIsSearching(true);
-    await refetch();
-    setIsSearching(false);
+    try {
+      const response = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
+      if (response.ok) {
+        const userData = await response.json();
+        const userArray = Object.entries(userData).map(([id, name]) => {
+          const nameParts = (name as string).split(' ');
+          return {
+            id: parseInt(id),
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            email: '' // This endpoint doesn't provide email
+          };
+        });
+        setSearchResults(userArray);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearch = () => {
+    searchUsers(searchTerm);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -50,13 +66,23 @@ const UserSearchForm: React.FC<UserSearchFormProps> = ({ onUserSelect, disabled 
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    if (value.length >= 2) {
+      searchUsers(value);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex space-x-2">
         <Input
-          placeholder="Search by name or email..."
+          placeholder="Search by name..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={handleInputChange}
           onKeyPress={handleKeyPress}
           disabled={disabled}
         />
@@ -78,7 +104,7 @@ const UserSearchForm: React.FC<UserSearchFormProps> = ({ onUserSelect, disabled 
             >
               <div>
                 <p className="font-medium">{user.firstName} {user.lastName}</p>
-                <p className="text-sm text-gray-500">{user.email}</p>
+                <p className="text-sm text-gray-500">ID: {user.id}</p>
               </div>
               <Button
                 size="sm"
@@ -93,7 +119,7 @@ const UserSearchForm: React.FC<UserSearchFormProps> = ({ onUserSelect, disabled 
         </div>
       )}
 
-      {searchResults && searchResults.length === 0 && searchTerm && (
+      {searchResults && searchResults.length === 0 && searchTerm && !isSearching && (
         <p className="text-sm text-gray-500 text-center py-4">
           No users found matching "{searchTerm}"
         </p>

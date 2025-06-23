@@ -441,19 +441,21 @@ const Jobs = () => {
                         <div className="flex space-x-2">
                           <Link to={`/job/${job.id}`}>
                             <Button variant="ghost" size="sm">
-                              View
+                              <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
                           <Link to={`/jobs/edit/${job.id}`}>
                             <Button variant="ghost" size="sm">
-                              Edit
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Link to={`/job/${job.id}/fill`}>
+                            <Button variant="ghost" size="sm">
+                              <UserPlus className="h-4 w-4" />
                             </Button>
                           </Link>
                           <Button variant="ghost" size="sm">
-                            Fill
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            Cancel
+                            <X className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
