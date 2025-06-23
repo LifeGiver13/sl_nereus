@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -79,30 +80,40 @@ const JobFill = () => {
       if (!response.ok) {
         return { results: [] };
       }
-      return response.json();
+      const data = await response.json();
+      console.log('Existing placements response:', data);
+      
+      // Ensure we always return an object with a results array
+      return {
+        results: Array.isArray(data?.results) ? data.results : []
+      };
     },
     enabled: !!id
   });
 
   // Update placements state when existing placements are loaded
   useEffect(() => {
-    if (existingPlacements?.results) {
+    console.log('Existing placements data:', existingPlacements);
+    
+    if (existingPlacements?.results && Array.isArray(existingPlacements.results)) {
       const existingPlacementRows = existingPlacements.results.map((placement: any) => ({
         id: placement.id,
         userId: placement.userId,
         user: {
-          id: placement.user.id,
-          firstName: placement.user.firstName,
-          lastName: placement.user.lastName,
-          email: placement.user.email
+          id: placement.user?.id || placement.userId,
+          firstName: placement.user?.firstName || 'Unknown',
+          lastName: placement.user?.lastName || 'User',
+          email: placement.user?.email || ''
         },
         instructions: placement.meta?.instructions || '',
         notes: placement.meta?.notes || '',
-        status: placement.status,
-        confirmed: placement.confirmed,
+        status: placement.status || 'awaiting_confirmation',
+        confirmed: placement.confirmed || false,
         isPlaceholder: false
       }));
       setPlacements(existingPlacementRows);
+    } else {
+      setPlacements([]);
     }
   }, [existingPlacements]);
 
@@ -201,10 +212,15 @@ const JobFill = () => {
     );
   }
 
-  const placeholderPlacements = placements.filter(p => p.isPlaceholder);
-  const existingPlacementsCount = placements.filter(p => !p.isPlaceholder).length;
-  const remainingVacancies = job?.vacancies - placements.length || 0;
+  // Ensure placements is always an array
+  const placementsArray = Array.isArray(placements) ? placements : [];
+  const placeholderPlacements = placementsArray.filter(p => p.isPlaceholder);
+  const existingPlacementsCount = placementsArray.filter(p => !p.isPlaceholder).length;
+  const remainingVacancies = job?.vacancies - placementsArray.length || 0;
   const hasExistingPlacements = existingPlacementsCount > 0;
+
+  // Ensure job.skills is always an array
+  const jobSkills = Array.isArray(job.skills) ? job.skills : [];
 
   return (
     <AdminLayout>
@@ -256,7 +272,7 @@ const JobFill = () => {
               <div>
                 <p className="text-sm text-gray-500">Vacancies</p>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{placements.length}/{job.vacancies}</Badge>
+                  <Badge variant="outline">{placementsArray.length}/{job.vacancies}</Badge>
                   <span className="text-sm text-gray-500">
                     ({remainingVacancies} remaining)
                   </span>
@@ -275,7 +291,7 @@ const JobFill = () => {
             </CardHeader>
             <CardContent>
               <PlacementsTable 
-                placements={placements.filter(p => !p.isPlaceholder)}
+                placements={placementsArray.filter(p => !p.isPlaceholder)}
                 onRemoveUser={handleRemoveUser}
                 onUpdatePlacement={handleUpdatePlacement}
                 showStatusControls={false}
@@ -307,7 +323,7 @@ const JobFill = () => {
             </CardHeader>
             <CardContent>
               <SuggestedCandidates 
-                skillIds={job.skills}
+                skillIds={jobSkills}
                 onCandidateSelect={handleAddUser}
                 disabled={remainingVacancies <= 0}
               />

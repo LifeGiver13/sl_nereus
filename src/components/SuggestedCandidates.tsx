@@ -31,14 +31,22 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
       if (!skillIds || skillIds.length === 0) return { results: [] };
       
       const searchParams = new URLSearchParams();
-      searchParams.append('search', JSON.stringify({ skillId: { "in": skillIds } }));
+      searchParams.append('search', JSON.stringify({ id: skillIds }));
       
       const response = await fetch(`${API_BASE_URL}/candidates/match?${searchParams.toString()}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch matching candidates');
+        console.log('Failed to fetch matching candidates, returning empty results');
+        return { results: [] };
       }
-      return response.json();
+      
+      const data = await response.json();
+      console.log('Matching candidates response:', data);
+      
+      // Ensure we always return an object with a results array
+      return {
+        results: Array.isArray(data?.results) ? data.results : []
+      };
     },
     enabled: skillIds && skillIds.length > 0
   });
@@ -48,13 +56,16 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
       return <div className="text-center py-4 text-sm text-gray-500">Loading...</div>;
     }
 
-    if (!candidates || candidates.length === 0) {
+    // Ensure candidates is always an array
+    const candidateArray = Array.isArray(candidates) ? candidates : [];
+
+    if (candidateArray.length === 0) {
       return <div className="text-center py-4 text-sm text-gray-500">{emptyMessage}</div>;
     }
 
     return (
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {candidates.map((candidate) => (
+        {candidateArray.map((candidate) => (
           <div
             key={candidate.id}
             className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
@@ -78,6 +89,9 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
     );
   };
 
+  // Ensure we always have an array for results
+  const results = Array.isArray(matchingCandidates?.results) ? matchingCandidates.results : [];
+
   return (
     <Tabs defaultValue="skill-match" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
@@ -87,7 +101,7 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
       
       <TabsContent value="skill-match" className="mt-4">
         {renderCandidateList(
-          matchingCandidates?.results || [],
+          results,
           isLoadingMatches,
           skillIds && skillIds.length > 0 
             ? "No candidates found with matching skills"
