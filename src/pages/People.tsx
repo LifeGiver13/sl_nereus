@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
+import CreateUserModal from '../components/CreateUserModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, Edit, Briefcase, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
@@ -39,6 +38,7 @@ const People = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { toast } = useToast();
 
   const itemsPerPage = 10;
@@ -120,6 +120,14 @@ const People = () => {
     setCurrentPage(1);
   };
 
+  const handleUserCreated = () => {
+    fetchUsers(); // Refresh the user list
+    toast({
+      title: "Success",
+      description: "User created successfully and list refreshed",
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     const statusColors: { [key: string]: string } = {
       'active': 'bg-green-100 text-green-800',
@@ -159,9 +167,18 @@ const People = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-[#000009]">People</h1>
-          <p className="text-gray-600 mt-1">Manage user accounts and profiles</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-[#000009]">People</h1>
+            <p className="text-gray-600 mt-1">Manage user accounts and profiles</p>
+          </div>
+          <Button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-[#712B71] hover:bg-[#712B71]/90"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create User
+          </Button>
         </div>
 
         <Card className="border-0 shadow-lg">
@@ -298,6 +315,12 @@ const People = () => {
             )}
           </CardContent>
         </Card>
+
+        <CreateUserModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onUserCreated={handleUserCreated}
+        />
       </div>
     </AdminLayout>
   );
