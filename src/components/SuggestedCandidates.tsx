@@ -31,7 +31,7 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
       if (!skillIds || skillIds.length === 0) return { results: [] };
       
       const searchParams = new URLSearchParams();
-      searchParams.append('search', JSON.stringify({ id: skillIds }));
+      searchParams.append('search', JSON.stringify({ id: { in: skillIds} }));
       
       const response = await fetch(`${API_BASE_URL}/candidates/match?${searchParams.toString()}`);
       
