@@ -23,6 +23,14 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
     status: 'active'
   });
 
+  const roleOptions = [
+    { value: 'applicant', label: 'Job Applicant' },
+    { value: 'worker', label: 'Worker' },
+    { value: 'client', label: 'Client' },
+    { value: 'admin', label: 'Administrator' },
+    { value: 'super_admin', label: 'Super Administrator' }
+  ];
+
   const handleInputChange = (field: string, value: string) => {
     setFormData({ ...formData, [field]: value });
   };
@@ -57,6 +65,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
         role: formData.role,
         status: formData.status
       };
+
+      console.log('Sending user creation request to:', `${API_BASE_URL}/users`);
+      console.log('Payload:', payload);
 
       const response = await fetch(`${API_BASE_URL}/users`, {
         method: 'POST',
@@ -137,11 +148,11 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
                 <SelectValue placeholder="Select user role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="applicant">Applicant</SelectItem>
-                <SelectItem value="worker">Worker</SelectItem>
-                <SelectItem value="client">Client</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
+                {roleOptions.map((role) => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
