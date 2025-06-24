@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft, Edit, UserPlus, X, Eye } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import PlacementDetailModal from '../components/PlacementDetailModal';
+import PlacementEditModal from '../components/PlacementEditModal';
 
 interface Job {
   id: number;
@@ -51,6 +53,9 @@ interface Skill {
 
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { data: job, isLoading, error } = useQuery({
     queryKey: ['job', id],
@@ -74,7 +79,7 @@ const JobDetail = () => {
     }
   });
 
-  const { data: placementsData } = useQuery({
+  const { data: placementsData, refetch: refetchPlacements } = useQuery({
     queryKey: ['placements', id],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
@@ -128,6 +133,26 @@ const JobDetail = () => {
       case 'cancelled': return 'bg-gray-100 text-gray-800';
       default: return 'bg-blue-100 text-blue-800';
     }
+  };
+
+  const handleViewPlacement = (placement: any) => {
+    setSelectedPlacement(placement);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleEditFromDetail = () => {
+    setIsDetailModalOpen(false);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditPlacement = (placement: any) => {
+    setSelectedPlacement(placement);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSavePlacement = () => {
+    refetchPlacements();
+    setSelectedPlacement(null);
   };
 
   if (isLoading) {
@@ -334,10 +359,18 @@ const JobDetail = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewPlacement(placement)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditPlacement(placement)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                         </div>
@@ -346,18 +379,6 @@ const JobDetail = () => {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        )}
-
-        {job.body && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">Job Body</CardTitle>
-              <CardDescription>Detailed job information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="whitespace-pre-wrap">{JSON.stringify(job.body, null, 2)}</div>
             </CardContent>
           </Card>
         )}
@@ -379,25 +400,21 @@ const JobDetail = () => {
             </CardContent>
           </Card>
         )}
-
-        {skillNames.length > 0 && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">Required Skills</CardTitle>
-              <CardDescription>Skills needed for this job</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {skillNames.map((skillName, index) => (
-                  <Badge key={index} variant="outline">
-                    {skillName}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
+
+      <PlacementDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        onEdit={handleEditFromDetail}
+        placement={selectedPlacement}
+      />
+
+      <PlacementEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSavePlacement}
+        placement={selectedPlacement}
+      />
     </AdminLayout>
   );
 };
