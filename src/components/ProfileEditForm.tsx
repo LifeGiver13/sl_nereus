@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,11 @@ interface User {
   username: string;
   status: string;
   role: string;
+  lastLogin: string;
+  createdAt: string;
+  updatedAt: string;
   profile: { [key: string]: any };
+  meta: { [key: string]: any };
 }
 
 interface ProfileEditFormProps {
@@ -36,12 +41,17 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated }
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${user.id}/profile`, {
+      const updatedUser = {
+        ...user,
+        profile
+      };
+
+      const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ profile }),
+        body: JSON.stringify(updatedUser),
       });
 
       if (!response.ok) {

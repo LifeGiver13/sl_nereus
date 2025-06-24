@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import EditClientModal from '../components/EditClientModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -17,6 +19,8 @@ interface Client {
   status: string;
   profile: any;
   meta: any;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface ClientsResponse {
@@ -31,6 +35,8 @@ const Clients = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalClients, setTotalClients] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { toast } = useToast();
 
   const pageSize = 10;
@@ -94,6 +100,19 @@ const Clients = () => {
     if (e.key === 'Enter') {
       handleSearch();
     }
+  };
+
+  const handleEditClient = (client: Client) => {
+    setSelectedClient(client);
+    setIsEditModalOpen(true);
+  };
+
+  const handleClientUpdated = () => {
+    fetchClients(currentPage, searchTerm);
+    toast({
+      title: "Success",
+      description: "Client updated successfully and list refreshed",
+    });
   };
 
   const handleDelete = async (clientId: number) => {
@@ -271,13 +290,7 @@ const Clients = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                // TODO: Implement edit functionality
-                                toast({
-                                  title: "Coming Soon",
-                                  description: "Edit functionality will be implemented soon",
-                                });
-                              }}
+                              onClick={() => handleEditClient(client)}
                             >
                               <Edit className="h-4 w-4 mr-1" />
                               Edit
@@ -331,6 +344,13 @@ const Clients = () => {
             )}
           </CardContent>
         </Card>
+
+        <EditClientModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          client={selectedClient}
+          onClientUpdated={handleClientUpdated}
+        />
       </div>
     </AdminLayout>
   );

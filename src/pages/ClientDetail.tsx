@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import EditClientModal from '../components/EditClientModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Building, Mail, Phone, MapPin, User, Clock } from 'lucide-react';
+import { ArrowLeft, Building, Mail, Phone, MapPin, User, Clock, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 
@@ -42,6 +42,7 @@ const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -78,6 +79,51 @@ const ClientDetail = () => {
       fetchClient();
     }
   }, [id, toast]);
+
+  const handleEditClient = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleClientUpdated = () => {
+    // Refresh client data
+    if (id) {
+      const fetchClient = async () => {
+        try {
+          setIsLoading(true);
+          const response = await fetch(`${API_BASE_URL}/client/${id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data: Client = await response.json();
+          console.log('Client data received:', data);
+          setClient(data);
+        } catch (error) {
+          console.error('Error fetching client:', error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch client details",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchClient();
+    }
+
+    toast({
+      title: "Success",
+      description: "Client updated successfully",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -147,6 +193,13 @@ const ClientDetail = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button 
+              onClick={handleEditClient}
+              className="bg-[#712B71] hover:bg-[#712B71]/90"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Client
+            </Button>
             <Button asChild>
               <Link to={`/client/${client.id}/shifts`}>
                 <Clock className="h-4 w-4 mr-2" />
