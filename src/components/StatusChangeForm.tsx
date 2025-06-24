@@ -59,7 +59,7 @@ const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${user.id}/status`, {
+      const response = await fetch(`${API_BASE_URL}/admin/user/${user.id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
