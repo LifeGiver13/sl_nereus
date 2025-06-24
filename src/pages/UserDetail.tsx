@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import EditUserModal from '../components/EditUserModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 
@@ -26,6 +26,7 @@ const UserDetail = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchUserDetail = async () => {
@@ -138,6 +139,51 @@ const UserDetail = () => {
     );
   };
 
+  const handleEditUser = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleUserUpdated = () => {
+    // Refresh user data
+    if (id) {
+      const fetchUserDetail = async () => {
+        try {
+          setIsLoading(true);
+          const response = await fetch(`${API_BASE_URL}/user/${id}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data: User = await response.json();
+          console.log('User detail data received:', data);
+          setUser(data);
+        } catch (error) {
+          console.error('Error fetching user details:', error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch user details",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchUserDetail();
+    }
+
+    toast({
+      title: "Success",
+      description: "User updated successfully",
+    });
+  };
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -196,10 +242,17 @@ const UserDetail = () => {
               Back to People
             </Link>
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-[#000009]">{user.username}</h1>
             <p className="text-gray-600 mt-1">User Details</p>
           </div>
+          <Button 
+            onClick={handleEditUser}
+            className="bg-[#712B71] hover:bg-[#712B71]/90"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit User
+          </Button>
         </div>
 
         <div className="grid gap-6">
@@ -256,6 +309,13 @@ const UserDetail = () => {
             </Card>
           )}
         </div>
+
+        <EditUserModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          user={user}
+          onUserUpdated={handleUserUpdated}
+        />
       </div>
     </AdminLayout>
   );

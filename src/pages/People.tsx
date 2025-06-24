@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import CreateUserModal from '../components/CreateUserModal';
+import EditUserModal from '../components/EditUserModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,8 @@ const People = () => {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
 
   const itemsPerPage = 10;
@@ -125,6 +128,19 @@ const People = () => {
     toast({
       title: "Success",
       description: "User created successfully and list refreshed",
+    });
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUserUpdated = () => {
+    fetchUsers(); // Refresh the user list
+    toast({
+      title: "Success",
+      description: "User updated successfully and list refreshed",
     });
   };
 
@@ -269,7 +285,11 @@ const People = () => {
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="outline" size="sm">
@@ -320,6 +340,13 @@ const People = () => {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onUserCreated={handleUserCreated}
+        />
+
+        <EditUserModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          user={selectedUser}
+          onUserUpdated={handleUserUpdated}
         />
       </div>
     </AdminLayout>
