@@ -1,11 +1,13 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, addDays } from 'date-fns';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface Job {
   id: number;
@@ -16,20 +18,22 @@ interface Job {
 }
 
 const JobsCalendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const navigate = useNavigate();
   
-  const startDate = startOfMonth(currentDate);
-  const endDate = endOfMonth(currentDate);
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Start week on Monday
+  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   const { data: jobsData = { results: [], total: 0 }, isLoading } = useQuery({
-    queryKey: ['calendar-jobs', format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')],
+    queryKey: ['weekly-jobs', format(weekStart, 'yyyy-MM-dd'), format(weekEnd, 'yyyy-MM-dd')],
     queryFn: async () => {
       const searchParams = {
         startDate: {
-          gte: format(startDate, 'yyyy-MM-dd')
+          gte: format(weekStart, 'yyyy-MM-dd')
         },
         endDate: {
-          lte: format(endDate, 'yyyy-MM-dd')
+          lte: format(weekEnd, 'yyyy-MM-dd')
         }
       };
 
@@ -43,20 +47,33 @@ const JobsCalendar = () => {
 
   const jobs = jobsData.results || [];
 
-  const handleMonthChange = (direction: 'next' | 'prev') => {
+  const handleWeekChange = (direction: 'next' | 'prev') => {
     if (direction === 'next') {
-      setCurrentDate(addMonths(currentDate, 1));
+      setCurrentWeek(addWeeks(currentWeek, 1));
     } else {
-      setCurrentDate(subMonths(currentDate, 1));
+      setCurrentWeek(subWeeks(currentWeek, 1));
     }
   };
 
-  const getJobsForDate = (date: Date) => {
-    return jobs.filter((job: Job) => {
+  const getJobsForDay = (date: Date) => {
+    const jobsForDay = [];
+    
+    jobs.forEach((job: Job) => {
       const jobStart = new Date(job.startDate);
       const jobEnd = new Date(job.endDate);
-      return date >= jobStart && date <= jobEnd;
+      
+      // Create entries for each day the job spans
+      let currentDay = jobStart;
+      while (currentDay <= jobEnd) {
+        if (isSameDay(currentDay, date)) {
+          jobsForDay.push(job);
+          break;
+        }
+        currentDay = addDays(currentDay, 1);
+      }
     });
+    
+    return jobsForDay;
   };
 
   const getStatusColor = (status: string) => {
@@ -68,15 +85,19 @@ const JobsCalendar = () => {
     }
   };
 
+  const handleAddJob = () => {
+    navigate('/jobs/create');
+  };
+
   if (isLoading) {
     return (
       <Card className="border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-[#000009]">Jobs Calendar</CardTitle>
-          <CardDescription>View jobs by month</CardDescription>
+          <CardTitle className="text-[#000009]">Weekly Jobs Calendar</CardTitle>
+          <CardDescription>Loading calendar...</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-48">
+          <div className="flex items-center justify-center h-96">
             <div className="text-sm text-gray-500">Loading calendar...</div>
           </div>
         </CardContent>
@@ -87,56 +108,89 @@ const JobsCalendar = () => {
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader>
-        <CardTitle className="text-[#000009]">Jobs Calendar</CardTitle>
-        <CardDescription>View jobs scheduled for {format(currentDate, 'MMMM yyyy')}</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-[#000009]">Weekly Jobs Calendar</CardTitle>
+            <CardDescription>
+              Week of {format(weekStart, 'MMM dd')} - {format(weekEnd, 'MMM dd, yyyy')}
+            </CardDescription>
+          </div>
+          <Button onClick={handleAddJob} className="bg-[#712B71] hover:bg-[#712B71]/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Job
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {/* Week Navigation */}
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => handleMonthChange('prev')}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+            <Button
+              variant="outline"
+              onClick={() => handleWeekChange('prev')}
+              className="flex items-center"
             >
-              Previous
-            </button>
-            <h3 className="font-medium">{format(currentDate, 'MMMM yyyy')}</h3>
-            <button
-              onClick={() => handleMonthChange('next')}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous Week
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setCurrentWeek(new Date())}
+              className="text-sm"
             >
-              Next
-            </button>
+              Today
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleWeekChange('next')}
+              className="flex items-center"
+            >
+              Next Week
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
           </div>
 
-          <Calendar
-            mode="single"
-            selected={undefined}
-            month={currentDate}
-            onMonthChange={setCurrentDate}
-            className="rounded-md border"
-          />
-
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm">Jobs in {format(currentDate, 'MMMM yyyy')}</h4>
-            {jobs.length === 0 ? (
-              <p className="text-sm text-gray-500">No jobs scheduled for this month.</p>
-            ) : (
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {jobs.map((job: Job) => (
-                  <div key={job.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{job.title}</p>
-                      <p className="text-xs text-gray-500">
-                        {format(new Date(job.startDate), 'MMM dd')} - {format(new Date(job.endDate), 'MMM dd')}
-                      </p>
+          {/* Weekly Grid */}
+          <div className="grid grid-cols-7 gap-4">
+            {weekDays.map((day) => {
+              const dayJobs = getJobsForDay(day);
+              const isToday = isSameDay(day, new Date());
+              
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={`border rounded-lg p-3 min-h-[200px] ${
+                    isToday ? 'bg-blue-50 border-blue-200' : 'bg-white'
+                  }`}
+                >
+                  <div className="font-medium text-sm mb-2">
+                    <div className={`${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                      {format(day, 'EEE')}
                     </div>
-                    <Badge className={getStatusColor(job.status)} variant="outline">
-                      {job.status}
-                    </Badge>
+                    <div className={`text-lg ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                      {format(day, 'd')}
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  
+                  <div className="space-y-2">
+                    {dayJobs.map((job: Job) => (
+                      <div
+                        key={`${job.id}-${day.toISOString()}`}
+                        className="p-2 bg-gray-50 rounded border cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => navigate(`/job/${job.id}`)}
+                      >
+                        <div className="text-xs font-medium text-gray-900 truncate">
+                          {job.title}
+                        </div>
+                        <Badge className={`${getStatusColor(job.status)} text-xs`} variant="outline">
+                          {job.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </CardContent>

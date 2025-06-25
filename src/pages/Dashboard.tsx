@@ -1,3 +1,4 @@
+
 import React from 'react';
 import AdminLayout from '../components/AdminLayout';
 import JobsCalendar from '../components/JobsCalendar';
@@ -74,72 +75,8 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Quick Actions and Calendar */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">Recent Activity</CardTitle>
-              <CardDescription>Latest updates from your platform</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-[#45f0df] rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#000009]">New application received</p>
-                    <p className="text-xs text-gray-500">John Doe applied for Software Developer position</p>
-                  </div>
-                  <span className="text-xs text-gray-400">2 min ago</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-[#712B71] rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#000009]">Client meeting scheduled</p>
-                    <p className="text-xs text-gray-500">TechCorp wants to discuss new requirements</p>
-                  </div>
-                  <span className="text-xs text-gray-400">1 hour ago</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-[#45f0df] rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#000009]">Candidate placement confirmed</p>
-                    <p className="text-xs text-gray-500">Sarah Smith started at DataFlow Ltd</p>
-                  </div>
-                  <span className="text-xs text-gray-400">3 hours ago</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">Quick Actions</CardTitle>
-              <CardDescription>Frequently used tasks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <button className="p-4 border border-[#712B71] rounded-lg hover:bg-[#712B71]/10 transition-colors text-center">
-                  <FileText className="h-6 w-6 text-[#712B71] mx-auto mb-2" />
-                  <span className="text-sm font-medium text-[#000009]">New Application</span>
-                </button>
-                <button className="p-4 border border-[#45f0df] rounded-lg hover:bg-[#45f0df]/10 transition-colors text-center">
-                  <Users className="h-6 w-6 text-[#45f0df] mx-auto mb-2" />
-                  <span className="text-sm font-medium text-[#000009]">Add Candidate</span>
-                </button>
-                <button className="p-4 border border-[#712B71] rounded-lg hover:bg-[#712B71]/10 transition-colors text-center">
-                  <Building2 className="h-6 w-6 text-[#712B71] mx-auto mb-2" />
-                  <span className="text-sm font-medium text-[#000009]">New Client</span>
-                </button>
-                <button className="p-4 border border-[#45f0df] rounded-lg hover:bg-[#45f0df]/10 transition-colors text-center">
-                  <Briefcase className="h-6 w-6 text-[#45f0df] mx-auto mb-2" />
-                  <span className="text-sm font-medium text-[#000009]">Post Job</span>
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <JobsCalendar />
-        </div>
+        {/* Full Width Calendar */}
+        <JobsCalendar />
       </div>
     </AdminLayout>
   );
