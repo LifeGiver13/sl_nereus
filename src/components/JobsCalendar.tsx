@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,14 +27,21 @@ const JobsCalendar = () => {
   const { data: jobsData = { results: [], total: 0 }, isLoading } = useQuery({
     queryKey: ['weekly-jobs', format(weekStart, 'yyyy-MM-dd'), format(weekEnd, 'yyyy-MM-dd')],
     queryFn: async () => {
+      // Search for jobs that overlap with the current week
+      // A job overlaps if: startDate <= weekEnd AND endDate >= weekStart
       const searchParams = {
-        startDate: {
-          gte: format(weekStart, 'yyyy-MM-dd')
-        },
-        endDate: {
-          lte: format(weekEnd, 'yyyy-MM-dd')
-        }
+        $or: [
+          {
+            $and: [
+              { startDate: { $lte: format(weekEnd, 'yyyy-MM-dd') } },
+              { endDate: { $gte: format(weekStart, 'yyyy-MM-dd') } }
+            ]
+          }
+        ]
       };
+
+      console.log('Search parameters:', searchParams);
+      console.log('Week range:', format(weekStart, 'yyyy-MM-dd'), 'to', format(weekEnd, 'yyyy-MM-dd'));
 
       const response = await fetch(`${API_BASE_URL}/jobs?search=${encodeURIComponent(JSON.stringify(searchParams))}`);
       if (!response.ok) {
