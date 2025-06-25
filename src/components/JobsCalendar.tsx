@@ -30,11 +30,11 @@ const JobsCalendar = () => {
       // Search for jobs that overlap with the current week
       // A job overlaps if: startDate <= weekEnd AND endDate >= weekStart
       const searchParams = {
-        $or: [
+        or: [
           {
-            $and: [
-              { startDate: { $lte: format(weekEnd, 'yyyy-MM-dd') } },
-              { endDate: { $gte: format(weekStart, 'yyyy-MM-dd') } }
+            and: [
+              { startDate: { lte: format(weekEnd, 'yyyy-MM-dd') } },
+              { endDate: { gte: format(weekStart, 'yyyy-MM-dd') } }
             ]
           }
         ]
