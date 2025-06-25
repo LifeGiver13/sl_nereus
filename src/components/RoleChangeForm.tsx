@@ -61,7 +61,7 @@ const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) 
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${user.id}/role`, {
+      const response = await fetch(`${API_BASE_URL}/admin/user/${user.id}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
