@@ -4,6 +4,7 @@ import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import DepartmentManagement from '../components/DepartmentManagement';
+import UserProfileManagement from '../components/UserProfileManagement';
 
 const Settings = () => {
   return (
@@ -27,6 +28,15 @@ const Settings = () => {
                 </AccordionTrigger>
                 <AccordionContent>
                   <DepartmentManagement />
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="profile-management">
+                <AccordionTrigger className="text-lg font-semibold">
+                  User Profile Management
+                </AccordionTrigger>
+                <AccordionContent>
+                  <UserProfileManagement />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
