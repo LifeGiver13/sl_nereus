@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Save, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -368,6 +369,17 @@ const JobEdit = () => {
                     min={formData.startDate}
                   />
                   <p className="text-xs text-gray-500">Must be later than start date</p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="include-weekends"
+                    checked={formData.includeWeekends}
+                    onCheckedChange={(checked) => handleInputChange('includeWeekends', checked)}
+                  />
+                  <label htmlFor="include-weekends" className="text-sm font-medium cursor-pointer">
+                    Include weekends
+                  </label>
                 </div>
 
                 <div className="space-y-2">
