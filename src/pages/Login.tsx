@@ -43,10 +43,10 @@ const Login = () => {
           <img 
             src={NEREUS_LOGO_URL} 
             alt="Nereus Logo" 
-            className="mx-auto h-16 w-auto mb-4"
+            className="mx-auto h-24 w-auto mb-6 drop-shadow-2xl"
           />
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome to Nereus</h1>
-          <p className="text-[#45f0df]">Admin Panel Login</p>
+          <h1 className="text-4xl font-bold text-white mb-3">Welcome to Nereus</h1>
+          <p className="text-[#45f0df] text-lg">Admin Panel Login</p>
         </div>
 
         <Card className="border-[#712B71] bg-white/5 backdrop-blur-sm">

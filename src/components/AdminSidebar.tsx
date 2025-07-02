@@ -48,9 +48,9 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
               <img 
                 src={NEREUS_LOGO_URL} 
                 alt="Nereus" 
-                className="h-8 w-8"
+                className="h-12 w-12"
               />
-              <span className="text-white font-bold text-lg">Nereus</span>
+              <span className="text-white font-bold text-xl">Nereus</span>
             </div>
           )}
           <Button
@@ -101,6 +101,19 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
           })}
         </ul>
       </nav>
+
+      {/* Collapsed Logo */}
+      {isCollapsed && (
+        <div className="p-2 border-t border-[#712B71] mt-auto">
+          <div className="flex justify-center">
+            <img 
+              src={NEREUS_LOGO_URL} 
+              alt="Nereus" 
+              className="h-8 w-8"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Logout */}
       <div className="p-2 border-t border-[#712B71]">

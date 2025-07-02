@@ -12,6 +12,7 @@ import { Search, Plus, Eye, Edit, UserPlus, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import { DateRangePicker } from '../components/DateRangePicker';
 
 interface Job {
   id: number;
@@ -49,10 +50,8 @@ const Jobs = () => {
     clientId: '',
     postedBy: '',
     title: '',
-    startDateFrom: '',
-    startDateTo: '',
-    endDateFrom: '',
-    endDateTo: ''
+    startDateRange: { from: '', to: '' },
+    endDateRange: { from: '', to: '' }
   });
 
   // Client search state
@@ -89,24 +88,24 @@ const Jobs = () => {
     if (searchFilters.title) {
       searchObject.title = { "like": `%${searchFilters.title}%` };
     }
-    if (searchFilters.startDateFrom) {
-      searchObject.startDate = { "gte": searchFilters.startDateFrom };
+    if (searchFilters.startDateRange.from) {
+      searchObject.startDate = { "gte": searchFilters.startDateRange.from };
     }
-    if (searchFilters.startDateTo) {
+    if (searchFilters.startDateRange.to) {
       if (searchObject.startDate) {
-        searchObject.startDate.lte = searchFilters.startDateTo;
+        searchObject.startDate.lte = searchFilters.startDateRange.to;
       } else {
-        searchObject.startDate = { "lte": searchFilters.startDateTo };
+        searchObject.startDate = { "lte": searchFilters.startDateRange.to };
       }
     }
-    if (searchFilters.endDateFrom) {
-      searchObject.endDate = { "gte": searchFilters.endDateFrom };
+    if (searchFilters.endDateRange.from) {
+      searchObject.endDate = { "gte": searchFilters.endDateRange.from };
     }
-    if (searchFilters.endDateTo) {
+    if (searchFilters.endDateRange.to) {
       if (searchObject.endDate) {
-        searchObject.endDate.lte = searchFilters.endDateTo;
+        searchObject.endDate.lte = searchFilters.endDateRange.to;
       } else {
-        searchObject.endDate = { "lte": searchFilters.endDateTo };
+        searchObject.endDate = { "lte": searchFilters.endDateRange.to };
       }
     }
 
@@ -213,10 +212,8 @@ const Jobs = () => {
       clientId: '',
       postedBy: '',
       title: '',
-      startDateFrom: '',
-      startDateTo: '',
-      endDateFrom: '',
-      endDateTo: ''
+      startDateRange: { from: '', to: '' },
+      endDateRange: { from: '', to: '' }
     });
     setSelectedClientId(null);
     setSelectedUserId(null);
@@ -262,14 +259,14 @@ const Jobs = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-6 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-[#000009]">Jobs</h1>
             <p className="text-gray-600 mt-1">Manage job postings and opportunities</p>
           </div>
           <Link to="/jobs/create">
-            <Button className="bg-[#712B71] hover:bg-[#712B71]/90">
+            <Button className="bg-[#712B71] hover:bg-[#712B71]/90 w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Create Job
             </Button>
@@ -290,6 +287,7 @@ const Jobs = () => {
                     value={clientSearchTerm}
                     onChange={(e) => handleClientSearch(e.target.value)}
                     placeholder="Start typing client name..."
+                    className="w-full"
                   />
                   {clients.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -314,6 +312,7 @@ const Jobs = () => {
                     value={userSearchTerm}
                     onChange={(e) => handleUserSearch(e.target.value)}
                     placeholder="Start typing user name..."
+                    className="w-full"
                   />
                   {users.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -335,50 +334,35 @@ const Jobs = () => {
                 placeholder="Job Title"
                 value={searchFilters.title}
                 onChange={(e) => setSearchFilters({ ...searchFilters, title: e.target.value })}
+                className="w-full"
               />
-              <div className="flex gap-2">
-                <Button onClick={handleSearch} className="bg-[#712B71] hover:bg-[#712B71]/90">
+              <div className="flex gap-2 w-full">
+                <Button onClick={handleSearch} className="bg-[#712B71] hover:bg-[#712B71]/90 flex-1 sm:flex-initial">
                   <Search className="h-4 w-4 mr-2" />
                   Search
                 </Button>
-                <Button onClick={clearFilters} variant="outline">
+                <Button onClick={clearFilters} variant="outline" className="flex-1 sm:flex-initial">
                   <X className="h-4 w-4 mr-2" />
                   Clear
                 </Button>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Start Date From</label>
-                <Input
-                  type="date"
-                  value={searchFilters.startDateFrom}
-                  onChange={(e) => setSearchFilters({ ...searchFilters, startDateFrom: e.target.value })}
+                <label className="text-sm font-medium">Start Date Range</label>
+                <DateRangePicker
+                  value={searchFilters.startDateRange}
+                  onChange={(range) => setSearchFilters({ ...searchFilters, startDateRange: range })}
+                  placeholder="Select start date range"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Start Date To</label>
-                <Input
-                  type="date"
-                  value={searchFilters.startDateTo}
-                  onChange={(e) => setSearchFilters({ ...searchFilters, startDateTo: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">End Date From</label>
-                <Input
-                  type="date"
-                  value={searchFilters.endDateFrom}
-                  onChange={(e) => setSearchFilters({ ...searchFilters, endDateFrom: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">End Date To</label>
-                <Input
-                  type="date"
-                  value={searchFilters.endDateTo}
-                  onChange={(e) => setSearchFilters({ ...searchFilters, endDateTo: e.target.value })}
+                <label className="text-sm font-medium">End Date Range</label>
+                <DateRangePicker
+                  value={searchFilters.endDateRange}
+                  onChange={(range) => setSearchFilters({ ...searchFilters, endDateRange: range })}
+                  placeholder="Select end date range"
                 />
               </div>
             </div>
@@ -390,9 +374,9 @@ const Jobs = () => {
             <CardTitle className="text-[#000009]">Jobs ({jobsData?.total || 0})</CardTitle>
             <CardDescription>All job postings in the system</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto max-w-full">
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID</TableHead>
@@ -466,7 +450,7 @@ const Jobs = () => {
             </div>
 
             {totalPages > 1 && (
-              <div className="mt-4">
+              <div className="mt-4 px-6 pb-6">
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
