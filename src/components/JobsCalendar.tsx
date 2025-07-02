@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, addDays, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, endOfDay, addDays as addDay, subDays } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, addDays, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, endOfDay, addDays as addDay, subDays, isSameMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import JobSummaryModal from './JobSummaryModal';
@@ -56,10 +56,12 @@ const JobsCalendar = () => {
       case 'monthly':
         const monthStart = startOfMonth(currentDate);
         const monthEnd = endOfMonth(currentDate);
+        const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+        const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
         return {
-          start: monthStart,
+          start: monthStart, // Keep original month bounds for API query
           end: monthEnd,
-          days: eachDayOfInterval({ start: monthStart, end: monthEnd })
+          days: eachDayOfInterval({ start: calendarStart, end: calendarEnd })
         };
       default:
         return { start: new Date(), end: new Date(), days: [] };
@@ -309,6 +311,7 @@ const JobsCalendar = () => {
               {days.map((day) => {
                 const dayJobs = getJobsForDay(day);
                 const isToday = isSameDay(day, new Date());
+                const isCurrentMonth = viewType !== 'monthly' || isSameMonth(day, currentDate);
                 
                 return (
                   <div
@@ -317,19 +320,27 @@ const JobsCalendar = () => {
                       viewType === 'daily' ? 'min-h-[400px]' : 'min-h-[150px]'
                     } ${
                       isToday ? 'bg-blue-50 border-blue-200' : 'bg-white'
+                    } ${
+                      !isCurrentMonth ? 'opacity-40' : ''
                     }`}
                   >
                     <div className="font-medium text-sm mb-2">
-                      <div className={`${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                      <div className={`${
+                        isToday ? 'text-blue-600' : 
+                        !isCurrentMonth ? 'text-gray-400' : 'text-gray-900'
+                      }`}>
                         {viewType === 'daily' ? format(day, 'EEEE') : format(day, 'EEE')}
                       </div>
-                      <div className={`text-lg ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                      <div className={`text-lg ${
+                        isToday ? 'text-blue-600' : 
+                        !isCurrentMonth ? 'text-gray-400' : 'text-gray-900'
+                      }`}>
                         {format(day, 'd')}
                       </div>
                     </div>
                     
                     <div className="space-y-2">
-                      {dayJobs.map((job: Job) => renderJobCard(job, day))}
+                      {isCurrentMonth && dayJobs.map((job: Job) => renderJobCard(job, day))}
                     </div>
                   </div>
                 );
