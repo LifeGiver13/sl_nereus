@@ -7,6 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 
+type ViewField = {
+  property: string;
+  label: string;
+  type: 'text' | 'image' | 'document';
+  meta: { [key: string]: any };
+};
+
 interface User {
   id: number;
   username: string;
@@ -22,12 +29,20 @@ interface User {
 interface ProfileEditFormProps {
   user: User;
   onUserUpdated: () => void;
+  sectionName?: string;
+  fields?: ViewField[];
 }
 
-const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated }) => {
+const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated, sectionName, fields }) => {
   const [profile, setProfile] = useState(user.profile || {});
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // If fields are provided, filter profile data to only show those fields
+  const displayProfile = fields ? 
+    Object.fromEntries(
+      fields.map(field => [field.property, profile[field.property] || ''])
+    ) : profile;
 
   const handleInputChange = (key: string, value: any) => {
     setProfile(prev => ({
@@ -76,13 +91,13 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated }
     }
   };
 
-  const renderProfileField = (key: string, value: any) => {
+  const renderProfileField = (key: string, value: any, field?: ViewField) => {
+    const label = field?.label || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+    
     if (typeof value === 'object' && value !== null) {
       return (
         <div key={key} className="space-y-2">
-          <label className="text-sm font-medium capitalize">
-            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-          </label>
+          <label className="text-sm font-medium">{label}</label>
           <Textarea
             value={JSON.stringify(value, null, 2)}
             onChange={(e) => {
@@ -102,9 +117,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated }
 
     return (
       <div key={key} className="space-y-2">
-        <label className="text-sm font-medium capitalize">
-          {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-        </label>
+        <label className="text-sm font-medium">{label}</label>
         <Input
           value={String(value || '')}
           onChange={(e) => handleInputChange(key, e.target.value)}
@@ -116,13 +129,14 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated }
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile Information</CardTitle>
+        <CardTitle>{sectionName || 'Profile Information'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {Object.entries(profile).map(([key, value]) => 
-            renderProfileField(key, value)
-          )}
+          {Object.entries(displayProfile).map(([key, value]) => {
+            const field = fields?.find(f => f.property === key);
+            return renderProfileField(key, value, field);
+          })}
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="submit" disabled={isLoading}>

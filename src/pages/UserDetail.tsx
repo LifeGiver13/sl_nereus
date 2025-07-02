@@ -5,9 +5,28 @@ import EditUserModal from '../components/EditUserModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+
+type ViewField = {
+  property: string;
+  label: string;
+  type: 'text' | 'image' | 'document';
+  meta: { [key: string]: any };
+};
+
+type ViewSection = {
+  [sectionName: string]: ViewField[];
+};
+
+interface ViewManager {
+  id?: number;
+  name: string;
+  sections: ViewSection;
+  meta: { [key: string]: any };
+}
 
 interface User {
   id: number;
@@ -24,7 +43,9 @@ interface User {
 const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [user, setUser] = useState<User | null>(null);
+  const [viewManager, setViewManager] = useState<ViewManager | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isViewLoading, setIsViewLoading] = useState(false);
   const { toast } = useToast();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -58,8 +79,32 @@ const UserDetail = () => {
       }
     };
 
+    const fetchViewManager = async () => {
+      try {
+        setIsViewLoading(true);
+        const searchParams = encodeURIComponent(JSON.stringify({ name: "User Profile - Admin View" }));
+        const response = await fetch(`${API_BASE_URL}/utils/view-managers?search=${searchParams}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.length > 0) {
+            setViewManager(data[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching view manager:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load view configuration",
+          variant: "destructive",
+        });
+      } finally {
+        setIsViewLoading(false);
+      }
+    };
+
     if (id) {
       fetchUserDetail();
+      fetchViewManager();
     }
   }, [id, toast]);
 
@@ -301,10 +346,57 @@ const UserDetail = () => {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-[#000009]">Profile Information</CardTitle>
-                <CardDescription>User profile details</CardDescription>
+                <CardDescription>User profile details organized by sections</CardDescription>
               </CardHeader>
               <CardContent>
-                {renderProfileTable(user.profile)}
+                {isViewLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Loading view configuration...</p>
+                  </div>
+                ) : viewManager ? (
+                  <Tabs defaultValue={Object.keys(viewManager.sections)[0]?.toLowerCase().replace(/\s+/g, '-')} className="space-y-4">
+                    <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Object.keys(viewManager.sections).length}, 1fr)` }}>
+                      {Object.keys(viewManager.sections).map(sectionName => (
+                        <TabsTrigger key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
+                          {sectionName}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                    
+                    {Object.entries(viewManager.sections).map(([sectionName, fields]) => (
+                      <TabsContent key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
+                        <div className="space-y-2">
+                          {fields.map((field) => {
+                            const value = user.profile[field.property];
+                            return (
+                              <div key={field.property} className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100 last:border-b-0">
+                                <div className="font-medium text-gray-700">
+                                  {field.label}
+                                </div>
+                                <div className="md:col-span-2 text-gray-900">
+                                  {typeof value === 'object' ? (
+                                    <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+                                      {JSON.stringify(value, null, 2)}
+                                    </pre>
+                                  ) : (
+                                    String(value || 'N/A')
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {fields.length === 0 && (
+                            <div className="text-sm text-gray-500">
+                              No fields configured for this section
+                            </div>
+                          )}
+                        </div>
+                      </TabsContent>
+                    ))}
+                  </Tabs>
+                ) : (
+                  renderProfileTable(user.profile)
+                )}
               </CardContent>
             </Card>
           )}
