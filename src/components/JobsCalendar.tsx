@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, addDays } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, addDays, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, endOfDay, addDays as addDay, subDays } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import JobSummaryModal from './JobSummaryModal';
@@ -16,41 +17,72 @@ interface Job {
   startDate: string;
   endDate: string;
   status: string;
+  vacancies: number;
+  clientId: number;
+  clientName?: string;
+  shiftId: number;
+  shiftName?: string;
   body?: {
     includeWeekends?: boolean;
   };
 }
 
+type ViewType = 'daily' | 'weekly' | 'monthly';
+
 const JobsCalendar = () => {
-  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewType, setViewType] = useState<ViewType>('weekly');
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Start week on Monday
-  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
-  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  // Calculate date ranges based on view type
+  const getDateRange = () => {
+    switch (viewType) {
+      case 'daily':
+        return {
+          start: startOfDay(currentDate),
+          end: endOfDay(currentDate),
+          days: [currentDate]
+        };
+      case 'weekly':
+        const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+        return {
+          start: weekStart,
+          end: weekEnd,
+          days: eachDayOfInterval({ start: weekStart, end: weekEnd })
+        };
+      case 'monthly':
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(currentDate);
+        return {
+          start: monthStart,
+          end: monthEnd,
+          days: eachDayOfInterval({ start: monthStart, end: monthEnd })
+        };
+      default:
+        return { start: new Date(), end: new Date(), days: [] };
+    }
+  };
+
+  const { start: rangeStart, end: rangeEnd, days } = getDateRange();
 
   const { data: jobsData = { results: [], total: 0 }, isLoading } = useQuery({
-    queryKey: ['weekly-jobs', format(weekStart, 'yyyy-MM-dd'), format(weekEnd, 'yyyy-MM-dd')],
+    queryKey: ['jobs', format(rangeStart, 'yyyy-MM-dd'), format(rangeEnd, 'yyyy-MM-dd'), viewType],
     queryFn: async () => {
-      // Search for jobs that overlap with the current week
-      // A job overlaps if: startDate <= weekEnd AND endDate >= weekStart
       const searchParams = {
         or: [
           {
             and: [
-              { startDate: { lte: format(weekEnd, 'yyyy-MM-dd') } },
-              { endDate: { gte: format(weekStart, 'yyyy-MM-dd') } }
+              { startDate: { lte: format(rangeEnd, 'yyyy-MM-dd') } },
+              { endDate: { gte: format(rangeStart, 'yyyy-MM-dd') } }
             ]
           }
         ]
       };
 
-      console.log('Search parameters:', searchParams);
-      console.log('Week range:', format(weekStart, 'yyyy-MM-dd'), 'to', format(weekEnd, 'yyyy-MM-dd'));
-
-      const response = await fetch(`${API_BASE_URL}/jobs?search=${encodeURIComponent(JSON.stringify(searchParams))}`);
+      const response = await fetch(`${API_BASE_URL}/jobs?search=${encodeURIComponent(JSON.stringify(searchParams))}&expand=client,shift`);
       if (!response.ok) {
         throw new Error('Failed to fetch jobs');
       }
@@ -60,11 +92,31 @@ const JobsCalendar = () => {
 
   const jobs = jobsData.results || [];
 
-  const handleWeekChange = (direction: 'next' | 'prev') => {
+  const handleDateChange = (direction: 'next' | 'prev') => {
     if (direction === 'next') {
-      setCurrentWeek(addWeeks(currentWeek, 1));
+      switch (viewType) {
+        case 'daily':
+          setCurrentDate(addDay(currentDate, 1));
+          break;
+        case 'weekly':
+          setCurrentDate(addWeeks(currentDate, 1));
+          break;
+        case 'monthly':
+          setCurrentDate(addMonths(currentDate, 1));
+          break;
+      }
     } else {
-      setCurrentWeek(subWeeks(currentWeek, 1));
+      switch (viewType) {
+        case 'daily':
+          setCurrentDate(subDays(currentDate, 1));
+          break;
+        case 'weekly':
+          setCurrentDate(subWeeks(currentDate, 1));
+          break;
+        case 'monthly':
+          setCurrentDate(subMonths(currentDate, 1));
+          break;
+      }
     }
   };
 
@@ -119,11 +171,73 @@ const JobsCalendar = () => {
     setSelectedJobId(null);
   };
 
+  const getDateRangeLabel = () => {
+    switch (viewType) {
+      case 'daily':
+        return format(currentDate, 'EEEE, MMMM dd, yyyy');
+      case 'weekly':
+        return `Week of ${format(rangeStart, 'MMM dd')} - ${format(rangeEnd, 'MMM dd, yyyy')}`;
+      case 'monthly':
+        return format(currentDate, 'MMMM yyyy');
+      default:
+        return '';
+    }
+  };
+
+  const getNavigationLabel = () => {
+    switch (viewType) {
+      case 'daily':
+        return { prev: 'Previous Day', next: 'Next Day' };
+      case 'weekly':
+        return { prev: 'Previous Week', next: 'Next Week' };
+      case 'monthly':
+        return { prev: 'Previous Month', next: 'Next Month' };
+      default:
+        return { prev: 'Previous', next: 'Next' };
+    }
+  };
+
+  const renderJobCard = (job: Job, day: Date) => (
+    <div
+      key={`${job.id}-${day.toISOString()}`}
+      className="p-2 bg-gray-50 rounded border cursor-pointer hover:bg-gray-100 transition-colors"
+      onClick={() => handleJobClick(job.id)}
+    >
+      <div className="text-xs font-medium text-gray-900 truncate mb-1">
+        {job.clientName} - {job.title}
+      </div>
+      <div className="text-xs text-gray-600 truncate mb-1">
+        {job.shiftName}
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-gray-500">
+          Filled: 0/{job.vacancies}
+        </div>
+        <Badge className={`${getStatusColor(job.status)} text-xs`} variant="outline">
+          {job.status}
+        </Badge>
+      </div>
+    </div>
+  );
+
+  const getGridColumns = () => {
+    switch (viewType) {
+      case 'daily':
+        return 'grid-cols-1';
+      case 'weekly':
+        return 'grid-cols-7';
+      case 'monthly':
+        return 'grid-cols-7';
+      default:
+        return 'grid-cols-7';
+    }
+  };
+
   if (isLoading) {
     return (
       <Card className="border-0 shadow-lg">
         <CardHeader>
-          <CardTitle className="text-[#000009]">Weekly Jobs Calendar</CardTitle>
+          <CardTitle className="text-[#000009]">Jobs Calendar</CardTitle>
           <CardDescription>Loading calendar...</CardDescription>
         </CardHeader>
         <CardContent>
@@ -141,9 +255,9 @@ const JobsCalendar = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-[#000009]">Weekly Jobs Calendar</CardTitle>
+              <CardTitle className="text-[#000009]">Jobs Calendar</CardTitle>
               <CardDescription>
-                Week of {format(weekStart, 'MMM dd')} - {format(weekEnd, 'MMM dd, yyyy')}
+                {getDateRangeLabel()}
               </CardDescription>
             </div>
             <Button onClick={handleAddJob} className="bg-[#712B71] hover:bg-[#712B71]/90">
@@ -154,49 +268,60 @@ const JobsCalendar = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Week Navigation */}
+            {/* View Type Tabs */}
+            <Tabs value={viewType} onValueChange={(value) => setViewType(value as ViewType)}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="daily">Daily</TabsTrigger>
+                <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Navigation */}
             <div className="flex items-center justify-between">
               <Button
                 variant="outline"
-                onClick={() => handleWeekChange('prev')}
+                onClick={() => handleDateChange('prev')}
                 className="flex items-center"
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous Week
+                {getNavigationLabel().prev}
               </Button>
               <Button
                 variant="outline"
-                onClick={() => setCurrentWeek(new Date())}
+                onClick={() => setCurrentDate(new Date())}
                 className="text-sm"
               >
                 Today
               </Button>
               <Button
                 variant="outline"
-                onClick={() => handleWeekChange('next')}
+                onClick={() => handleDateChange('next')}
                 className="flex items-center"
               >
-                Next Week
+                {getNavigationLabel().next}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
 
-            {/* Weekly Grid */}
-            <div className="grid grid-cols-7 gap-4">
-              {weekDays.map((day) => {
+            {/* Calendar Grid */}
+            <div className={`grid ${getGridColumns()} gap-4`}>
+              {days.map((day) => {
                 const dayJobs = getJobsForDay(day);
                 const isToday = isSameDay(day, new Date());
                 
                 return (
                   <div
                     key={day.toISOString()}
-                    className={`border rounded-lg p-3 min-h-[200px] ${
+                    className={`border rounded-lg p-3 ${
+                      viewType === 'daily' ? 'min-h-[400px]' : 'min-h-[150px]'
+                    } ${
                       isToday ? 'bg-blue-50 border-blue-200' : 'bg-white'
                     }`}
                   >
                     <div className="font-medium text-sm mb-2">
                       <div className={`${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
-                        {format(day, 'EEE')}
+                        {viewType === 'daily' ? format(day, 'EEEE') : format(day, 'EEE')}
                       </div>
                       <div className={`text-lg ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
                         {format(day, 'd')}
@@ -204,20 +329,7 @@ const JobsCalendar = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      {dayJobs.map((job: Job) => (
-                        <div
-                          key={`${job.id}-${day.toISOString()}`}
-                          className="p-2 bg-gray-50 rounded border cursor-pointer hover:bg-gray-100 transition-colors"
-                          onClick={() => handleJobClick(job.id)}
-                        >
-                          <div className="text-xs font-medium text-gray-900 truncate">
-                            {job.title}
-                          </div>
-                          <Badge className={`${getStatusColor(job.status)} text-xs`} variant="outline">
-                            {job.status}
-                          </Badge>
-                        </div>
-                      ))}
+                      {dayJobs.map((job: Job) => renderJobCard(job, day))}
                     </div>
                   </div>
                 );
