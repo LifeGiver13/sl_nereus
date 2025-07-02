@@ -117,12 +117,12 @@ const JobEdit = () => {
   const { data: shifts, refetch: refetchShifts } = useQuery({
     queryKey: ['client-shifts', job?.clientId],
     queryFn: async () => {
-      if (!job?.clientId) return [];
+      if (!job?.clientId) return {};
       const response = await fetch(`${API_BASE_URL}/utils/client/${job.clientId}/shifts`);
       if (!response.ok) {
         throw new Error('Failed to fetch shifts');
       }
-      return response.json() as Promise<Shift[]>;
+      return response.json();
     },
     enabled: !!job?.clientId
   });
@@ -388,10 +388,10 @@ const JobEdit = () => {
                     <Select 
                       value={formData.shiftId} 
                       onValueChange={(value) => handleInputChange('shiftId', value)}
-                      disabled={!shifts?.length}
+                      disabled={!shifts || Object.keys(shifts).length === 0}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder={shifts?.length ? "Select shift" : "No shifts available"} />
+                        <SelectValue placeholder={shifts && Object.keys(shifts).length > 0 ? "Select shift" : "No shifts available"} />
                       </SelectTrigger>
                       <SelectContent>
                         {shifts && Object.keys(shifts).map((shift) => (
