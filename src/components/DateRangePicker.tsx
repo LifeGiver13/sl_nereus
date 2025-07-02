@@ -17,13 +17,17 @@ interface DateRangePickerProps {
   onChange?: (range: { from: string; to: string }) => void
   placeholder?: string
   className?: string
+  startLabel?: string
+  endLabel?: string
 }
 
 export function DateRangePicker({
   value,
   onChange,
   placeholder = "Pick a date range",
-  className
+  className,
+  startLabel = "Start Date",
+  endLabel = "End Date"
 }: DateRangePickerProps) {
   const [date, setDate] = React.useState<DateRange | undefined>(() => {
     if (value?.from && value?.to) {
@@ -37,10 +41,10 @@ export function DateRangePicker({
 
   const handleDateChange = (newDate: DateRange | undefined) => {
     setDate(newDate)
-    if (onChange) {
+    if (onChange && newDate?.from && newDate?.to) {
       onChange({
-        from: newDate?.from ? format(newDate.from, "yyyy-MM-dd") : '',
-        to: newDate?.to ? format(newDate.to, "yyyy-MM-dd") : ''
+        from: format(newDate.from, "yyyy-MM-dd"),
+        to: format(newDate.to, "yyyy-MM-dd")
       })
     }
   }
@@ -72,11 +76,10 @@ export function DateRangePicker({
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, "LLL dd, y")} -{" "}
-                  {format(date.to, "LLL dd, y")}
+                  {startLabel}: {format(date.from, "MMM dd, y")} - {endLabel}: {format(date.to, "MMM dd, y")}
                 </>
               ) : (
-                format(date.from, "LLL dd, y")
+                `${startLabel}: ${format(date.from, "MMM dd, y")}`
               )
             ) : (
               <span>{placeholder}</span>

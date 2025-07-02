@@ -16,6 +16,9 @@ interface Job {
   startDate: string;
   endDate: string;
   status: string;
+  body?: {
+    includeWeekends?: boolean;
+  };
 }
 
 const JobsCalendar = () => {
@@ -71,6 +74,13 @@ const JobsCalendar = () => {
     jobs.forEach((job: Job) => {
       const jobStart = new Date(job.startDate);
       const jobEnd = new Date(job.endDate);
+      const includeWeekends = job.body?.includeWeekends !== false;
+      
+      // Skip weekends if includeWeekends is false
+      const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+      if (!includeWeekends && (dayOfWeek === 0 || dayOfWeek === 6)) {
+        return;
+      }
       
       // Create entries for each day the job spans
       let currentDay = jobStart;
