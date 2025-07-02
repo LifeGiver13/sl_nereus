@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Plus, Edit2, Save, X, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { API_BASE_URL } from '../config/env';
 
 type ViewField = {
   property: string;
@@ -44,7 +45,7 @@ const ViewManagement = () => {
   const fetchViewManagers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/utils/view-managers');
+      const response = await fetch(API_BASE_URL + '/utils/view-managers');
       if (response.ok) {
         const data = await response.json();
         setViewManagers(data);
@@ -77,7 +78,7 @@ const ViewManagement = () => {
         meta: {}
       };
 
-      const response = await fetch('/utils/view-manager', {
+      const response = await fetch(API_BASE_URL + '/utils/view-manager', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newViewManager)
@@ -105,7 +106,7 @@ const ViewManagement = () => {
     if (!selectedViewManager?.id) return;
 
     try {
-      const response = await fetch(`/utils/view-manager/${selectedViewManager.id}`, {
+      const response = await fetch( API_BASE_URL + `/utils/view-manager/${selectedViewManager.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(selectedViewManager)
