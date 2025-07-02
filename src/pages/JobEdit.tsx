@@ -50,6 +50,9 @@ interface Job {
     id: number;
     name: string;
   };
+  body?: {
+    includeWeekends?: boolean;
+  };
 }
 
 const JobEdit = () => {
@@ -69,7 +72,8 @@ const JobEdit = () => {
     vacancies: '',
     status: 'open',
     departmentId: '',
-    shiftId: ''
+    shiftId: '',
+    includeWeekends: false
   });
 
   // Fetch existing job data
@@ -126,7 +130,6 @@ const JobEdit = () => {
   useEffect(() => {
     if (job) {
       setFormData({
-        ...job,
         title: job.title || '',
         description: job.description || '',
         startDate: job.startDate ? job.startDate.split('T')[0] : '',
@@ -134,7 +137,8 @@ const JobEdit = () => {
         vacancies: job.vacancies?.toString() || '',
         status: job.status || 'open',
         departmentId: job.departmentId?.toString() || '',
-        shiftId: job.shiftId?.toString() || ''
+        shiftId: job.shiftId?.toString() || '',
+        includeWeekends: job.body?.includeWeekends || false
       });
     }
   }, [job]);
@@ -201,7 +205,10 @@ const JobEdit = () => {
         status: formData.status,
         skills: selectedSkills.map(skill => skill.id),
         filled: job?.filled || false,
-        assignees: job?.assignees || []
+        assignees: job?.assignees || [],
+        body: {
+          includeWeekends: formData.includeWeekends
+        }
       };
 
       const response = await fetch(`${API_BASE_URL}/job/${id}`, {
@@ -234,7 +241,7 @@ const JobEdit = () => {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData({ ...formData, [field]: value });
   };
 
