@@ -81,7 +81,7 @@ const JobEdit = () => {
   const { data: job, isLoading: isLoadingJob } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/job/${id}`);
+      const response = await fetch(`${API_BASE_URL}/job/${id}?expand=client,department,shift`);
       if (!response.ok) {
         throw new Error('Failed to fetch job details');
       }
@@ -129,7 +129,19 @@ const JobEdit = () => {
 
   // Load job data into form when available
   useEffect(() => {
+    console.log('Job data received:', job);
     if (job) {
+      console.log('Setting form data with:', {
+        title: job.title || '',
+        description: job.description || '',
+        startDate: job.startDate ? job.startDate.split('T')[0] : '',
+        endDate: job.endDate ? job.endDate.split('T')[0] : '',
+        vacancies: job.vacancies?.toString() || '',
+        status: job.status || 'open',
+        departmentId: job.departmentId?.toString() || '',
+        shiftId: job.shiftId?.toString() || '',
+        includeWeekends: job.body?.includeWeekends || false
+      });
       setFormData({
         title: job.title || '',
         description: job.description || '',
@@ -141,6 +153,7 @@ const JobEdit = () => {
         shiftId: job.shiftId?.toString() || '',
         includeWeekends: job.body?.includeWeekends || false
       });
+      console.log('Form data set');
     }
   }, [job]);
 
