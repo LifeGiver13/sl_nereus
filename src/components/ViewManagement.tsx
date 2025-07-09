@@ -402,10 +402,11 @@ const ViewManagement = () => {
         <div>
           <Label className="text-xs">Property</Label>
           <Input
-            placeholder="fieldName"
+            placeholder="fieldName or nested.property"
             value={field.property}
             onChange={(e) => onUpdateField(sectionName, fieldIndex, { property: e.target.value })}
             className="mt-1"
+            title="Use dot notation for nested properties (e.g., address.branch, contact.firstName)"
           />
         </div>
         <div>

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Building, Mail, Phone, MapPin, User, Clock, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { getNestedProperty } from '@/lib/utils';
 
 type ViewField = {
   property: string;
@@ -360,7 +361,7 @@ const ClientDetail = () => {
                       <TabsContent key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
                         <div className="space-y-2">
                           {fields.map((field) => {
-                            const value = client.profile[field.property];
+                            const value = getNestedProperty(client.profile, field.property);
                             return (
                               <div key={field.property} className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100 last:border-b-0">
                                 <div className="font-medium text-gray-700">
