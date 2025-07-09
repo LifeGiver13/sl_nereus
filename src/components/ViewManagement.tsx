@@ -5,9 +5,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Plus, Edit2, Save, X, Eye } from 'lucide-react';
+import { Trash2, Plus, Edit2, Save, X, Eye, GripVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import {
+  CSS,
+} from '@dnd-kit/utilities';
 
 type ViewField = {
   property: string;
@@ -224,6 +243,234 @@ const ViewManagement = () => {
     } : null);
   };
 
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleSectionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id && selectedViewManager) {
+      const sectionNames = Object.keys(selectedViewManager.sections);
+      const oldIndex = sectionNames.indexOf(active.id as string);
+      const newIndex = sectionNames.indexOf(over?.id as string);
+
+      const newSectionNames = arrayMove(sectionNames, oldIndex, newIndex);
+      const newSections: ViewSection = {};
+      
+      newSectionNames.forEach(name => {
+        newSections[name] = selectedViewManager.sections[name];
+      });
+
+      setSelectedViewManager(prev => prev ? {
+        ...prev,
+        sections: newSections
+      } : null);
+    }
+  };
+
+  const handleFieldDragEnd = (event: DragEndEvent, sectionName: string) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id && selectedViewManager) {
+      const fields = selectedViewManager.sections[sectionName];
+      const oldIndex = fields.findIndex((_, index) => `field-${index}` === active.id);
+      const newIndex = fields.findIndex((_, index) => `field-${index}` === over?.id);
+
+      const newFields = arrayMove(fields, oldIndex, newIndex);
+
+      setSelectedViewManager(prev => prev ? {
+        ...prev,
+        sections: {
+          ...prev.sections,
+          [sectionName]: newFields
+        }
+      } : null);
+    }
+  };
+
+  // Sortable Section Component
+  const SortableSection = ({ sectionName, fields }: { sectionName: string; fields: ViewField[] }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+    } = useSortable({ id: sectionName });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <Card ref={setNodeRef} style={style} className="border">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+                <GripVertical className="h-4 w-4 text-gray-400" />
+              </div>
+              <CardTitle className="text-lg">{sectionName}</CardTitle>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => addField(sectionName)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => deleteSection(sectionName)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {fields.length === 0 ? (
+            <p className="text-gray-500 text-sm">No fields added yet</p>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => handleFieldDragEnd(event, sectionName)}>
+              <SortableContext items={fields.map((_, index) => `field-${index}`)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-4">
+                  {fields.map((field, fieldIndex) => (
+                    <SortableField
+                      key={fieldIndex}
+                      field={field}
+                      fieldIndex={fieldIndex}
+                      sectionName={sectionName}
+                      onUpdateField={updateField}
+                      onUpdateFieldMeta={updateFieldMeta}
+                      onDeleteField={deleteField}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Sortable Field Component
+  const SortableField = ({ 
+    field, 
+    fieldIndex, 
+    sectionName, 
+    onUpdateField, 
+    onUpdateFieldMeta, 
+    onDeleteField 
+  }: { 
+    field: ViewField; 
+    fieldIndex: number; 
+    sectionName: string; 
+    onUpdateField: (sectionName: string, fieldIndex: number, field: Partial<ViewField>) => void;
+    onUpdateFieldMeta: (sectionName: string, fieldIndex: number, metaKey: string, value: any) => void;
+    onDeleteField: (sectionName: string, fieldIndex: number) => void;
+  }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+    } = useSortable({ id: `field-${fieldIndex}` });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <div ref={setNodeRef} style={style} className="grid grid-cols-1 md:grid-cols-7 gap-4 p-4 border rounded-lg">
+        <div className="flex items-center">
+          <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+            <GripVertical className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Property</Label>
+          <Input
+            placeholder="fieldName"
+            value={field.property}
+            onChange={(e) => onUpdateField(sectionName, fieldIndex, { property: e.target.value })}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Label</Label>
+          <Input
+            placeholder="Display Name"
+            value={field.label}
+            onChange={(e) => onUpdateField(sectionName, fieldIndex, { label: e.target.value })}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Type</Label>
+          <Select 
+            value={field.type} 
+            onValueChange={(value: 'text' | 'image' | 'document') => 
+              onUpdateField(sectionName, fieldIndex, { type: value })
+            }
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="text">Text</SelectItem>
+              <SelectItem value="image">Image</SelectItem>
+              <SelectItem value="document">Document</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className="text-xs">Permissions</Label>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`user-${fieldIndex}`}
+              checked={field.meta?.userCanEdit || false}
+              onCheckedChange={(checked) => 
+                onUpdateFieldMeta(sectionName, fieldIndex, 'userCanEdit', !!checked)
+              }
+            />
+            <Label htmlFor={`user-${fieldIndex}`} className="text-xs">User Edit</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`admin-${fieldIndex}`}
+              checked={field.meta?.adminCanEdit || false}
+              onCheckedChange={(checked) => 
+                onUpdateFieldMeta(sectionName, fieldIndex, 'adminCanEdit', !!checked)
+              }
+            />
+            <Label htmlFor={`admin-${fieldIndex}`} className="text-xs">Admin Edit</Label>
+          </div>
+        </div>
+        <div className="flex items-end">
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => onDeleteField(sectionName, fieldIndex)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -311,111 +558,13 @@ const ViewManagement = () => {
 
                 {/* Sections */}
                 <div className="space-y-4">
-                  {Object.entries(selectedViewManager.sections).map(([sectionName, fields]) => (
-                    <Card key={sectionName} className="border">
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">{sectionName}</CardTitle>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addField(sectionName)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => deleteSection(sectionName)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        {fields.length === 0 ? (
-                          <p className="text-gray-500 text-sm">No fields added yet</p>
-                        ) : (
-                          <div className="space-y-4">
-                            {fields.map((field, fieldIndex) => (
-                              <div key={fieldIndex} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
-                                <div>
-                                  <Label className="text-xs">Property</Label>
-                                  <Input
-                                    placeholder="fieldName"
-                                    value={field.property}
-                                    onChange={(e) => updateField(sectionName, fieldIndex, { property: e.target.value })}
-                                    className="mt-1"
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="text-xs">Label</Label>
-                                  <Input
-                                    placeholder="Display Name"
-                                    value={field.label}
-                                    onChange={(e) => updateField(sectionName, fieldIndex, { label: e.target.value })}
-                                    className="mt-1"
-                                  />
-                                </div>
-                                <div>
-                                  <Label className="text-xs">Type</Label>
-                                  <Select 
-                                    value={field.type} 
-                                    onValueChange={(value: 'text' | 'image' | 'document') => 
-                                      updateField(sectionName, fieldIndex, { type: value })
-                                    }
-                                  >
-                                    <SelectTrigger className="mt-1">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="text">Text</SelectItem>
-                                      <SelectItem value="image">Image</SelectItem>
-                                      <SelectItem value="document">Document</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                  <Label className="text-xs">Permissions</Label>
-                                  <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id={`user-${fieldIndex}`}
-                                      checked={field.meta?.userCanEdit || false}
-                                      onCheckedChange={(checked) => 
-                                        updateFieldMeta(sectionName, fieldIndex, 'userCanEdit', !!checked)
-                                      }
-                                    />
-                                    <Label htmlFor={`user-${fieldIndex}`} className="text-xs">User Edit</Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id={`admin-${fieldIndex}`}
-                                      checked={field.meta?.adminCanEdit || false}
-                                      onCheckedChange={(checked) => 
-                                        updateFieldMeta(sectionName, fieldIndex, 'adminCanEdit', !!checked)
-                                      }
-                                    />
-                                    <Label htmlFor={`admin-${fieldIndex}`} className="text-xs">Admin Edit</Label>
-                                  </div>
-                                </div>
-                                <div className="flex items-end">
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => deleteField(sectionName, fieldIndex)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
+                    <SortableContext items={Object.keys(selectedViewManager.sections)} strategy={verticalListSortingStrategy}>
+                      {Object.entries(selectedViewManager.sections).map(([sectionName, fields]) => (
+                        <SortableSection key={sectionName} sectionName={sectionName} fields={fields} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </div>
               </CardContent>
             </Card>
