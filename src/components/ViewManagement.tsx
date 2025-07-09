@@ -54,6 +54,7 @@ const ViewManagement = () => {
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editingSectionName, setEditingSectionName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sortingMode, setSortingMode] = useState(false);
   const { toast } = useToast();
 
   // Fetch all view managers
@@ -291,6 +292,138 @@ const ViewManagement = () => {
         }
       } : null);
     }
+  };
+
+  // Editable Section Component (no drag and drop)
+  const EditableSection = ({ sectionName, fields }: { sectionName: string; fields: ViewField[] }) => {
+    return (
+      <Card className="border">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">{sectionName}</CardTitle>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => addField(sectionName)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => deleteSection(sectionName)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {fields.length === 0 ? (
+            <p className="text-gray-500 text-sm">No fields added yet</p>
+          ) : (
+            <div className="space-y-4">
+               {fields.map((field, fieldIndex) => (
+                 <EditableField
+                   key={`${sectionName}-${fieldIndex}`}
+                   field={field}
+                   fieldIndex={fieldIndex}
+                   sectionName={sectionName}
+                 />
+               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Editable Field Component (no drag and drop)
+  const EditableField = ({ 
+    field, 
+    fieldIndex, 
+    sectionName 
+  }: { 
+    field: ViewField; 
+    fieldIndex: number; 
+    sectionName: string; 
+  }) => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
+        <div>
+          <Label className="text-xs">Property</Label>
+          <Input
+            placeholder="fieldName or nested.property"
+            value={field.property}
+            onChange={(e) => updateField(sectionName, fieldIndex, { property: e.target.value })}
+            className="mt-1"
+            title="Use dot notation for nested properties (e.g., address.branch, contact.firstName)"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Label</Label>
+          <Input
+            placeholder="Display Name"
+            value={field.label}
+            onChange={(e) => updateField(sectionName, fieldIndex, { label: e.target.value })}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Type</Label>
+          <Select 
+            value={field.type} 
+            onValueChange={(value: 'text' | 'image' | 'document') => 
+              updateField(sectionName, fieldIndex, { type: value })
+            }
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="text">Text</SelectItem>
+              <SelectItem value="image">Image</SelectItem>
+              <SelectItem value="document">Document</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className="text-xs">Permissions</Label>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`user-${sectionName}-${fieldIndex}`}
+              checked={field.meta?.userCanEdit || false}
+              onCheckedChange={(checked) => 
+                updateFieldMeta(sectionName, fieldIndex, 'userCanEdit', !!checked)
+              }
+            />
+            <Label htmlFor={`user-${sectionName}-${fieldIndex}`} className="text-xs">User Edit</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`admin-${sectionName}-${fieldIndex}`}
+              checked={field.meta?.adminCanEdit || false}
+              onCheckedChange={(checked) => 
+                updateFieldMeta(sectionName, fieldIndex, 'adminCanEdit', !!checked)
+              }
+            />
+            <Label htmlFor={`admin-${sectionName}-${fieldIndex}`} className="text-xs">Admin Edit</Label>
+          </div>
+        </div>
+        <div className="flex items-end">
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => deleteField(sectionName, fieldIndex)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   // Sortable Section Component
@@ -549,6 +682,13 @@ const ViewManagement = () => {
               <CardHeader>
                 <CardTitle>Editing: {selectedViewManager.name}</CardTitle>
                 <div className="flex gap-2">
+                  <Button 
+                    variant={sortingMode ? "default" : "outline"}
+                    onClick={() => setSortingMode(!sortingMode)}
+                  >
+                    <GripVertical className="h-4 w-4 mr-2" />
+                    {sortingMode ? "Exit Sort Mode" : "Sort Mode"}
+                  </Button>
                   <Button onClick={updateViewManager}>
                     <Save className="h-4 w-4 mr-2" />
                     Save Changes
@@ -572,13 +712,19 @@ const ViewManagement = () => {
 
                 {/* Sections */}
                 <div className="space-y-4">
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
-                    <SortableContext items={Object.keys(selectedViewManager.sections)} strategy={verticalListSortingStrategy}>
-                      {Object.entries(selectedViewManager.sections).map(([sectionName, fields]) => (
-                        <SortableSection key={sectionName} sectionName={sectionName} fields={fields} />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
+                  {sortingMode ? (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
+                      <SortableContext items={Object.keys(selectedViewManager.sections)} strategy={verticalListSortingStrategy}>
+                        {Object.entries(selectedViewManager.sections).map(([sectionName, fields]) => (
+                          <SortableSection key={sectionName} sectionName={sectionName} fields={fields} />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  ) : (
+                    Object.entries(selectedViewManager.sections).map(([sectionName, fields]) => (
+                      <EditableSection key={sectionName} sectionName={sectionName} fields={fields} />
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
