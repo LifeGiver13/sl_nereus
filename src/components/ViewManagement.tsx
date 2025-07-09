@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -343,17 +343,17 @@ const ViewManagement = () => {
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(event) => handleFieldDragEnd(event, sectionName)}>
               <SortableContext items={fields.map((_, index) => `field-${index}`)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-4">
-                  {fields.map((field, fieldIndex) => (
-                    <SortableField
-                      key={fieldIndex}
-                      field={field}
-                      fieldIndex={fieldIndex}
-                      sectionName={sectionName}
-                      onUpdateField={updateField}
-                      onUpdateFieldMeta={updateFieldMeta}
-                      onDeleteField={deleteField}
-                    />
-                  ))}
+                   {fields.map((field, fieldIndex) => (
+                     <SortableField
+                       key={`${sectionName}-${fieldIndex}`}
+                       field={field}
+                       fieldIndex={fieldIndex}
+                       sectionName={sectionName}
+                       onUpdateField={memoizedUpdateField}
+                       onUpdateFieldMeta={memoizedUpdateFieldMeta}
+                       onDeleteField={memoizedDeleteField}
+                     />
+                   ))}
                 </div>
               </SortableContext>
             </DndContext>
@@ -362,6 +362,19 @@ const ViewManagement = () => {
       </Card>
     );
   };
+
+  // Memoize handlers to prevent unnecessary re-renders
+  const memoizedUpdateField = useCallback((sectionName: string, fieldIndex: number, field: Partial<ViewField>) => {
+    updateField(sectionName, fieldIndex, field);
+  }, []);
+
+  const memoizedUpdateFieldMeta = useCallback((sectionName: string, fieldIndex: number, metaKey: string, value: any) => {
+    updateFieldMeta(sectionName, fieldIndex, metaKey, value);
+  }, []);
+
+  const memoizedDeleteField = useCallback((sectionName: string, fieldIndex: number) => {
+    deleteField(sectionName, fieldIndex);
+  }, []);
 
   // Sortable Field Component
   const SortableField = ({ 
@@ -440,23 +453,23 @@ const ViewManagement = () => {
           <Label className="text-xs">Permissions</Label>
           <div className="flex items-center space-x-2">
             <Checkbox
-              id={`user-${fieldIndex}`}
+              id={`user-${sectionName}-${fieldIndex}`}
               checked={field.meta?.userCanEdit || false}
               onCheckedChange={(checked) => 
                 onUpdateFieldMeta(sectionName, fieldIndex, 'userCanEdit', !!checked)
               }
             />
-            <Label htmlFor={`user-${fieldIndex}`} className="text-xs">User Edit</Label>
+            <Label htmlFor={`user-${sectionName}-${fieldIndex}`} className="text-xs">User Edit</Label>
           </div>
           <div className="flex items-center space-x-2">
             <Checkbox
-              id={`admin-${fieldIndex}`}
+              id={`admin-${sectionName}-${fieldIndex}`}
               checked={field.meta?.adminCanEdit || false}
               onCheckedChange={(checked) => 
                 onUpdateFieldMeta(sectionName, fieldIndex, 'adminCanEdit', !!checked)
               }
             />
-            <Label htmlFor={`admin-${fieldIndex}`} className="text-xs">Admin Edit</Label>
+            <Label htmlFor={`admin-${sectionName}-${fieldIndex}`} className="text-xs">Admin Edit</Label>
           </div>
         </div>
         <div className="flex items-end">

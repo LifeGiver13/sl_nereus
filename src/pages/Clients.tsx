@@ -3,13 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import EditClientModal from '../components/EditClientModal';
+import CreateClientModal from '../components/CreateClientModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock } from 'lucide-react';
+import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 
@@ -36,6 +37,7 @@ const Clients = () => {
   const [totalClients, setTotalClients] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { toast } = useToast();
 
@@ -112,6 +114,14 @@ const Clients = () => {
     toast({
       title: "Success",
       description: "Client updated successfully and list refreshed",
+    });
+  };
+
+  const handleClientCreated = () => {
+    fetchClients(currentPage, searchTerm);
+    toast({
+      title: "Success",
+      description: "Client created successfully",
     });
   };
 
@@ -204,9 +214,15 @@ const Clients = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-[#000009]">Clients</h1>
-          <p className="text-gray-600 mt-1">Manage client companies and relationships</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-[#000009]">Clients</h1>
+            <p className="text-gray-600 mt-1">Manage client companies and relationships</p>
+          </div>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Client
+          </Button>
         </div>
 
         <Card className="border-0 shadow-lg">
@@ -350,6 +366,12 @@ const Clients = () => {
           onClose={() => setIsEditModalOpen(false)}
           client={selectedClient}
           onClientUpdated={handleClientUpdated}
+        />
+        
+        <CreateClientModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onClientCreated={handleClientCreated}
         />
       </div>
     </AdminLayout>
