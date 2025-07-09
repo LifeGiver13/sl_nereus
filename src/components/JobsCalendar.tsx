@@ -15,7 +15,7 @@ interface Job {
   id: number;
   title: string;
   startDate: string;
-  endDate: string;
+  endDate: string | null;
   status: string;
   vacancies: number;
   clientId: number;
@@ -78,7 +78,12 @@ const JobsCalendar = () => {
           {
             and: [
               { startDate: { lte: format(rangeEnd, 'yyyy-MM-dd') } },
-              { endDate: { gte: format(rangeStart, 'yyyy-MM-dd') } }
+              {
+                or: [
+                  { endDate: { gte: format(rangeStart, 'yyyy-MM-dd') } },
+                  { endDate: null }
+                ]
+              }
             ]
           }
         ]
@@ -127,7 +132,7 @@ const JobsCalendar = () => {
     
     jobs.forEach((job: Job) => {
       const jobStart = new Date(job.startDate);
-      const jobEnd = new Date(job.endDate);
+      const jobEnd = job.endDate ? new Date(job.endDate) : null;
       const includeWeekends = job.body?.includeWeekends !== false;
       
       // Skip weekends if includeWeekends is false
@@ -136,14 +141,10 @@ const JobsCalendar = () => {
         return;
       }
       
-      // Create entries for each day the job spans
-      let currentDay = jobStart;
-      while (currentDay <= jobEnd) {
-        if (isSameDay(currentDay, date)) {
-          jobsForDay.push(job);
-          break;
-        }
-        currentDay = addDays(currentDay, 1);
+      // Check if the date falls within the job's range
+      // Job starts on or before this date AND (job has no end date OR job ends on or after this date)
+      if (jobStart <= date && (!jobEnd || jobEnd >= date)) {
+        jobsForDay.push(job);
       }
     });
     
