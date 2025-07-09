@@ -394,13 +394,13 @@ const Jobs = () => {
                 </TableHeader>
                 <TableBody>
                   {jobs.map((job) => (
-                    <TableRow key={job.id}>
+                    <TableRow key={job.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/job/${job.id}`}>
                       <TableCell>{job.id}</TableCell>
                       <TableCell>{job.client.name}</TableCell>
                       <TableCell>{job.owner.username}</TableCell>
                       <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{new Date(job.endDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Ongoing'}</TableCell>
                       <TableCell>{job.vacancies}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(job.status)}>
@@ -421,7 +421,7 @@ const Jobs = () => {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex space-x-2">
                           <Link to={`/job/${job.id}`}>
                             <Button variant="ghost" size="sm">

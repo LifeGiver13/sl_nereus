@@ -192,7 +192,7 @@ const JobCreate = () => {
       return;
     }
 
-    // Validate that end date is after start date
+    // Validate that end date is after start date if provided
     if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
       toast({
         title: "Error",
@@ -212,7 +212,7 @@ const JobCreate = () => {
         title: formData.title,
         description: formData.description,
         startDate: formData.startDate,
-        endDate: formData.endDate,
+        endDate: formData.endDate || null,
         shiftId: formData.shiftId ? parseInt(formData.shiftId) : null,
         vacancies: parseInt(formData.vacancies),
         status: formData.status,
@@ -379,15 +379,14 @@ const JobCreate = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">End Date *</label>
+                  <label className="text-sm font-medium">End Date</label>
                   <Input
                     type="date"
-                    required
                     value={formData.endDate}
                     onChange={(e) => handleInputChange('endDate', e.target.value)}
                     min={formData.startDate}
                   />
-                  <p className="text-xs text-gray-500">Must be later than start date</p>
+                  <p className="text-xs text-gray-500">Leave blank for ongoing job. If set, must be later than start date</p>
                 </div>
 
                 <div className="flex items-center space-x-2">

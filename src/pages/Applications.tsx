@@ -130,13 +130,13 @@ const Applications = () => {
                 </TableHeader>
                 <TableBody>
                   {applications.map((application) => (
-                    <TableRow key={application.id}>
+                    <TableRow key={application.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/application/${application.id}`}>
                       <TableCell className="font-medium">#{application.id}</TableCell>
                       <TableCell>{application.user?.username || 'N/A'}</TableCell>
                       <TableCell>{getStatusBadge(application.status)}</TableCell>
                       <TableCell>{formatDate(application.createdAt)}</TableCell>
                       <TableCell>{formatDate(application.updatedAt)}</TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex space-x-2">
                           <Link to={`/application/${application.id}`}>
                             <Button

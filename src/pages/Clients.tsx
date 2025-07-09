@@ -263,7 +263,7 @@ const Clients = () => {
                   </TableHeader>
                   <TableBody>
                     {clients.map((client) => (
-                      <TableRow key={client.id}>
+                      <TableRow key={client.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/client/${client.id}`}>
                         <TableCell className="font-medium">{client.id}</TableCell>
                         <TableCell>{client.name}</TableCell>
                         <TableCell>
@@ -275,7 +275,7 @@ const Clients = () => {
                             {client.status}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-2">
                             <Button
                               variant="outline"

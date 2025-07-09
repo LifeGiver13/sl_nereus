@@ -270,7 +270,7 @@ const People = () => {
                   </TableHeader>
                   <TableBody>
                     {users.map((user) => (
-                      <TableRow key={user.id}>
+                      <TableRow key={user.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/user/${user.id}`}>
                         <TableCell>{user.id}</TableCell>
                         <TableCell className="font-medium">{user.username}</TableCell>
                         <TableCell>{getStatusBadge(user.status)}</TableCell>
@@ -278,7 +278,7 @@ const People = () => {
                         <TableCell>{formatDate(user.lastLogin)}</TableCell>
                         <TableCell>{formatDate(user.createdAt)}</TableCell>
                         <TableCell>{formatDate(user.updatedAt)}</TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-2">
                             <Button variant="outline" size="sm" asChild>
                               <Link to={`/user/${user.id}`}>
