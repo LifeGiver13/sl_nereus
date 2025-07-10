@@ -155,7 +155,7 @@ const JobEdit = () => {
       });
       console.log('Form data set');
     }
-  }, [job]);
+  }, [job, skillsData]);
 
   // Load skills when data is available
   useEffect(() => {
@@ -165,7 +165,7 @@ const JobEdit = () => {
         allSkills.push(...categorySkills);
       });
       setAvailableSkills(allSkills);
-      
+
       // Set selected skills based on job data
       const jobSkills = allSkills.filter(skill => job.skills.includes(skill.id));
       setSelectedSkills(jobSkills);
@@ -193,7 +193,7 @@ const JobEdit = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate that end date is after start date if provided
     if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
       toast({
@@ -397,8 +397,8 @@ const JobEdit = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Shift</label>
                   <div className="flex gap-2">
-                    <Select 
-                      value={formData.shiftId} 
+                    <Select
+                      value={formData.shiftId}
                       onValueChange={(value) => handleInputChange('shiftId', value)}
                       disabled={!shifts || Object.keys(shifts).length === 0}
                     >
@@ -482,8 +482,8 @@ const JobEdit = () => {
             <Link to={`/job/${id}`}>
               <Button variant="outline">Cancel</Button>
             </Link>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isSubmitting}
               className="bg-[#712B71] hover:bg-[#712B71]/90"
             >
