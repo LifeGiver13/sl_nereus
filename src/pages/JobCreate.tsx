@@ -401,15 +401,22 @@ const JobCreate = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Position *</label>
+                  <label className="text-sm font-medium">Job Title *</label>
                   <div className="flex gap-2">
+                    <Input
+                      required
+                      value={formData.title}
+                      onChange={(e) => handleInputChange('title', e.target.value)}
+                      placeholder="Enter job title or select from position template"
+                      className="flex-1"
+                    />
                     <Select 
                       value={selectedPositionId?.toString() || ''} 
                       onValueChange={handlePositionSelect}
                       disabled={!selectedClientId || !positions?.length}
                     >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder={selectedClientId ? (positions?.length ? "Select position" : "No positions available") : "Select client first"} />
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Use template" />
                       </SelectTrigger>
                       <SelectContent>
                         {positions?.map((position) => (
@@ -425,24 +432,14 @@ const JobCreate = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => setIsPositionModalOpen(true)}
+                        title="Create new position template"
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Job Title *</label>
-                  <Input
-                    required
-                    value={formData.title}
-                    onChange={(e) => handleInputChange('title', e.target.value)}
-                    placeholder="Enter job title"
-                    disabled={!!selectedPositionId}
-                  />
                   {selectedPositionId && (
-                    <p className="text-xs text-muted-foreground">Title auto-populated from selected position</p>
+                    <p className="text-xs text-muted-foreground">Using template: {positions.find(p => p.id === selectedPositionId)?.name}</p>
                   )}
                 </div>
 
@@ -453,10 +450,9 @@ const JobCreate = () => {
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder="Enter job description"
                     rows={3}
-                    disabled={!!selectedPositionId}
                   />
                   {selectedPositionId && (
-                    <p className="text-xs text-muted-foreground">Description auto-populated from selected position</p>
+                    <p className="text-xs text-muted-foreground">Pre-filled from template: {positions.find(p => p.id === selectedPositionId)?.name}</p>
                   )}
                 </div>
 
@@ -565,9 +561,8 @@ const JobCreate = () => {
                       value={skillSearchTerm}
                       onChange={(e) => setSkillSearchTerm(e.target.value)}
                       placeholder="Search and select skills..."
-                      disabled={!!selectedPositionId}
                     />
-                    {!selectedPositionId && skillSearchTerm && filteredSkills.length > 0 && (
+                    {skillSearchTerm && filteredSkills.length > 0 && (
                       <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
                         {filteredSkills.slice(0, 10).map((skill) => (
                           <div
@@ -586,18 +581,16 @@ const JobCreate = () => {
                       {selectedSkills.map((skill) => (
                         <Badge key={skill.id} variant="outline" className="flex items-center gap-1">
                           {skill.name}
-                          {!selectedPositionId && (
-                            <X
-                              className="h-3 w-3 cursor-pointer"
-                              onClick={() => handleSkillRemove(skill)}
-                            />
-                          )}
+                          <X
+                            className="h-3 w-3 cursor-pointer"
+                            onClick={() => handleSkillRemove(skill)}
+                          />
                         </Badge>
                       ))}
                     </div>
                   )}
                   {selectedPositionId && (
-                    <p className="text-xs text-muted-foreground">Skills auto-populated from selected position</p>
+                    <p className="text-xs text-muted-foreground">Pre-filled from template: {positions.find(p => p.id === selectedPositionId)?.name}</p>
                   )}
                 </div>
               </CardContent>
