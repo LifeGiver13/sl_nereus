@@ -267,6 +267,15 @@ const JobCreate = () => {
       return;
     }
 
+    if (!selectedPositionId) {
+      toast({
+        title: "Error",
+        description: "Please select a position",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate that end date is after start date if provided
     if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
       toast({
@@ -295,7 +304,8 @@ const JobCreate = () => {
         filled: false,
         assignees: [],
         body: {
-          includeWeekends: formData.includeWeekends
+          includeWeekends: formData.includeWeekends,
+          positionId: selectedPositionId
         }
       };
 
@@ -401,22 +411,16 @@ const JobCreate = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Job Title *</label>
+                  <label className="text-sm font-medium">Position *</label>
                   <div className="flex gap-2">
-                    <Input
-                      required
-                      value={formData.title}
-                      onChange={(e) => handleInputChange('title', e.target.value)}
-                      placeholder="Enter job title or select from position template"
-                      className="flex-1"
-                    />
                     <Select 
                       value={selectedPositionId?.toString() || ''} 
                       onValueChange={handlePositionSelect}
-                      disabled={!selectedClientId || !positions?.length}
+                      disabled={!selectedClientId}
+                      required
                     >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Use template" />
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder={selectedClientId ? "Select position" : "Select client first"} />
                       </SelectTrigger>
                       <SelectContent>
                         {positions?.map((position) => (
@@ -432,14 +436,14 @@ const JobCreate = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => setIsPositionModalOpen(true)}
-                        title="Create new position template"
+                        title="Create new position"
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
                   {selectedPositionId && (
-                    <p className="text-xs text-muted-foreground">Using template: {positions.find(p => p.id === selectedPositionId)?.name}</p>
+                    <p className="text-xs text-muted-foreground">Selected: {positions.find(p => p.id === selectedPositionId)?.name}</p>
                   )}
                 </div>
 
@@ -456,19 +460,6 @@ const JobCreate = () => {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </CardContent>
             </Card>
 
