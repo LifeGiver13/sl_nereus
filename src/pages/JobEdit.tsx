@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import CreateShiftModal from '../components/CreateShiftModal';
+import CreatePositionModal from '../components/CreatePositionModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,13 @@ interface Shift {
   endTime: string;
 }
 
+interface Position {
+  id: number;
+  title: string;
+  description: string;
+  skills: number[];
+}
+
 interface Job {
   id: number;
   clientId: number;
@@ -53,6 +61,7 @@ interface Job {
   };
   body?: {
     includeWeekends?: boolean;
+    positionId?: number;
   };
 }
 
@@ -65,6 +74,8 @@ const JobEdit = () => {
   const [skillSearchTerm, setSkillSearchTerm] = useState('');
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
+  const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -114,10 +125,10 @@ const JobEdit = () => {
   });
 
   // Fetch shifts for the job's client
-  const { data: shifts, refetch: refetchShifts } = useQuery({
+  const { data: shiftsData, refetch: refetchShifts } = useQuery({
     queryKey: ['client-shifts', job?.clientId],
     queryFn: async () => {
-      if (!job?.clientId) return {};
+      if (!job?.clientId) return [];
       const response = await fetch(`${API_BASE_URL}/utils/client/${job.clientId}/shifts`);
       if (!response.ok) {
         throw new Error('Failed to fetch shifts');
@@ -127,21 +138,51 @@ const JobEdit = () => {
     enabled: !!job?.clientId
   });
 
+  // Fetch positions for the job's client
+  const { data: positionsData, refetch: refetchPositions } = useQuery({
+    queryKey: ['client-positions-list', job?.clientId],
+    queryFn: async () => {
+      if (!job?.clientId) return {};
+      const response = await fetch(`${API_BASE_URL}/utils/client/${job.clientId}/positions`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch positions');
+      }
+      return response.json();
+    },
+    enabled: !!job?.clientId
+  });
+
+  // Fetch detailed position data when position is selected
+  const { data: selectedPositionData } = useQuery({
+    queryKey: ['position-detail', job?.clientId, selectedPositionId],
+    queryFn: async () => {
+      if (!job?.clientId || !selectedPositionId) return null;
+      const response = await fetch(`${API_BASE_URL}/client/${job.clientId}/position/${selectedPositionId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch position details');
+      }
+      return response.json();
+    },
+    enabled: !!job?.clientId && !!selectedPositionId
+  });
+
+  // Transform shifts data to array if it's an object, otherwise use as-is
+  const shifts = shiftsData ? (Array.isArray(shiftsData) ? shiftsData : Object.entries(shiftsData).map(([id, shiftData]: [string, any]) => ({
+    id: parseInt(id),
+    name: shiftData.name,
+    startTime: shiftData.startTime,
+    endTime: shiftData.endTime
+  }))) : [];
+
+  // Transform positions data to array
+  const positions = positionsData ? Object.entries(positionsData).map(([id, name]) => ({
+    id: parseInt(id),
+    name: name as string
+  })) : [];
+
   // Load job data into form when available
   useEffect(() => {
-    console.log('Job data received:', job);
     if (job) {
-      console.log('Setting form data with:', {
-        title: job.title || '',
-        description: job.description || '',
-        startDate: job.startDate ? job.startDate.split('T')[0] : '',
-        endDate: job.endDate ? job.endDate.split('T')[0] : '',
-        vacancies: job.vacancies?.toString() || '',
-        status: job.status || 'open',
-        departmentId: job.departmentId?.toString() || '',
-        shiftId: job.shiftId?.toString() || '',
-        includeWeekends: job.body?.includeWeekends || false
-      });
       setFormData({
         title: job.title || '',
         description: job.description || '',
@@ -153,9 +194,32 @@ const JobEdit = () => {
         shiftId: job.shiftId?.toString() || '',
         includeWeekends: job.body?.includeWeekends || false
       });
-      console.log('Form data set');
+      
+      // Set position ID if available in job body
+      if (job.body?.positionId) {
+        setSelectedPositionId(job.body.positionId);
+      }
     }
   }, [job, skillsData]);
+
+  // Auto-populate fields when position is selected
+  useEffect(() => {
+    if (selectedPositionData) {
+      setFormData(prev => ({
+        ...prev,
+        title: selectedPositionData.title || '',
+        description: selectedPositionData.description || ''
+      }));
+      
+      // Auto-populate skills
+      if (selectedPositionData.skills && availableSkills.length > 0) {
+        const positionSkills = availableSkills.filter(skill => 
+          selectedPositionData.skills.includes(skill.id)
+        );
+        setSelectedSkills(positionSkills);
+      }
+    }
+  }, [selectedPositionData, availableSkills]);
 
   // Load skills when data is available
   useEffect(() => {
@@ -191,6 +255,16 @@ const JobEdit = () => {
     setFormData(prev => ({ ...prev, shiftId: newShift.id.toString() }));
   };
 
+  const handlePositionCreated = (newPosition: Position) => {
+    refetchPositions();
+    setSelectedPositionId(newPosition.id);
+  };
+
+  const handlePositionSelect = (positionId: string) => {
+    const id = parseInt(positionId);
+    setSelectedPositionId(id);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -221,7 +295,8 @@ const JobEdit = () => {
         filled: job?.filled || false,
         assignees: job?.assignees || [],
         body: {
-          includeWeekends: formData.includeWeekends
+          includeWeekends: formData.includeWeekends,
+          positionId: selectedPositionId
         }
       };
 
@@ -320,24 +395,53 @@ const JobEdit = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Job Title *</label>
-                  <Input
-                    required
-                    value={formData.title}
-                    onChange={(e) => handleInputChange('title', e.target.value)}
-                    placeholder="Enter job title"
-                  />
+                  <label className="text-sm font-medium">Position *</label>
+                  <div className="flex gap-2">
+                    <Select 
+                      value={selectedPositionId?.toString() || ''} 
+                      onValueChange={handlePositionSelect}
+                      disabled={!job?.clientId}
+                      required
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {positions?.map((position) => (
+                          <SelectItem key={position.id} value={position.id.toString()}>
+                            {position.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {job?.clientId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsPositionModalOpen(true)}
+                        title="Create new position"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {selectedPositionId && (
+                    <p className="text-xs text-muted-foreground">Selected: {positions.find(p => p.id === selectedPositionId)?.name}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Description *</label>
+                  <label className="text-sm font-medium">Description</label>
                   <Textarea
-                    required
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder="Enter job description"
                     rows={3}
                   />
+                  {selectedPositionId && (
+                    <p className="text-xs text-muted-foreground">Pre-filled from template: {positions.find(p => p.id === selectedPositionId)?.name}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -400,15 +504,15 @@ const JobEdit = () => {
                     <Select
                       value={formData.shiftId}
                       onValueChange={(value) => handleInputChange('shiftId', value)}
-                      disabled={!shifts || Object.keys(shifts).length === 0}
+                      disabled={!shifts?.length}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder={shifts && Object.keys(shifts).length > 0 ? "Select shift" : "No shifts available"} />
+                        <SelectValue placeholder={shifts?.length ? "Select shift" : "No shifts available"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {shifts && Object.keys(shifts).map((shift) => (
-                          <SelectItem key={shift} value={shift}>
-                            {shifts[shift]}
+                        {shifts?.map((shift) => (
+                          <SelectItem key={shift.id} value={shift.id.toString()}>
+                            {shift.name} ({shift.startTime} - {shift.endTime})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -494,12 +598,20 @@ const JobEdit = () => {
         </form>
 
         {job?.clientId && (
-          <CreateShiftModal
-            isOpen={isShiftModalOpen}
-            onClose={() => setIsShiftModalOpen(false)}
-            clientId={job.clientId}
-            onShiftCreated={handleShiftCreated}
-          />
+          <>
+            <CreateShiftModal
+              isOpen={isShiftModalOpen}
+              onClose={() => setIsShiftModalOpen(false)}
+              clientId={job.clientId}
+              onShiftCreated={handleShiftCreated}
+            />
+            <CreatePositionModal
+              isOpen={isPositionModalOpen}
+              onClose={() => setIsPositionModalOpen(false)}
+              clientId={job.clientId}
+              onPositionCreated={handlePositionCreated}
+            />
+          </>
         )}
       </div>
     </AdminLayout>

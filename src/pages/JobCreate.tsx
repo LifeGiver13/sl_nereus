@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import CreateShiftModal from '../components/CreateShiftModal';
+import CreatePositionModal from '../components/CreatePositionModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,13 @@ interface Shift {
   endTime: string;
 }
 
+interface Position {
+  id: number;
+  title: string;
+  description: string;
+  skills: number[];
+}
+
 const JobCreate = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -49,6 +57,8 @@ const JobCreate = () => {
   const [skillSearchTerm, setSkillSearchTerm] = useState('');
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
+  const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -105,6 +115,34 @@ const JobCreate = () => {
     enabled: !!selectedClientId
   });
 
+  // Fetch positions for selected client
+  const { data: positionsData, refetch: refetchPositions } = useQuery({
+    queryKey: ['client-positions-list', selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId) return {};
+      const response = await fetch(`${API_BASE_URL}/utils/client/${selectedClientId}/positions`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch positions');
+      }
+      return response.json();
+    },
+    enabled: !!selectedClientId
+  });
+
+  // Fetch detailed position data when position is selected
+  const { data: selectedPositionData } = useQuery({
+    queryKey: ['position-detail', selectedClientId, selectedPositionId],
+    queryFn: async () => {
+      if (!selectedClientId || !selectedPositionId) return null;
+      const response = await fetch(`${API_BASE_URL}/client/${selectedClientId}/position/${selectedPositionId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch position details');
+      }
+      return response.json();
+    },
+    enabled: !!selectedClientId && !!selectedPositionId
+  });
+
   // Transform shifts data to array if it's an object, otherwise use as-is
   const shifts = shiftsData ? (Array.isArray(shiftsData) ? shiftsData : Object.entries(shiftsData).map(([id, shiftData]: [string, any]) => ({
     id: parseInt(id),
@@ -112,6 +150,12 @@ const JobCreate = () => {
     startTime: shiftData.startTime,
     endTime: shiftData.endTime
   }))) : [];
+
+  // Transform positions data to array
+  const positions = positionsData ? Object.entries(positionsData).map(([id, name]) => ({
+    id: parseInt(id),
+    name: name as string
+  })) : [];
 
   // Load skills when data is available
   useEffect(() => {
@@ -124,10 +168,31 @@ const JobCreate = () => {
     }
   }, [skillsData]);
 
-  // Reset shift selection when client changes
+  // Reset shift and position selection when client changes
   useEffect(() => {
-    setFormData(prev => ({ ...prev, shiftId: '' }));
+    setFormData(prev => ({ ...prev, shiftId: '', title: '', description: '' }));
+    setSelectedPositionId(null);
+    setSelectedSkills([]);
   }, [selectedClientId]);
+
+  // Auto-populate fields when position is selected
+  useEffect(() => {
+    if (selectedPositionData) {
+      setFormData(prev => ({
+        ...prev,
+        title: selectedPositionData.title || '',
+        description: selectedPositionData.description || ''
+      }));
+      
+      // Auto-populate skills
+      if (selectedPositionData.skills && availableSkills.length > 0) {
+        const positionSkills = availableSkills.filter(skill => 
+          selectedPositionData.skills.includes(skill.id)
+        );
+        setSelectedSkills(positionSkills);
+      }
+    }
+  }, [selectedPositionData, availableSkills]);
 
   const searchClients = async (searchTerm: string) => {
     if (searchTerm.length < 2) {
@@ -180,6 +245,16 @@ const JobCreate = () => {
     setFormData(prev => ({ ...prev, shiftId: newShift.id.toString() }));
   };
 
+  const handlePositionCreated = (newPosition: Position) => {
+    refetchPositions();
+    setSelectedPositionId(newPosition.id);
+  };
+
+  const handlePositionSelect = (positionId: string) => {
+    const id = parseInt(positionId);
+    setSelectedPositionId(id);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -187,6 +262,15 @@ const JobCreate = () => {
       toast({
         title: "Error",
         description: "Please select a client",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedPositionId) {
+      toast({
+        title: "Error",
+        description: "Please select a position",
         variant: "destructive",
       });
       return;
@@ -220,7 +304,8 @@ const JobCreate = () => {
         filled: false,
         assignees: [],
         body: {
-          includeWeekends: formData.includeWeekends
+          includeWeekends: formData.includeWeekends,
+          positionId: selectedPositionId
         }
       };
 
@@ -326,39 +411,55 @@ const JobCreate = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Job Title *</label>
-                  <Input
-                    required
-                    value={formData.title}
-                    onChange={(e) => handleInputChange('title', e.target.value)}
-                    placeholder="Enter job title"
-                  />
+                  <label className="text-sm font-medium">Position *</label>
+                  <div className="flex gap-2">
+                    <Select 
+                      value={selectedPositionId?.toString() || ''} 
+                      onValueChange={handlePositionSelect}
+                      disabled={!selectedClientId}
+                      required
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder={selectedClientId ? "Select position" : "Select client first"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {positions?.map((position) => (
+                          <SelectItem key={position.id} value={position.id.toString()}>
+                            {position.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedClientId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsPositionModalOpen(true)}
+                        title="Create new position"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {selectedPositionId && (
+                    <p className="text-xs text-muted-foreground">Selected: {positions.find(p => p.id === selectedPositionId)?.name}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Description *</label>
+                  <label className="text-sm font-medium">Description</label>
                   <Textarea
-                    required
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder="Enter job description"
                     rows={3}
                   />
+                  {selectedPositionId && (
+                    <p className="text-xs text-muted-foreground">Pre-filled from template: {positions.find(p => p.id === selectedPositionId)?.name}</p>
+                  )}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </CardContent>
             </Card>
 
@@ -453,11 +554,11 @@ const JobCreate = () => {
                       placeholder="Search and select skills..."
                     />
                     {skillSearchTerm && filteredSkills.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
                         {filteredSkills.slice(0, 10).map((skill) => (
                           <div
                             key={skill.id}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                            className="px-3 py-2 hover:bg-accent cursor-pointer"
                             onClick={() => handleSkillSelect(skill)}
                           >
                             {skill.name}
@@ -478,6 +579,9 @@ const JobCreate = () => {
                         </Badge>
                       ))}
                     </div>
+                  )}
+                  {selectedPositionId && (
+                    <p className="text-xs text-muted-foreground">Pre-filled from template: {positions.find(p => p.id === selectedPositionId)?.name}</p>
                   )}
                 </div>
               </CardContent>
@@ -500,12 +604,20 @@ const JobCreate = () => {
         </form>
 
         {selectedClientId && (
-          <CreateShiftModal
-            isOpen={isShiftModalOpen}
-            onClose={() => setIsShiftModalOpen(false)}
-            clientId={selectedClientId}
-            onShiftCreated={handleShiftCreated}
-          />
+          <>
+            <CreateShiftModal
+              isOpen={isShiftModalOpen}
+              onClose={() => setIsShiftModalOpen(false)}
+              clientId={selectedClientId}
+              onShiftCreated={handleShiftCreated}
+            />
+            <CreatePositionModal
+              isOpen={isPositionModalOpen}
+              onClose={() => setIsPositionModalOpen(false)}
+              clientId={selectedClientId}
+              onPositionCreated={handlePositionCreated}
+            />
+          </>
         )}
       </div>
     </AdminLayout>

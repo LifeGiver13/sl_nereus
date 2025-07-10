@@ -14,6 +14,7 @@ import UserDetail from "./pages/UserDetail";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import ShiftManagement from "./pages/ShiftManagement";
+import PositionManagement from "./pages/PositionManagement";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import JobCreate from "./pages/JobCreate";
@@ -96,6 +97,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ShiftManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/:clientId/positions"
+              element={
+                <ProtectedRoute>
+                  <PositionManagement />
                 </ProtectedRoute>
               }
             />
