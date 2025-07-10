@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock, Plus } from 'lucide-react';
+import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock, Plus, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 
@@ -336,6 +336,12 @@ const Clients = () => {
                                   <Link to={`/client/${client.id}/shifts`}>
                                     <Clock className="h-4 w-4 mr-2" />
                                     Manage Shifts
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link to={`/client/${client.id}/positions`}>
+                                    <MapPin className="h-4 w-4 mr-2" />
+                                    Manage Positions
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
