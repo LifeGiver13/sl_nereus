@@ -329,7 +329,7 @@ const JobEdit = () => {
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   if (isLoadingJob) {
