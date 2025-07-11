@@ -169,9 +169,7 @@ const JobEdit = () => {
   // Transform shifts data to array if it's an object, otherwise use as-is
   const shifts = shiftsData ? (Array.isArray(shiftsData) ? shiftsData : Object.entries(shiftsData).map(([id, shiftData]: [string, any]) => ({
     id: parseInt(id),
-    name: shiftData.name,
-    startTime: shiftData.startTime,
-    endTime: shiftData.endTime
+    name: shiftData,
   }))) : [];
 
   // Transform positions data to array
@@ -194,13 +192,13 @@ const JobEdit = () => {
         shiftId: job.shiftId?.toString() || '',
         includeWeekends: job.body?.includeWeekends || false
       });
-      
+
       // Set position ID if available in job body
       if (job.body?.positionId) {
         setSelectedPositionId(job.body.positionId);
       }
     }
-  }, [job, skillsData]);
+  }, [[job, departments, skillsData, shifts]]);
 
   // Auto-populate fields when position is selected
   useEffect(() => {
@@ -210,10 +208,10 @@ const JobEdit = () => {
         title: selectedPositionData.title || '',
         description: selectedPositionData.description || ''
       }));
-      
+
       // Auto-populate skills
       if (selectedPositionData.skills && availableSkills.length > 0) {
-        const positionSkills = availableSkills.filter(skill => 
+        const positionSkills = availableSkills.filter(skill =>
           selectedPositionData.skills.includes(skill.id)
         );
         setSelectedSkills(positionSkills);
@@ -397,8 +395,8 @@ const JobEdit = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Position *</label>
                   <div className="flex gap-2">
-                    <Select 
-                      value={selectedPositionId?.toString() || ''} 
+                    <Select
+                      value={selectedPositionId?.toString() || ''}
                       onValueChange={handlePositionSelect}
                       disabled={!job?.clientId}
                       required
@@ -512,7 +510,7 @@ const JobEdit = () => {
                       <SelectContent>
                         {shifts?.map((shift) => (
                           <SelectItem key={shift.id} value={shift.id.toString()}>
-                            {shift.name} ({shift.startTime} - {shift.endTime})
+                            {shift.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
