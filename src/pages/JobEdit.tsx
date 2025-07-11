@@ -177,7 +177,7 @@ const JobEdit = () => {
     name: name as string
   })) : [];
 
-  // Load job data into form when available
+  // Load job data into form when available - only when job first loads
   useEffect(() => {
     if (job) {
       setFormData({
@@ -196,7 +196,7 @@ const JobEdit = () => {
         setSelectedPositionId(job.body.positionId);
       }
     }
-  }, [job, departments, skillsData, shifts]);
+  }, [job]); // Only depend on job, not other data that can change
 
   // Auto-populate fields when position is selected
   useEffect(() => {
