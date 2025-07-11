@@ -77,7 +77,6 @@ const JobEdit = () => {
   const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
   const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
-    title: '',
     description: '',
     startDate: '',
     endDate: '',
@@ -182,7 +181,6 @@ const JobEdit = () => {
   useEffect(() => {
     if (job) {
       setFormData({
-        title: job.title || '',
         description: job.description || '',
         startDate: job.startDate ? job.startDate.split('T')[0] : '',
         endDate: job.endDate ? job.endDate.split('T')[0] : '',
@@ -198,14 +196,13 @@ const JobEdit = () => {
         setSelectedPositionId(job.body.positionId);
       }
     }
-  }, [[job, departments, skillsData, shifts]]);
+  }, [job, departments, skillsData, shifts]);
 
   // Auto-populate fields when position is selected
   useEffect(() => {
     if (selectedPositionData) {
       setFormData(prev => ({
         ...prev,
-        title: selectedPositionData.title || '',
         description: selectedPositionData.description || ''
       }));
 
@@ -251,11 +248,13 @@ const JobEdit = () => {
   const handleShiftCreated = (newShift: Shift) => {
     refetchShifts();
     setFormData(prev => ({ ...prev, shiftId: newShift.id.toString() }));
+    setIsShiftModalOpen(false);
   };
 
   const handlePositionCreated = (newPosition: Position) => {
     refetchPositions();
     setSelectedPositionId(newPosition.id);
+    setIsPositionModalOpen(false);
   };
 
   const handlePositionSelect = (positionId: string) => {
@@ -279,10 +278,11 @@ const JobEdit = () => {
     setIsSubmitting(true);
 
     try {
+      const selectedPosition = positions.find(p => p.id === selectedPositionId);
       const payload = {
         clientId: job?.clientId,
         departmentId: formData.departmentId ? parseInt(formData.departmentId) : null,
-        title: formData.title,
+        title: selectedPosition?.name || '',
         description: formData.description,
         startDate: formData.startDate,
         endDate: formData.endDate || null,
