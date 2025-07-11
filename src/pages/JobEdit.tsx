@@ -198,6 +198,19 @@ const JobEdit = () => {
     }
   }, [job]); // Only depend on job, not other data that can change
 
+  // Ensure shift and position selections are maintained when data loads
+  useEffect(() => {
+    if (job && shiftsData && job.shiftId && !formData.shiftId) {
+      setFormData(prev => ({ ...prev, shiftId: job.shiftId.toString() }));
+    }
+  }, [job, shiftsData, formData.shiftId]);
+
+  useEffect(() => {
+    if (job && positionsData && job.body?.positionId && !selectedPositionId) {
+      setSelectedPositionId(job.body.positionId);
+    }
+  }, [job, positionsData, selectedPositionId]);
+
   // Auto-populate fields when position is selected
   useEffect(() => {
     if (selectedPositionData) {
