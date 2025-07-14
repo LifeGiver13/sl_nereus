@@ -1,16 +1,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, User, Mail, Phone, Calendar, Check, X } from 'lucide-react';
+import { ArrowLeft, FileText, User, Mail, Phone, Calendar, Check, X, MessageSquare, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '../components/AdminLayout';
 import { PreRegistrationWizard, PostRegistrationWizard, WizardFormConfig } from '../config/wizardConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config/env';
+import { RemarkSystem, AllRemarks, SectionRemarks, Remark, hasUnresolvedRemarks, getSectionRemarkCount } from '../components/RemarkSystem';
 
 interface User {
   id: number;
@@ -39,8 +41,11 @@ const ApplicationDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const { token } = useAuth();
+  const [remarks, setRemarks] = useState<AllRemarks>({});
+  const [remarksSaving, setRemarksSaving] = useState(false);
+  const { token, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchApplicationDetail = async () => {
@@ -103,6 +108,96 @@ const ApplicationDetail = () => {
       return PreRegistrationWizard;
     }
     return PostRegistrationWizard;
+  };
+
+  // Load remarks when application is loaded
+  useEffect(() => {
+    if (application?.meta?.remarks) {
+      setRemarks(application.meta.remarks);
+    }
+  }, [application]);
+
+  // Save remarks to backend
+  const saveRemarks = async (updatedRemarks: AllRemarks) => {
+    if (!application || !token) return;
+
+    setRemarksSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/application/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          meta: {
+            ...application.meta,
+            remarks: updatedRemarks
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save remarks');
+      }
+
+      setApplication(prev => prev ? {
+        ...prev,
+        meta: { ...prev.meta, remarks: updatedRemarks }
+      } : null);
+
+      toast({
+        title: "Remarks saved",
+        description: "Successfully saved remarks to application",
+      });
+    } catch (error) {
+      console.error('Error saving remarks:', error);
+      toast({
+        title: "Error saving remarks",
+        description: "Failed to save remarks. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setRemarksSaving(false);
+    }
+  };
+
+  const handleAddRemark = (sectionId: string, fieldName: string, comment: string) => {
+    if (!user) return;
+
+    const newRemark: Remark = {
+      id: Date.now().toString(),
+      comment,
+      date: new Date().toISOString(),
+      userId: user.id,
+      resolved: false
+    };
+
+    const updatedRemarks = {
+      ...remarks,
+      [sectionId]: {
+        ...remarks[sectionId],
+        [fieldName]: [...(remarks[sectionId]?.[fieldName] || []), newRemark]
+      }
+    };
+
+    setRemarks(updatedRemarks);
+    saveRemarks(updatedRemarks);
+  };
+
+  const handleToggleResolve = (sectionId: string, fieldName: string, remarkId: string) => {
+    const updatedRemarks = {
+      ...remarks,
+      [sectionId]: {
+        ...remarks[sectionId],
+        [fieldName]: remarks[sectionId]?.[fieldName]?.map(remark =>
+          remark.id === remarkId ? { ...remark, resolved: !remark.resolved } : remark
+        ) || []
+      }
+    };
+
+    setRemarks(updatedRemarks);
+    saveRemarks(updatedRemarks);
   };
 
   const renderFieldValue = (field: any, value: any) => {
@@ -176,6 +271,16 @@ const ApplicationDetail = () => {
                 <div className="mt-1">
                   {renderFieldValue(field, fieldValue)}
                 </div>
+                {user && (
+                  <RemarkSystem
+                    sectionId={sectionId}
+                    fieldName={field.name}
+                    remarks={remarks[sectionId]?.[field.name] || []}
+                    currentUserId={user.id}
+                    onAddRemark={handleAddRemark}
+                    onToggleResolve={handleToggleResolve}
+                  />
+                )}
               </div>
             );
           })}
@@ -198,6 +303,16 @@ const ApplicationDetail = () => {
                       <div className="mt-1">
                         {renderFieldValue(field, history[field.name])}
                       </div>
+                      {user && (
+                        <RemarkSystem
+                          sectionId={sectionId}
+                          fieldName={`history-${index}-${field.name}`}
+                          remarks={remarks[sectionId]?.[`history-${index}-${field.name}`] || []}
+                          currentUserId={user.id}
+                          onAddRemark={handleAddRemark}
+                          onToggleResolve={handleToggleResolve}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -220,6 +335,16 @@ const ApplicationDetail = () => {
                       <div className="mt-1">
                         {renderFieldValue(field, reference[field.name])}
                       </div>
+                      {user && (
+                        <RemarkSystem
+                          sectionId={sectionId}
+                          fieldName={`reference-${index}-${field.name}`}
+                          remarks={remarks[sectionId]?.[`reference-${index}-${field.name}`] || []}
+                          currentUserId={user.id}
+                          onAddRemark={handleAddRemark}
+                          onToggleResolve={handleToggleResolve}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -248,6 +373,16 @@ const ApplicationDetail = () => {
               <p className="text-gray-500">No skills provided</p>
             )}
           </div>
+          {user && (
+            <RemarkSystem
+              sectionId={sectionId}
+              fieldName="skills"
+              remarks={remarks[sectionId]?.['skills'] || []}
+              currentUserId={user.id}
+              onAddRemark={handleAddRemark}
+              onToggleResolve={handleToggleResolve}
+            />
+          )}
         </div>
       );
     }
@@ -328,30 +463,64 @@ const ApplicationDetail = () => {
                       value="overview"
                       className="justify-start text-left w-full"
                     >
-                      Overview
+                      <div className="flex items-center justify-between w-full">
+                        <span>Overview</span>
+                      </div>
                     </TabsTrigger>
                     <Separator className="my-2" />
                     <p className="text-xs font-semibold text-gray-500 px-2 py-1">PRE-REGISTRATION</p>
-                    {Object.keys(PreRegistrationWizard).map((sectionId) => (
-                      <TabsTrigger 
-                        key={sectionId}
-                        value={sectionId}
-                        className="justify-start text-left w-full"
-                      >
-                        {PreRegistrationWizard[sectionId].title}
-                      </TabsTrigger>
-                    ))}
+                    {Object.keys(PreRegistrationWizard).map((sectionId) => {
+                      const sectionRemarks = remarks[sectionId] || {};
+                      const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
+                      const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
+                      
+                      return (
+                        <TabsTrigger 
+                          key={sectionId}
+                          value={sectionId}
+                          className="justify-start text-left w-full"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>{PreRegistrationWizard[sectionId].title}</span>
+                            {hasRemarks && (
+                              <div className="flex items-center space-x-1">
+                                <MessageSquare className="h-3 w-3 text-blue-500" />
+                                {hasUnresolved && (
+                                  <AlertCircle className="h-3 w-3 text-red-500" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </TabsTrigger>
+                      );
+                    })}
                     <Separator className="my-2" />
                     <p className="text-xs font-semibold text-gray-500 px-2 py-1">POST-REGISTRATION</p>
-                    {Object.keys(PostRegistrationWizard).map((sectionId) => (
-                      <TabsTrigger 
-                        key={sectionId}
-                        value={sectionId}
-                        className="justify-start text-left w-full"
-                      >
-                        {PostRegistrationWizard[sectionId].title}
-                      </TabsTrigger>
-                    ))}
+                    {Object.keys(PostRegistrationWizard).map((sectionId) => {
+                      const sectionRemarks = remarks[sectionId] || {};
+                      const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
+                      const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
+                      
+                      return (
+                        <TabsTrigger 
+                          key={sectionId}
+                          value={sectionId}
+                          className="justify-start text-left w-full"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>{PostRegistrationWizard[sectionId].title}</span>
+                            {hasRemarks && (
+                              <div className="flex items-center space-x-1">
+                                <MessageSquare className="h-3 w-3 text-blue-500" />
+                                {hasUnresolved && (
+                                  <AlertCircle className="h-3 w-3 text-red-500" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </TabsTrigger>
+                      );
+                    })}
                   </TabsList>
                 </Tabs>
               </CardContent>
