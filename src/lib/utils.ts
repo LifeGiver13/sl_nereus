@@ -1,8 +1,28 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { API_BASE_URL } from '../config/env'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+// Utility function for authenticated API requests
+export async function apiRequest(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const token = localStorage.getItem('session_token');
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['x-service-user'] = token;
+  }
+
+  return fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
 }
 
 // Utility function to get nested object properties using dot notation

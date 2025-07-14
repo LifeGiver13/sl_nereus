@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 
 interface User {
   id: number;
@@ -60,11 +60,8 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/user/${user.id}/change-password`, {
+      const response = await apiRequest(`/auth/user/${user.id}/change-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ password }),
       });
 
