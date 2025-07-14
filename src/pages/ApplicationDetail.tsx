@@ -124,12 +124,13 @@ const ApplicationDetail = () => {
     setRemarksSaving(true);
     try {
       const response = await fetch(`${API_BASE_URL}/application/${id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          ...application,
           meta: {
             ...application.meta,
             remarks: updatedRemarks
