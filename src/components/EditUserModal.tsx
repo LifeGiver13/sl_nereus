@@ -11,6 +11,7 @@ import ProfileEditForm from './ProfileEditForm';
 import UsernameChangeForm from './UsernameChangeForm';
 import StatusChangeForm from './StatusChangeForm';
 import RoleChangeForm from './RoleChangeForm';
+import PasswordChangeForm from './PasswordChangeForm';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 
@@ -99,7 +100,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   const systemTabs = [
     { value: "username", label: "Username" },
     { value: "status", label: "Status" },
-    { value: "role", label: "Role" }
+    { value: "role", label: "Role" },
+    { value: "password", label: "Password" }
   ];
 
   const profileTabs = viewManager ? Object.keys(viewManager.sections).map(sectionName => ({
@@ -169,6 +171,13 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
             
             <TabsContent value="role">
               <RoleChangeForm 
+                user={user} 
+                onUserUpdated={handleUserUpdated} 
+              />
+            </TabsContent>
+            
+            <TabsContent value="password">
+              <PasswordChangeForm 
                 user={user} 
                 onUserUpdated={handleUserUpdated} 
               />
