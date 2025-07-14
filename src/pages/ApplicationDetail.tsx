@@ -165,11 +165,16 @@ const ApplicationDetail = () => {
   const handleAddRemark = (sectionId: string, fieldName: string, comment: string) => {
     if (!user) return;
 
+    const firstName = application?.data['personal-info']?.fields?.firstName || '';
+    const lastName = application?.data['personal-info']?.fields?.lastName || '';
+    const userName = `${firstName} ${lastName}`.trim() || user.username || 'Unknown User';
+
     const newRemark: Remark = {
       id: Date.now().toString(),
       comment,
       date: new Date().toISOString(),
       userId: user.id,
+      userName,
       resolved: false
     };
 

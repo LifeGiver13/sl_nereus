@@ -12,6 +12,7 @@ export interface Remark {
   comment: string;
   date: string;
   userId: string;
+  userName: string;
   resolved: boolean;
 }
 
@@ -42,7 +43,6 @@ export const RemarkSystem: React.FC<RemarkSystemProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
 
   const unresolvedCount = remarks.filter(r => !r.resolved).length;
 
@@ -50,7 +50,7 @@ export const RemarkSystem: React.FC<RemarkSystemProps> = ({
     if (newComment.trim()) {
       onAddRemark(sectionId, fieldName, newComment.trim());
       setNewComment('');
-      setIsAdding(false);
+      setIsOpen(false);
     }
   };
 
@@ -91,77 +91,66 @@ export const RemarkSystem: React.FC<RemarkSystemProps> = ({
         <CollapsibleContent className="mt-2">
           <Card className="border-l-4 border-l-blue-500">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Field Remarks</CardTitle>
+              <CardTitle className="text-sm">Enter a comment for the applicant</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Enter your remark..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  className="min-h-[80px]"
+                />
+                <div className="flex space-x-2">
+                  <Button size="sm" onClick={handleAddRemark}>
+                    Add Remark
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setIsOpen(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+              
               {remarks.length > 0 && (
-                <div className="space-y-3">
-                  {remarks.map((remark) => (
-                    <div
-                      key={remark.id}
-                      className={`p-3 rounded-md border ${
-                        remark.resolved ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm text-gray-800 mb-2">{remark.comment}</p>
-                          <div className="flex items-center text-xs text-gray-500">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {formatDate(remark.date)} • User {remark.userId}
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    {remarks.map((remark) => (
+                      <div
+                        key={remark.id}
+                        className={`p-3 rounded-md border ${
+                          remark.resolved ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-800 mb-2">{remark.comment}</p>
+                            <div className="flex items-center text-xs text-gray-500">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {formatDate(remark.date)} • {remark.userName}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 ml-2">
+                            <Badge variant={remark.resolved ? 'default' : 'secondary'}>
+                              {remark.resolved ? 'Resolved' : 'Open'}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => onToggleResolve(sectionId, fieldName, remark.id)}
+                            >
+                              {remark.resolved ? (
+                                <X className="h-3 w-3" />
+                              ) : (
+                                <Check className="h-3 w-3" />
+                              )}
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2 ml-2">
-                          <Badge variant={remark.resolved ? 'default' : 'secondary'}>
-                            {remark.resolved ? 'Resolved' : 'Open'}
-                          </Badge>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => onToggleResolve(sectionId, fieldName, remark.id)}
-                          >
-                            {remark.resolved ? (
-                              <X className="h-3 w-3" />
-                            ) : (
-                              <Check className="h-3 w-3" />
-                            )}
-                          </Button>
-                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {remarks.length > 0 && <Separator />}
-              
-              {isAdding ? (
-                <div className="space-y-2">
-                  <Textarea
-                    placeholder="Enter your remark..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    className="min-h-[80px]"
-                  />
-                  <div className="flex space-x-2">
-                    <Button size="sm" onClick={handleAddRemark}>
-                      Add Remark
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setIsAdding(false)}>
-                      Cancel
-                    </Button>
+                    ))}
                   </div>
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsAdding(true)}
-                  className="w-full"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add New Remark
-                </Button>
+                </>
               )}
             </CardContent>
           </Card>
