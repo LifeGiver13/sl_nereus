@@ -90,6 +90,44 @@ const Applications = () => {
     );
   };
 
+  const hasUnresolvedRemarks = (application: Application): boolean => {
+    const remarks = application.meta?.remarks || {};
+    return Object.values(remarks).some((sectionRemarks: any) => 
+      Object.values(sectionRemarks).some((fieldRemarks: any) => 
+        Array.isArray(fieldRemarks) && fieldRemarks.some((remark: any) => !remark.resolved)
+      )
+    );
+  };
+
+  const handleApplicationAction = async (applicationId: number, action: 'approve' | 'reject') => {
+    const application = applications.find(app => app.id === applicationId);
+    if (!application) return;
+
+    // Prevent approval if there are unresolved remarks
+    if (action === 'approve' && hasUnresolvedRemarks(application)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/application/${applicationId}/${action}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} application`);
+      }
+
+      // Refresh applications list
+      window.location.reload();
+    } catch (error) {
+      console.error(`Error ${action}ing application:`, error);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -133,7 +171,17 @@ const Applications = () => {
                     <TableRow key={application.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/application/${application.id}`}>
                       <TableCell className="font-medium">#{application.id}</TableCell>
                       <TableCell>{application.user?.username || 'N/A'}</TableCell>
-                      <TableCell>{getStatusBadge(application.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          {getStatusBadge(application.status)}
+                          {hasUnresolvedRemarks(application) && (
+                            <div className="flex items-center space-x-1" title="Unresolved remarks">
+                              <MessageSquare className="h-3 w-3 text-orange-500" />
+                              <span className="text-xs text-orange-500">Remarks</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{formatDate(application.createdAt)}</TableCell>
                       <TableCell>{formatDate(application.updatedAt)}</TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -156,19 +204,33 @@ const Applications = () => {
                           >
                             <MessageSquare className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-green-600 hover:text-white"
-                            title="Approve"
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
+                          {hasUnresolvedRemarks(application) ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-gray-400 cursor-not-allowed"
+                              title="Cannot approve - unresolved remarks"
+                              disabled
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-green-600 hover:text-white"
+                              title="Approve"
+                              onClick={() => handleApplicationAction(application.id, 'approve')}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white"
                             title="Reject"
+                            onClick={() => handleApplicationAction(application.id, 'reject')}
                           >
                             <X className="h-4 w-4" />
                           </Button>

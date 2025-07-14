@@ -206,6 +206,45 @@ const ApplicationDetail = () => {
     saveRemarks(updatedRemarks);
   };
 
+  const handleApplicationDecision = async (decision: 'approve' | 'reject' | 'revise') => {
+    if (!application || !token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/application/${id}/${decision}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${decision} application`);
+      }
+
+      toast({
+        title: `Application ${decision === 'revise' ? 'sent for revision' : `${decision}d`}`,
+        description: `Successfully ${decision === 'revise' ? 'requested revision for' : `${decision}d`} application #${application.id}`,
+      });
+
+      // Navigate back to applications list
+      navigate('/applications');
+    } catch (error) {
+      console.error(`Error ${decision}ing application:`, error);
+      toast({
+        title: `Error ${decision === 'revise' ? 'requesting revision' : `${decision}ing application`}`,
+        description: `Failed to ${decision} application. Please try again.`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const checkHasUnresolvedRemarks = () => {
+    return Object.values(remarks).some(sectionRemarks => 
+      hasUnresolvedRemarks(sectionRemarks)
+    );
+  };
+
   const renderFieldValue = (field: any, value: any) => {
     if (field.type === 'boolean') {
       const boolValue = value === 'true' || value?.booleanValue === 'true';
@@ -440,10 +479,28 @@ const ApplicationDetail = () => {
             </div>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" className="border-green-500 text-green-500 hover:bg-green-50">
-              <Check className="h-4 w-4 mr-2" /> Approve
-            </Button>
-            <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-50">
+            {checkHasUnresolvedRemarks() ? (
+              <Button 
+                variant="outline" 
+                className="border-orange-500 text-orange-500 hover:bg-orange-50"
+                onClick={() => handleApplicationDecision('revise')}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" /> Request Revision
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                className="border-green-500 text-green-500 hover:bg-green-50"
+                onClick={() => handleApplicationDecision('approve')}
+              >
+                <Check className="h-4 w-4 mr-2" /> Approve
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              className="border-red-500 text-red-500 hover:bg-red-50"
+              onClick={() => handleApplicationDecision('reject')}
+            >
               <X className="h-4 w-4 mr-2" /> Reject
             </Button>
           </div>
