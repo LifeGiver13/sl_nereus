@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, addDays, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, endOfDay, subDays } from 'date-fns';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { ViewType } from '../types/job';
+import { useDepartments } from './useDepartments';
 
 export const useJobsCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<ViewType>('weekly');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
+  
+  const { getDepartmentName } = useDepartments();
 
   const getDateRange = () => {
     switch (viewType) {
@@ -42,7 +46,7 @@ export const useJobsCalendar = () => {
   const { start: rangeStart, end: rangeEnd, days } = getDateRange();
 
   const { data: jobsData = { results: [], total: 0 }, isLoading } = useQuery({
-    queryKey: ['jobs', format(rangeStart, 'yyyy-MM-dd'), format(rangeEnd, 'yyyy-MM-dd'), viewType],
+    queryKey: ['jobs', format(rangeStart, 'yyyy-MM-dd'), format(rangeEnd, 'yyyy-MM-dd'), viewType, selectedDepartmentId],
     queryFn: async () => {
       const searchParams = {
         or: [
@@ -54,19 +58,28 @@ export const useJobsCalendar = () => {
                   { endDate: { gte: format(rangeStart, 'yyyy-MM-dd') } },
                   { endDate: null }
                 ]
-              }
+              },
+              ...(selectedDepartmentId ? [{ departmentId: selectedDepartmentId }] : [])
             ]
           }
         ]
       };
 
-      const response = await fetch(`${API_BASE_URL}/jobs?search=${encodeURIComponent(JSON.stringify(searchParams))}&expand=client,shift`);
+      const response = await apiRequest(`/jobs?search=${encodeURIComponent(JSON.stringify(searchParams))}&expand=client,shift`);
       if (!response.ok) {
         throw new Error('Failed to fetch jobs');
       }
       return response.json();
     }
   });
+  
+  // Add department names to jobs
+  const jobsWithDepartments = jobsData.results?.map(job => ({
+    ...job,
+    clientName: job.client?.name,
+    shiftName: job.shift?.name,
+    departmentName: getDepartmentName(job.departmentId)
+  })) || [];
 
   const handleDateChange = (direction: 'next' | 'prev') => {
     if (direction === 'next') {
@@ -104,8 +117,10 @@ export const useJobsCalendar = () => {
     rangeStart,
     rangeEnd,
     days,
-    jobs: jobsData.results || [],
+    jobs: jobsWithDepartments,
     isLoading,
-    handleDateChange
+    handleDateChange,
+    selectedDepartmentId,
+    setSelectedDepartmentId
   };
 };

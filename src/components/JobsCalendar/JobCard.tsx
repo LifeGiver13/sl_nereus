@@ -20,6 +20,9 @@ const JobCard: React.FC<JobCardProps> = ({ job, day, onClick }) => {
         {job.clientName} - {job.title}
       </div>
       <div className="text-xs text-gray-600 truncate mb-1">
+        {job.departmentName}
+      </div>
+      <div className="text-xs text-gray-500 truncate mb-1">
         {job.shiftName}
       </div>
       <div className="flex items-center justify-between">
