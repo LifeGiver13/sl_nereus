@@ -3,16 +3,21 @@ import { apiRequest } from '@/lib/utils';
 import { Department } from '../types/job';
 
 export const useDepartments = () => {
-  const { data: departments = [], isLoading } = useQuery({
+  const { data: departmentsData, isLoading } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
       const response = await apiRequest('/utils/department-list');
       if (!response.ok) {
         throw new Error('Failed to fetch departments');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('Departments API response:', data); // Debug log
+      return data;
     }
   });
+
+  // Ensure departments is always an array
+  const departments = Array.isArray(departmentsData) ? departmentsData : [];
 
   const getDepartmentName = (departmentId: number): string => {
     // Ensure departments is an array before using find
