@@ -10,7 +10,7 @@ export const useJobsCalendar = () => {
   const [viewType, setViewType] = useState<ViewType>('weekly');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
   
-  const { getDepartmentName } = useDepartments();
+  const { getDepartmentName, isLoading: isDepartmentsLoading } = useDepartments();
 
   const getDateRange = () => {
     switch (viewType) {
@@ -73,12 +73,12 @@ export const useJobsCalendar = () => {
     }
   });
   
-  // Add department names to jobs
+  // Add department names to jobs - only if departments are loaded
   const jobsWithDepartments = jobsData.results?.map(job => ({
     ...job,
     clientName: job.client?.name,
     shiftName: job.shift?.name,
-    departmentName: getDepartmentName(job.departmentId)
+    departmentName: !isDepartmentsLoading ? getDepartmentName(job.departmentId) : 'Loading...'
   })) || [];
 
   const handleDateChange = (direction: 'next' | 'prev') => {
@@ -118,7 +118,7 @@ export const useJobsCalendar = () => {
     rangeEnd,
     days,
     jobs: jobsWithDepartments,
-    isLoading,
+    isLoading: isLoading || isDepartmentsLoading,
     handleDateChange,
     selectedDepartmentId,
     setSelectedDepartmentId
