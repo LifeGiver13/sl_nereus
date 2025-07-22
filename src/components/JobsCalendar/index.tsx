@@ -88,7 +88,7 @@ const JobsCalendar = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
-                  {Array.isArray(departments) && departments.map((department) => (
+                  {departments.map((department) => (
                     <SelectItem key={department.id} value={department.id.toString()}>
                       {department.name}
                     </SelectItem>

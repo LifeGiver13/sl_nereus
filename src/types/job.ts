@@ -21,4 +21,8 @@ export interface Department {
   name: string;
 }
 
+export interface DepartmentResponse {
+  [key: string]: string;
+}
+
 export type ViewType = 'daily' | 'weekly' | 'monthly';

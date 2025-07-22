@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/utils';
-import { Department } from '../types/job';
+import { Department, DepartmentResponse } from '../types/job';
 
 export const useDepartments = () => {
-  const { data: departmentsData, isLoading } = useQuery({
+  const { data: departmentsResponse, isLoading } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
       const response = await apiRequest('/utils/department-list');
@@ -12,21 +12,24 @@ export const useDepartments = () => {
       }
       const data = await response.json();
       console.log('Departments API response:', data); // Debug log
-      return data;
+      return data as DepartmentResponse;
     }
   });
 
-  // Ensure departments is always an array
-  const departments = Array.isArray(departmentsData) ? departmentsData : [];
+  // Transform object response to array of Department objects
+  const departments: Department[] = departmentsResponse 
+    ? Object.entries(departmentsResponse).map(([id, name]) => ({
+        id: parseInt(id),
+        name
+      }))
+    : [];
 
   const getDepartmentName = (departmentId: number): string => {
-    // Ensure departments is an array before using find
-    if (!Array.isArray(departments) || departments.length === 0) {
+    if (!departmentsResponse) {
       return 'Loading...';
     }
     
-    const department = departments.find((dept: Department) => dept.id === departmentId);
-    return department?.name || 'Unknown Department';
+    return departmentsResponse[departmentId.toString()] || 'Unknown Department';
   };
 
   return {
