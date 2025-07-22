@@ -146,9 +146,7 @@ const JobCreate = () => {
   // Transform shifts data to array if it's an object, otherwise use as-is
   const shifts = shiftsData ? (Array.isArray(shiftsData) ? shiftsData : Object.entries(shiftsData).map(([id, shiftData]: [string, any]) => ({
     id: parseInt(id),
-    name: shiftData.name,
-    startTime: shiftData.startTime,
-    endTime: shiftData.endTime
+    name: shiftData,
   }))) : [];
 
   // Transform positions data to array
@@ -183,10 +181,10 @@ const JobCreate = () => {
         title: selectedPositionData.title || '',
         description: selectedPositionData.description || ''
       }));
-      
+
       // Auto-populate skills
       if (selectedPositionData.skills && availableSkills.length > 0) {
-        const positionSkills = availableSkills.filter(skill => 
+        const positionSkills = availableSkills.filter(skill =>
           selectedPositionData.skills.includes(skill.id)
         );
         setSelectedSkills(positionSkills);
@@ -257,7 +255,7 @@ const JobCreate = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedClientId) {
       toast({
         title: "Error",
@@ -413,8 +411,8 @@ const JobCreate = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Position *</label>
                   <div className="flex gap-2">
-                    <Select 
-                      value={selectedPositionId?.toString() || ''} 
+                    <Select
+                      value={selectedPositionId?.toString() || ''}
                       onValueChange={handlePositionSelect}
                       disabled={!selectedClientId}
                       required
@@ -504,8 +502,8 @@ const JobCreate = () => {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Shift</label>
                   <div className="flex gap-2">
-                    <Select 
-                      value={formData.shiftId} 
+                    <Select
+                      value={formData.shiftId}
                       onValueChange={(value) => handleInputChange('shiftId', value)}
                       disabled={!selectedClientId || !shifts?.length}
                     >
@@ -515,7 +513,7 @@ const JobCreate = () => {
                       <SelectContent>
                         {shifts?.map((shift) => (
                           <SelectItem key={shift.id} value={shift.id.toString()}>
-                            {shift.name} ({shift.startTime} - {shift.endTime})
+                            {shift.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -592,8 +590,8 @@ const JobCreate = () => {
             <Link to="/jobs">
               <Button variant="outline">Cancel</Button>
             </Link>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isSubmitting}
               className="bg-[#712B71] hover:bg-[#712B71]/90"
             >
