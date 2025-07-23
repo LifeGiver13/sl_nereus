@@ -1,14 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, addDays, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, endOfDay, subDays } from 'date-fns';
 import { apiRequest } from '@/lib/utils';
 import { ViewType } from '../types/job';
 import { useDepartments } from './useDepartments';
+import { usePreferences } from './usePreferences';
 
 export const useJobsCalendar = () => {
+  const { preferences, updateCalendarPreferences } = usePreferences();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewType, setViewType] = useState<ViewType>('weekly');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
+
+  // Initialize state from preferences
+  useEffect(() => {
+    if (preferences.calendar) {
+      setCurrentDate(new Date(preferences.calendar.currentDate));
+      setViewType(preferences.calendar.viewType);
+      setSelectedDepartmentId(preferences.calendar.selectedDepartmentId);
+    }
+  }, [preferences]);
   
   const { getDepartmentName, isLoading: isDepartmentsLoading } = useDepartments();
 
@@ -82,38 +93,56 @@ export const useJobsCalendar = () => {
   })) || [];
 
   const handleDateChange = (direction: 'next' | 'prev') => {
+    let newDate = currentDate;
     if (direction === 'next') {
       switch (viewType) {
         case 'daily':
-          setCurrentDate(addDays(currentDate, 1));
+          newDate = addDays(currentDate, 1);
           break;
         case 'weekly':
-          setCurrentDate(addWeeks(currentDate, 1));
+          newDate = addWeeks(currentDate, 1);
           break;
         case 'monthly':
-          setCurrentDate(addMonths(currentDate, 1));
+          newDate = addMonths(currentDate, 1);
           break;
       }
     } else {
       switch (viewType) {
         case 'daily':
-          setCurrentDate(subDays(currentDate, 1));
+          newDate = subDays(currentDate, 1);
           break;
         case 'weekly':
-          setCurrentDate(subWeeks(currentDate, 1));
+          newDate = subWeeks(currentDate, 1);
           break;
         case 'monthly':
-          setCurrentDate(subMonths(currentDate, 1));
+          newDate = subMonths(currentDate, 1);
           break;
       }
     }
+    setCurrentDate(newDate);
+    updateCalendarPreferences({ currentDate: newDate.toISOString() });
+  };
+
+  const handleSetCurrentDate = (date: Date) => {
+    setCurrentDate(date);
+    updateCalendarPreferences({ currentDate: date.toISOString() });
+  };
+
+  const handleSetViewType = (newViewType: ViewType) => {
+    setViewType(newViewType);
+    updateCalendarPreferences({ viewType: newViewType });
+  };
+
+  const handleSetSelectedDepartmentId = (departmentId: number | null) => {
+    setSelectedDepartmentId(departmentId);
+    updateCalendarPreferences({ selectedDepartmentId: departmentId });
   };
 
   return {
     currentDate,
-    setCurrentDate,
+    setCurrentDate: handleSetCurrentDate,
     viewType,
-    setViewType,
+    setViewType: handleSetViewType,
     rangeStart,
     rangeEnd,
     days,
@@ -121,6 +150,6 @@ export const useJobsCalendar = () => {
     isLoading: isLoading || isDepartmentsLoading,
     handleDateChange,
     selectedDepartmentId,
-    setSelectedDepartmentId
+    setSelectedDepartmentId: handleSetSelectedDepartmentId
   };
 };
