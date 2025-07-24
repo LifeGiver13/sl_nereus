@@ -8,13 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { X, Save, Edit, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import AvailabilityManager from './AvailabilityManager';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format, parseISO, isAfter, isBefore, isEqual } from 'date-fns';
+import { CalendarIcon, Plus, Trash2 } from 'lucide-react';
 
 interface AvailabilityWindow {
-  startDate: string;
-  endDate: string;
+  startDate: Date;
+  endDate: Date;
 }
 
 interface PlacementRow {
@@ -31,6 +35,7 @@ interface PlacementRow {
   isPlaceholder: boolean;
   meta?: {
     full_placement?: boolean;
+    manage_availability?: boolean;
     availability?: AvailabilityWindow[];
     instructions?: string;
     notes?: string;
@@ -179,6 +184,7 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
   const hasChanges = (userId: number) => {
     return placementChanges.has(userId) && Object.keys(placementChanges.get(userId) || {}).length > 0;
   };
+
   return (
     <div className="space-y-4">
       {placements.map((placement) => (
@@ -277,48 +283,189 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
             )}
 
             {(expandedRows.has(placement.userId) || placement.isPlaceholder) && jobStartDate && jobEndDate && (
-              <AvailabilityManager
-                fullPlacement={
-                  (() => {
-                    const changes = placementChanges.get(placement.userId);
-                    // Check if there's a change to full_placement specifically
-                    if (changes?.meta && 'full_placement' in changes.meta) {
-                      console.log('Using changed fullPlacement value:', changes.meta.full_placement);
-                      return changes.meta.full_placement;
-                    }
-                    // Otherwise, use original value with default to true
-                    const originalValue = placement.meta?.full_placement !== false;
-                    console.log('Using original fullPlacement value:', originalValue);
-                    return originalValue;
-                  })()
-                }
-                availability={
-                  (() => {
-                    const changes = placementChanges.get(placement.userId);
-                    const availability = changes?.meta?.availability || placement.meta?.availability || [];
-                    console.log('AvailabilityManager availability:', {
-                      userId: placement.userId,
-                      availability
-                    });
-                    return availability;
-                  })()
-                }
+              <AvailabilitySection
+                placement={placement}
+                changes={placementChanges.get(placement.userId)}
                 jobStartDate={jobStartDate}
                 jobEndDate={jobEndDate}
-                onFullPlacementChange={(checked) => {
-                  console.log('onFullPlacementChange called:', { userId: placement.userId, checked });
-                  handleMetaChange(placement.userId, 'full_placement', checked);
-                }}
-                onAvailabilityChange={(availability) => {
-                  console.log('onAvailabilityChange called:', { userId: placement.userId, availability });
-                  handleMetaChange(placement.userId, 'availability', availability);
-                }}
+                onMetaChange={handleMetaChange}
               />
             )}
           </CardContent>
         </Card>
       ))}
     </div>
+  );
+};
+
+// Simple Availability Section Component
+const AvailabilitySection: React.FC<{
+  placement: PlacementRow;
+  changes: Partial<PlacementRow> | undefined;
+  jobStartDate: string;
+  jobEndDate: string;
+  onMetaChange: (userId: number, metaField: string, value: any) => void;
+}> = ({ placement, changes, jobStartDate, jobEndDate, onMetaChange }) => {
+  const manageAvailability = changes?.meta?.manage_availability || placement.meta?.manage_availability || false;
+  const availability = changes?.meta?.availability || placement.meta?.availability || [];
+
+  const handleManageAvailabilityChange = (checked: boolean) => {
+    onMetaChange(placement.userId, 'manage_availability', checked);
+    if (checked) {
+      // Set full_placement to false when managing availability
+      onMetaChange(placement.userId, 'full_placement', false);
+      // Add a default availability window if none exist
+      if (!availability.length) {
+        const defaultWindow = {
+          startDate: parseISO(jobStartDate),
+          endDate: parseISO(jobEndDate)
+        };
+        onMetaChange(placement.userId, 'availability', [defaultWindow]);
+      }
+    } else {
+      // Clear availability when not managing
+      onMetaChange(placement.userId, 'availability', []);
+      onMetaChange(placement.userId, 'full_placement', true);
+    }
+  };
+
+  const addAvailabilityWindow = () => {
+    const newWindow = {
+      startDate: parseISO(jobStartDate),
+      endDate: parseISO(jobEndDate)
+    };
+    onMetaChange(placement.userId, 'availability', [...availability, newWindow]);
+  };
+
+  const updateAvailabilityWindow = (index: number, field: 'startDate' | 'endDate', date: Date) => {
+    const updatedWindows = availability.map((window, i) => 
+      i === index ? { ...window, [field]: date } : window
+    );
+    
+    // Check for overlaps
+    if (hasOverlaps(updatedWindows)) {
+      return; // Don't update if there are overlaps
+    }
+    
+    onMetaChange(placement.userId, 'availability', updatedWindows);
+  };
+
+  const removeAvailabilityWindow = (index: number) => {
+    const updatedWindows = availability.filter((_, i) => i !== index);
+    onMetaChange(placement.userId, 'availability', updatedWindows);
+  };
+
+  const hasOverlaps = (windows: AvailabilityWindow[]): boolean => {
+    for (let i = 0; i < windows.length; i++) {
+      for (let j = i + 1; j < windows.length; j++) {
+        const window1 = windows[i];
+        const window2 = windows[j];
+        
+        // Check if windows overlap
+        if (
+          (isAfter(window1.startDate, window2.startDate) || isEqual(window1.startDate, window2.startDate)) && (isBefore(window1.startDate, window2.endDate) || isEqual(window1.startDate, window2.endDate)) ||
+          (isAfter(window1.endDate, window2.startDate) || isEqual(window1.endDate, window2.startDate)) && (isBefore(window1.endDate, window2.endDate) || isEqual(window1.endDate, window2.endDate)) ||
+          (isBefore(window1.startDate, window2.startDate) || isEqual(window1.startDate, window2.startDate)) && (isAfter(window1.endDate, window2.endDate) || isEqual(window1.endDate, window2.endDate))
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  return (
+    <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+      <div className="flex items-center space-x-2 mb-4">
+        <Switch
+          checked={manageAvailability}
+          onCheckedChange={handleManageAvailabilityChange}
+        />
+        <label className="text-sm font-medium">Manage Availability</label>
+        <span className="text-xs text-muted-foreground">
+          ({format(parseISO(jobStartDate), 'MMM dd')} - {format(parseISO(jobEndDate), 'MMM dd')})
+        </span>
+      </div>
+
+      {manageAvailability && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Available Periods</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addAvailabilityWindow}
+              className="h-8"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add Period
+            </Button>
+          </div>
+
+          {availability.map((window, index) => (
+            <div key={index} className="flex items-center space-x-2">
+              <DatePickerButton
+                date={window.startDate}
+                onDateChange={(date) => date && updateAvailabilityWindow(index, 'startDate', date)}
+                placeholder="Start date"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <DatePickerButton
+                date={window.endDate}
+                onDateChange={(date) => date && updateAvailabilityWindow(index, 'endDate', date)}
+                placeholder="End date"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeAvailabilityWindow(index)}
+                className="h-8 w-8 p-0"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+
+          {availability.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No availability periods set. Click "Add Period" to specify when this candidate is available.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Date Picker Button Component
+const DatePickerButton: React.FC<{
+  date: Date;
+  onDateChange: (date: Date | undefined) => void;
+  placeholder: string;
+}> = ({ date, onDateChange, placeholder }) => {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-40 justify-start text-left font-normal"
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, 'MMM dd, yyyy') : placeholder}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={onDateChange}
+          initialFocus
+          className="p-3 pointer-events-auto"
+        />
+      </PopoverContent>
+    </Popover>
   );
 };
 

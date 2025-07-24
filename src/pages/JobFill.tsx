@@ -42,8 +42,8 @@ interface Job {
 }
 
 interface AvailabilityWindow {
-  startDate: string;
-  endDate: string;
+  startDate: Date;
+  endDate: Date;
 }
 
 interface PlacementRow {
@@ -60,6 +60,7 @@ interface PlacementRow {
   isPlaceholder: boolean;
   meta?: {
     full_placement?: boolean;
+    manage_availability?: boolean;
     availability?: AvailabilityWindow[];
     instructions?: string;
     notes?: string;
@@ -124,7 +125,11 @@ const JobFill = () => {
           isPlaceholder: false,
           meta: {
             full_placement: placement.meta?.full_placement !== false, // default to true
-            availability: placement.meta?.availability || [],
+            availability: placement.meta?.availability ? 
+              placement.meta.availability.map((window: any) => ({
+                startDate: new Date(window.startDate),
+                endDate: new Date(window.endDate)
+              })) : [],
             instructions: placement.meta?.instructions || '',
             notes: placement.meta?.notes || ''
           }
@@ -169,8 +174,8 @@ const JobFill = () => {
       meta: {
         full_placement: true, // default to true for new placements
         availability: job ? [{
-          startDate: job.startDate,
-          endDate: job.endDate
+          startDate: new Date(job.startDate),
+          endDate: new Date(job.endDate)
         }] : [],
         instructions: '',
         notes: ''
@@ -214,7 +219,10 @@ const JobFill = () => {
             instructions: placement.instructions,
             notes: placement.notes,
             full_placement: placement.meta?.full_placement !== false,
-            availability: placement.meta?.availability || []
+            availability: placement.meta?.availability?.map((window: any) => ({
+              startDate: window.startDate.toISOString(),
+              endDate: window.endDate.toISOString()
+            })) || []
           }
         };
 
