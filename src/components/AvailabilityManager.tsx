@@ -35,6 +35,8 @@ const AvailabilityManager: React.FC<AvailabilityManagerProps> = ({
   }, [availability]);
 
   const handleFullPlacementChange = (checked: boolean) => {
+    console.log('AvailabilityManager handleFullPlacementChange:', { checked, currentFullPlacement: fullPlacement });
+    
     onFullPlacementChange(checked);
     
     if (checked) {
@@ -43,10 +45,12 @@ const AvailabilityManager: React.FC<AvailabilityManagerProps> = ({
         startDate: jobStartDate,
         endDate: jobEndDate
       }];
+      console.log('Setting full job window:', fullJobWindow);
       setAvailabilityWindows(fullJobWindow);
       onAvailabilityChange(fullJobWindow);
     } else {
       // Clear availability when unchecking full placement
+      console.log('Clearing availability windows');
       setAvailabilityWindows([]);
       onAvailabilityChange([]);
     }
@@ -63,16 +67,20 @@ const AvailabilityManager: React.FC<AvailabilityManagerProps> = ({
   };
 
   const updateAvailabilityWindow = (index: number, range: { from: string; to: string }) => {
+    console.log('updateAvailabilityWindow called:', { index, range });
+    
     const updatedWindows = availabilityWindows.map((window, i) => 
       i === index ? { startDate: range.from, endDate: range.to } : window
     );
     
     // Check for overlaps
     if (hasOverlaps(updatedWindows)) {
+      console.log('Overlap detected, not updating');
       // Don't update if there are overlaps - could show an error message
       return;
     }
     
+    console.log('Updating availability windows:', updatedWindows);
     setAvailabilityWindows(updatedWindows);
     onAvailabilityChange(updatedWindows);
   };

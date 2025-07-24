@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { X, Save, Edit } from 'lucide-react';
+import { X, Save, Edit, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import AvailabilityManager from './AvailabilityManager';
 import { useToast } from '@/hooks/use-toast';
@@ -107,10 +107,14 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
   };
 
   const handleMetaChange = (userId: number, metaField: string, value: any) => {
+    console.log('handleMetaChange called:', { userId, metaField, value });
+    
     const currentChanges = placementChanges.get(userId) || {};
     const currentMeta = currentChanges.meta || {};
     const updatedMeta = { ...currentMeta, [metaField]: value };
     const updatedChanges = { ...currentChanges, meta: updatedMeta };
+    
+    console.log('handleMetaChange updating:', { currentMeta, updatedMeta });
     
     const newChanges = new Map(placementChanges);
     newChanges.set(userId, updatedChanges);
@@ -190,7 +194,8 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
                   </Badge>
                 )}
                 {hasChanges(placement.userId) && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
                     Unsaved changes
                   </Badge>
                 )}
@@ -285,18 +290,43 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
             {expandedRows.has(placement.userId) && jobStartDate && jobEndDate && (
               <AvailabilityManager
                 fullPlacement={
-                  placementChanges.get(placement.userId)?.meta?.full_placement !== undefined 
-                    ? placementChanges.get(placement.userId)?.meta?.full_placement 
-                    : placement.meta?.full_placement !== false
+                  (() => {
+                    const changes = placementChanges.get(placement.userId);
+                    const hasFullPlacementChange = changes?.meta && 'full_placement' in changes.meta;
+                    const value = hasFullPlacementChange 
+                      ? changes.meta.full_placement 
+                      : placement.meta?.full_placement !== false;
+                    console.log('AvailabilityManager fullPlacement:', {
+                      userId: placement.userId,
+                      hasFullPlacementChange,
+                      changedValue: changes?.meta?.full_placement,
+                      originalValue: placement.meta?.full_placement,
+                      finalValue: value
+                    });
+                    return value;
+                  })()
                 }
                 availability={
-                  placementChanges.get(placement.userId)?.meta?.availability || 
-                  placement.meta?.availability || []
+                  (() => {
+                    const changes = placementChanges.get(placement.userId);
+                    const availability = changes?.meta?.availability || placement.meta?.availability || [];
+                    console.log('AvailabilityManager availability:', {
+                      userId: placement.userId,
+                      availability
+                    });
+                    return availability;
+                  })()
                 }
                 jobStartDate={jobStartDate}
                 jobEndDate={jobEndDate}
-                onFullPlacementChange={(checked) => handleMetaChange(placement.userId, 'full_placement', checked)}
-                onAvailabilityChange={(availability) => handleMetaChange(placement.userId, 'availability', availability)}
+                onFullPlacementChange={(checked) => {
+                  console.log('onFullPlacementChange called:', { userId: placement.userId, checked });
+                  handleMetaChange(placement.userId, 'full_placement', checked);
+                }}
+                onAvailabilityChange={(availability) => {
+                  console.log('onAvailabilityChange called:', { userId: placement.userId, availability });
+                  handleMetaChange(placement.userId, 'availability', availability);
+                }}
               />
             )}
           </CardContent>
