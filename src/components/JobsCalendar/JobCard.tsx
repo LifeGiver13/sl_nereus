@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Job } from '../../types/job';
 import { getStatusColor } from '../../utils/jobsCalendarUtils';
 import { Users } from 'lucide-react';
@@ -48,15 +49,23 @@ const JobCard: React.FC<JobCardProps> = ({ job, day, onClick }) => {
         </div>
       </div>
       
-      <Button
-        onClick={handleFillVacancies}
-        size="sm"
-        variant="outline"
-        className="w-full text-xs h-6"
-      >
-        <Users className="h-3 w-3 mr-1" />
-        Fill Vacancies
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleFillVacancies}
+              size="sm"
+              variant="outline"
+              className="w-full h-6 px-2"
+            >
+              <Users className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Manage Vacancies</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };
