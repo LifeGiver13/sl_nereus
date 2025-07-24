@@ -41,6 +41,11 @@ interface Job {
   assignees: number[];
 }
 
+interface AvailabilityWindow {
+  startDate: string;
+  endDate: string;
+}
+
 interface PlacementRow {
   id?: number;
   userId: number;
@@ -53,6 +58,12 @@ interface PlacementRow {
   status: string;
   confirmed: boolean;
   isPlaceholder: boolean;
+  meta?: {
+    full_placement?: boolean;
+    availability?: AvailabilityWindow[];
+    instructions?: string;
+    notes?: string;
+  };
 }
 
 const JobFill = () => {
@@ -110,7 +121,13 @@ const JobFill = () => {
           notes: placement.meta?.notes || '',
           status: placement.status || 'awaiting_confirmation',
           confirmed: placement.confirmed || false,
-          isPlaceholder: false
+          isPlaceholder: false,
+          meta: {
+            full_placement: placement.meta?.full_placement !== false, // default to true
+            availability: placement.meta?.availability || [],
+            instructions: placement.meta?.instructions || '',
+            notes: placement.meta?.notes || ''
+          }
         };
       });
       setPlacements(existingPlacementRows);
@@ -148,7 +165,16 @@ const JobFill = () => {
       notes: '',
       status: 'accepted',
       confirmed: true,
-      isPlaceholder: true
+      isPlaceholder: true,
+      meta: {
+        full_placement: true, // default to true for new placements
+        availability: job ? [{
+          startDate: job.startDate,
+          endDate: job.endDate
+        }] : [],
+        instructions: '',
+        notes: ''
+      }
     };
 
     setPlacements([...placements, newPlacement]);
@@ -180,7 +206,9 @@ const JobFill = () => {
           status: placement.status,
           meta: {
             instructions: placement.instructions,
-            notes: placement.notes
+            notes: placement.notes,
+            full_placement: placement.meta?.full_placement !== false,
+            availability: placement.meta?.availability || []
           }
         };
 
@@ -294,6 +322,9 @@ const JobFill = () => {
                 placements={placementsArray}
                 onRemoveUser={handleRemoveUser}
                 onUpdatePlacement={handleUpdatePlacement}
+                onRefresh={refetchPlacements}
+                jobStartDate={job.startDate}
+                jobEndDate={job.endDate}
                 showStatusControls={false}
                 showConfirmedControls={false}
               />
