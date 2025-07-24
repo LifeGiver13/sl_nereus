@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -188,11 +187,24 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-4">
                 <p className="font-medium">{placement.user.displayName}</p>
-                {placement.status && (
-                  <Badge variant="outline" className="text-xs">
-                    {placement.status.replace('_', ' ')}
-                  </Badge>
-                )}
+                
+                {/* Status Dropdown */}
+                <Select
+                  value={placement.status}
+                  onValueChange={(value) => handleFieldChange(placement.userId, 'status', value)}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
                 {hasChanges(placement.userId) && (
                   <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
                     <AlertTriangle className="h-3 w-3 mr-1" />
@@ -252,58 +264,32 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
               </div>
             </div>
 
-            {showStatusControls && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Status</label>
-                  <Select
-                    value={placement.status}
-                    onValueChange={(value) => handleFieldChange(placement.userId, 'status', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            {showConfirmedControls && (
+              <div className="mt-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={placement.confirmed}
+                    onCheckedChange={(checked) => handleFieldChange(placement.userId, 'confirmed', checked as boolean)}
+                  />
+                  <span className="text-sm font-medium">Confirmed</span>
                 </div>
-                {showConfirmedControls && (
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Confirmed</label>
-                    <div className="flex items-center space-x-2 pt-2">
-                      <Checkbox
-                        checked={placement.confirmed}
-                        onCheckedChange={(checked) => handleFieldChange(placement.userId, 'confirmed', checked as boolean)}
-                      />
-                      <span className="text-sm">{placement.confirmed ? 'Yes' : 'No'}</span>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
-            {expandedRows.has(placement.userId) && jobStartDate && jobEndDate && (
+            {(expandedRows.has(placement.userId) || placement.isPlaceholder) && jobStartDate && jobEndDate && (
               <AvailabilityManager
                 fullPlacement={
                   (() => {
                     const changes = placementChanges.get(placement.userId);
-                    const hasFullPlacementChange = changes?.meta && 'full_placement' in changes.meta;
-                    const value = hasFullPlacementChange 
-                      ? changes.meta.full_placement 
-                      : placement.meta?.full_placement !== false;
-                    console.log('AvailabilityManager fullPlacement:', {
-                      userId: placement.userId,
-                      hasFullPlacementChange,
-                      changedValue: changes?.meta?.full_placement,
-                      originalValue: placement.meta?.full_placement,
-                      finalValue: value
-                    });
-                    return value;
+                    // Check if there's a change to full_placement specifically
+                    if (changes?.meta && 'full_placement' in changes.meta) {
+                      console.log('Using changed fullPlacement value:', changes.meta.full_placement);
+                      return changes.meta.full_placement;
+                    }
+                    // Otherwise, use original value with default to true
+                    const originalValue = placement.meta?.full_placement !== false;
+                    console.log('Using original fullPlacement value:', originalValue);
+                    return originalValue;
                   })()
                 }
                 availability={
