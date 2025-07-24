@@ -390,29 +390,20 @@ const AvailabilitySection: React.FC<{
       <div className="space-y-3">
         {availability.map((window, index) => (
           <div key={index} className="flex items-center space-x-2">
-            <DatePickerButton
-              date={window.startDate}
-              onDateChange={(date) => date && updateAvailabilityWindow(index, 'startDate', date)}
-              placeholder="Start date"
-              jobStartDate={jobStart}
-              jobEndDate={jobEnd}
-              allSelectedDates={availability
-                .filter(w => w && w.startDate && w.endDate)
-                .flatMap(w => {
-                  const dates = [];
-                  let current = new Date(w.startDate);
-                  while (current <= w.endDate) {
-                    dates.push(new Date(current));
-                    current.setDate(current.getDate() + 1);
+            <DateRangePickerButton
+              startDate={window.startDate}
+              endDate={window.endDate}
+              onRangeChange={(range) => {
+                if (range?.from) {
+                  updateAvailabilityWindow(index, 'startDate', range.from);
+                  if (range?.to) {
+                    updateAvailabilityWindow(index, 'endDate', range.to);
+                  } else {
+                    // Single day selection - set end date same as start date
+                    updateAvailabilityWindow(index, 'endDate', range.from);
                   }
-                  return dates;
-                })}
-            />
-            <span className="text-sm text-muted-foreground">to</span>
-            <DatePickerButton
-              date={window.endDate}
-              onDateChange={(date) => date && updateAvailabilityWindow(index, 'endDate', date)}
-              placeholder="End date"
+                }
+              }}
               jobStartDate={jobStart}
               jobEndDate={jobEnd}
               allSelectedDates={availability
@@ -449,57 +440,70 @@ const AvailabilitySection: React.FC<{
   );
 };
 
-// Date Picker Button Component
-const DatePickerButton: React.FC<{
-  date: Date;
-  onDateChange: (date: Date | undefined) => void;
-  placeholder: string;
+// Date Range Picker Button Component
+const DateRangePickerButton: React.FC<{
+  startDate: Date;
+  endDate: Date;
+  onRangeChange: (range: { from: Date | undefined; to: Date | undefined } | undefined) => void;
   jobStartDate: Date;
   jobEndDate: Date;
   allSelectedDates: Date[];
-}> = ({ date, onDateChange, placeholder, jobStartDate, jobEndDate, allSelectedDates }) => {
-  const isDateSelected = (checkDate: Date) => {
-    return allSelectedDates.some(selectedDate => 
-      format(selectedDate, 'yyyy-MM-dd') === format(checkDate, 'yyyy-MM-dd')
-    );
-  };
-
+}> = ({ startDate, endDate, onRangeChange, jobStartDate, jobEndDate, allSelectedDates }) => {
   const isDateDisabled = (checkDate: Date) => {
     return isBefore(checkDate, jobStartDate) || isAfter(checkDate, jobEndDate);
   };
 
+  const formatDateRange = () => {
+    if (!startDate) return "Select dates";
+    
+    if (format(startDate, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')) {
+      return format(startDate, 'MMM dd, yyyy');
+    }
+    
+    return `${format(startDate, 'MMM dd')} - ${format(endDate, 'MMM dd, yyyy')}`;
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-40 justify-start text-left font-normal"
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, 'MMM dd, yyyy') : placeholder}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={onDateChange}
-          disabled={isDateDisabled}
-          modifiers={{
-            selected_range: allSelectedDates
-          }}
-          modifiersStyles={{
-            selected_range: {
-              backgroundColor: 'hsl(var(--success))',
-              color: 'hsl(var(--success-foreground))',
-              borderRadius: '4px'
-            }
-          }}
-          initialFocus
-          className="p-3 pointer-events-auto"
-        />
-      </PopoverContent>
-    </Popover>
+    <div className="flex flex-col space-y-2 flex-1">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="justify-start text-left font-normal"
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {formatDateRange()}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="range"
+            selected={{ from: startDate, to: endDate }}
+            onSelect={onRangeChange}
+            disabled={isDateDisabled}
+            modifiers={{
+              selected_range: allSelectedDates
+            }}
+            modifiersStyles={{
+              selected_range: {
+                backgroundColor: 'hsl(var(--success))',
+                color: 'hsl(var(--success-foreground))',
+                borderRadius: '4px'
+              }
+            }}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+      <div className="text-xs text-muted-foreground">
+        {startDate && endDate && format(startDate, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd') 
+          ? "Single day assignment" 
+          : startDate && endDate 
+            ? `${format(startDate, 'MMM dd')} to ${format(endDate, 'MMM dd')}`
+            : "No dates selected"}
+      </div>
+    </div>
   );
 };
 
