@@ -10,7 +10,6 @@ import { X, Save, Edit, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/utils';
-import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, parseISO, isAfter, isBefore, isEqual } from 'date-fns';
@@ -34,8 +33,6 @@ interface PlacementRow {
   confirmed: boolean;
   isPlaceholder: boolean;
   meta?: {
-    full_placement?: boolean;
-    manage_availability?: boolean;
     availability?: AvailabilityWindow[];
     instructions?: string;
     notes?: string;
@@ -306,33 +303,26 @@ const AvailabilitySection: React.FC<{
   jobEndDate: string;
   onMetaChange: (userId: number, metaField: string, value: any) => void;
 }> = ({ placement, changes, jobStartDate, jobEndDate, onMetaChange }) => {
-  const manageAvailability = changes?.meta?.manage_availability || placement.meta?.manage_availability || false;
   const availability = changes?.meta?.availability || placement.meta?.availability || [];
+  const jobStart = parseISO(jobStartDate);
+  const jobEnd = parseISO(jobEndDate);
 
-  const handleManageAvailabilityChange = (checked: boolean) => {
-    onMetaChange(placement.userId, 'manage_availability', checked);
-    if (checked) {
-      // Set full_placement to false when managing availability
-      onMetaChange(placement.userId, 'full_placement', false);
-      // Add a default availability window if none exist
-      if (!availability.length) {
-        const defaultWindow = {
-          startDate: parseISO(jobStartDate),
-          endDate: parseISO(jobEndDate)
-        };
-        onMetaChange(placement.userId, 'availability', [defaultWindow]);
-      }
-    } else {
-      // Clear availability when not managing
-      onMetaChange(placement.userId, 'availability', []);
-      onMetaChange(placement.userId, 'full_placement', true);
-    }
+  // Check if we can add more windows (if current availability doesn't cover full job range)
+  const canAddWindow = () => {
+    if (availability.length === 0) return true;
+    
+    // Check if any window starts after job start or ends before job end
+    const hasGaps = availability.some(window => 
+      isAfter(window.startDate, jobStart) || isBefore(window.endDate, jobEnd)
+    );
+    
+    return hasGaps;
   };
 
   const addAvailabilityWindow = () => {
     const newWindow = {
-      startDate: parseISO(jobStartDate),
-      endDate: parseISO(jobEndDate)
+      startDate: jobStart,
+      endDate: jobEnd
     };
     onMetaChange(placement.userId, 'availability', [...availability, newWindow]);
   };
@@ -376,65 +366,59 @@ const AvailabilitySection: React.FC<{
 
   return (
     <div className="mt-4 p-4 border rounded-lg bg-muted/50">
-      <div className="flex items-center space-x-2 mb-4">
-        <Switch
-          checked={manageAvailability}
-          onCheckedChange={handleManageAvailabilityChange}
-        />
-        <label className="text-sm font-medium">Manage Availability</label>
-        <span className="text-xs text-muted-foreground">
-          ({format(parseISO(jobStartDate), 'MMM dd')} - {format(parseISO(jobEndDate), 'MMM dd')})
-        </span>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <span className="text-sm font-medium">Availability</span>
+          <div className="text-xs text-muted-foreground">
+            Job: {format(jobStart, 'MMM dd')} - {format(jobEnd, 'MMM dd')}
+          </div>
+        </div>
+        {canAddWindow() && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addAvailabilityWindow}
+            className="h-8"
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Add Period
+          </Button>
+        )}
       </div>
 
-      {manageAvailability && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Available Periods</span>
+      <div className="space-y-3">
+        {availability.map((window, index) => (
+          <div key={index} className="flex items-center space-x-2">
+            <DatePickerButton
+              date={window.startDate}
+              onDateChange={(date) => date && updateAvailabilityWindow(index, 'startDate', date)}
+              placeholder="Start date"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <DatePickerButton
+              date={window.endDate}
+              onDateChange={(date) => date && updateAvailabilityWindow(index, 'endDate', date)}
+              placeholder="End date"
+            />
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={addAvailabilityWindow}
-              className="h-8"
+              onClick={() => removeAvailabilityWindow(index)}
+              className="h-8 w-8 p-0"
             >
-              <Plus className="h-3 w-3 mr-1" />
-              Add Period
+              <Trash2 className="h-3 w-3" />
             </Button>
           </div>
+        ))}
 
-          {availability.map((window, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <DatePickerButton
-                date={window.startDate}
-                onDateChange={(date) => date && updateAvailabilityWindow(index, 'startDate', date)}
-                placeholder="Start date"
-              />
-              <span className="text-sm text-muted-foreground">to</span>
-              <DatePickerButton
-                date={window.endDate}
-                onDateChange={(date) => date && updateAvailabilityWindow(index, 'endDate', date)}
-                placeholder="End date"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeAvailabilityWindow(index)}
-                className="h-8 w-8 p-0"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
-
-          {availability.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              No availability periods set. Click "Add Period" to specify when this candidate is available.
-            </p>
-          )}
-        </div>
-      )}
+        {availability.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            No availability periods set.
+          </p>
+        )}
+      </div>
     </div>
   );
 };
