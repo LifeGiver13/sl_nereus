@@ -394,12 +394,34 @@ const AvailabilitySection: React.FC<{
               date={window.startDate}
               onDateChange={(date) => date && updateAvailabilityWindow(index, 'startDate', date)}
               placeholder="Start date"
+              jobStartDate={jobStart}
+              jobEndDate={jobEnd}
+              allSelectedDates={availability.flatMap(w => {
+                const dates = [];
+                let current = new Date(w.startDate);
+                while (current <= w.endDate) {
+                  dates.push(new Date(current));
+                  current.setDate(current.getDate() + 1);
+                }
+                return dates;
+              })}
             />
             <span className="text-sm text-muted-foreground">to</span>
             <DatePickerButton
               date={window.endDate}
               onDateChange={(date) => date && updateAvailabilityWindow(index, 'endDate', date)}
               placeholder="End date"
+              jobStartDate={jobStart}
+              jobEndDate={jobEnd}
+              allSelectedDates={availability.flatMap(w => {
+                const dates = [];
+                let current = new Date(w.startDate);
+                while (current <= w.endDate) {
+                  dates.push(new Date(current));
+                  current.setDate(current.getDate() + 1);
+                }
+                return dates;
+              })}
             />
             <Button
               type="button"
@@ -428,7 +450,20 @@ const DatePickerButton: React.FC<{
   date: Date;
   onDateChange: (date: Date | undefined) => void;
   placeholder: string;
-}> = ({ date, onDateChange, placeholder }) => {
+  jobStartDate: Date;
+  jobEndDate: Date;
+  allSelectedDates: Date[];
+}> = ({ date, onDateChange, placeholder, jobStartDate, jobEndDate, allSelectedDates }) => {
+  const isDateSelected = (checkDate: Date) => {
+    return allSelectedDates.some(selectedDate => 
+      format(selectedDate, 'yyyy-MM-dd') === format(checkDate, 'yyyy-MM-dd')
+    );
+  };
+
+  const isDateDisabled = (checkDate: Date) => {
+    return isBefore(checkDate, jobStartDate) || isAfter(checkDate, jobEndDate);
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -445,6 +480,17 @@ const DatePickerButton: React.FC<{
           mode="single"
           selected={date}
           onSelect={onDateChange}
+          disabled={isDateDisabled}
+          modifiers={{
+            selected_range: allSelectedDates
+          }}
+          modifiersStyles={{
+            selected_range: {
+              backgroundColor: 'hsl(var(--success))',
+              color: 'hsl(var(--success-foreground))',
+              borderRadius: '4px'
+            }
+          }}
           initialFocus
           className="p-3 pointer-events-auto"
         />
