@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 import PlacementDetailModal from '../components/PlacementDetailModal';
 import PlacementEditModal from '../components/PlacementEditModal';
+import JobCalendar from '../components/JobCalendar';
 
 interface Job {
   id: number;
@@ -310,6 +311,9 @@ const JobDetail = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Job Calendar */}
+        <JobCalendar job={job} placements={placements} />
 
         {placements.length > 0 && (
           <Card className="border-0 shadow-lg">
