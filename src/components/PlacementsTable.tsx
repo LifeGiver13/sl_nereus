@@ -41,7 +41,7 @@ interface PlacementRow {
 interface PlacementsTableProps {
   placements: PlacementRow[];
   onRemoveUser: (userId: number) => void;
-  onUpdatePlacement: (userId: number, field: 'instructions' | 'notes' | 'status' | 'confirmed', value: string | boolean) => void;
+  onUpdatePlacement: (userId: number, field: 'instructions' | 'notes' | 'status' | 'confirmed' | 'meta', value: string | boolean | any) => void;
   onRefresh?: () => void;
   jobStartDate?: string;
   jobEndDate?: string;
@@ -72,6 +72,16 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [placementChanges, setPlacementChanges] = useState<Map<number, Partial<PlacementRow>>>(new Map());
   const [savingPlacements, setSavingPlacements] = useState<Set<number>>(new Set());
+
+  // Auto-expand new placements (isPlaceholder = true)
+  useEffect(() => {
+    const newPlaceholders = placements.filter(p => p.isPlaceholder && !expandedRows.has(p.userId));
+    if (newPlaceholders.length > 0) {
+      const newExpanded = new Set(expandedRows);
+      newPlaceholders.forEach(p => newExpanded.add(p.userId));
+      setExpandedRows(newExpanded);
+    }
+  }, [placements, expandedRows]);
   const { toast } = useToast();
 
   const toggleRowExpansion = (userId: number) => {
@@ -105,6 +115,9 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
     const newChanges = new Map(placementChanges);
     newChanges.set(userId, updatedChanges);
     setPlacementChanges(newChanges);
+
+    // Also update the main placement object for immediate UI updates
+    onUpdatePlacement(userId, 'meta' as any, updatedMeta);
   };
 
   const savePlacementChanges = async (placement: PlacementRow) => {
@@ -271,8 +284,15 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
 
             {expandedRows.has(placement.userId) && jobStartDate && jobEndDate && (
               <AvailabilityManager
-                fullPlacement={placement.meta?.full_placement !== false}
-                availability={placement.meta?.availability || []}
+                fullPlacement={
+                  placementChanges.get(placement.userId)?.meta?.full_placement !== undefined 
+                    ? placementChanges.get(placement.userId)?.meta?.full_placement 
+                    : placement.meta?.full_placement !== false
+                }
+                availability={
+                  placementChanges.get(placement.userId)?.meta?.availability || 
+                  placement.meta?.availability || []
+                }
                 jobStartDate={jobStartDate}
                 jobEndDate={jobEndDate}
                 onFullPlacementChange={(checked) => handleMetaChange(placement.userId, 'full_placement', checked)}

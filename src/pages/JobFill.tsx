@@ -184,10 +184,16 @@ const JobFill = () => {
     setPlacements(placements.filter(p => p.userId !== userId));
   };
 
-  const handleUpdatePlacement = (userId: number, field: 'instructions' | 'notes' | 'status' | 'confirmed', value: string | boolean) => {
-    setPlacements(placements.map(p => 
-      p.userId === userId ? { ...p, [field]: value } : p
-    ));
+  const handleUpdatePlacement = (userId: number, field: 'instructions' | 'notes' | 'status' | 'confirmed' | 'meta', value: string | boolean | any) => {
+    setPlacements(placements.map(p => {
+      if (p.userId === userId) {
+        if (field === 'meta') {
+          return { ...p, meta: { ...p.meta, ...value } };
+        }
+        return { ...p, [field]: value };
+      }
+      return p;
+    }));
   };
 
   const handleConfirmPlacements = async () => {
