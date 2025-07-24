@@ -1,7 +1,10 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Job } from '../../types/job';
 import { getStatusColor } from '../../utils/jobsCalendarUtils';
+import { Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface JobCardProps {
   job: Job;
@@ -10,29 +13,50 @@ interface JobCardProps {
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job, day, onClick }) => {
+  const navigate = useNavigate();
+
+  const handleFillVacancies = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the card click
+    navigate(`/job/${job.id}/fill`);
+  };
+
   return (
     <div
       key={`${job.id}-${day.toISOString()}`}
-      className="p-2 bg-gray-50 rounded border cursor-pointer hover:bg-gray-100 transition-colors"
-      onClick={() => onClick(job.id)}
+      className="p-2 bg-white rounded border hover:bg-gray-50 transition-colors"
     >
-      <div className="text-xs font-medium text-gray-900 truncate mb-1">
-        {job.clientName} - {job.title}
-      </div>
-      <div className="text-xs text-gray-600 truncate mb-1">
-        {job.departmentName}
-      </div>
-      <div className="text-xs text-gray-500 truncate mb-1">
-        {job.shiftName}
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-gray-500">
-          Filled: 0/{job.vacancies}
+      <div 
+        className="cursor-pointer flex-1"
+        onClick={() => onClick(job.id)}
+      >
+        <div className="text-xs font-medium text-gray-900 truncate mb-1">
+          {job.clientName} - {job.title}
         </div>
-        <Badge className={`${getStatusColor(job.status)} text-xs`} variant="outline">
-          {job.status}
-        </Badge>
+        <div className="text-xs text-gray-600 truncate mb-1">
+          {job.departmentName}
+        </div>
+        <div className="text-xs text-gray-500 truncate mb-1">
+          {job.shiftName}
+        </div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs text-gray-500">
+            Filled: 0/{job.vacancies}
+          </div>
+          <Badge className={`${getStatusColor(job.status)} text-xs`} variant="outline">
+            {job.status}
+          </Badge>
+        </div>
       </div>
+      
+      <Button
+        onClick={handleFillVacancies}
+        size="sm"
+        variant="outline"
+        className="w-full text-xs h-6"
+      >
+        <Users className="h-3 w-3 mr-1" />
+        Fill Vacancies
+      </Button>
     </div>
   );
 };
