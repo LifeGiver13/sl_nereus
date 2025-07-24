@@ -120,11 +120,6 @@ const JobFill = () => {
   }, [existingPlacements]);
 
   const handleAddUser = (user: any, source: 'search' | 'suggested') => {
-    const totalPlacements = placements.length;
-    if (totalPlacements >= (job?.vacancies || 0)) {
-      return;
-    }
-
     const existingPlacement = placements.find(p => p.userId === user.id);
     if (existingPlacement) {
       return;
@@ -151,8 +146,8 @@ const JobFill = () => {
       },
       instructions: '',
       notes: '',
-      status: 'awaiting_confirmation',
-      confirmed: false,
+      status: 'accepted',
+      confirmed: true,
       isPlaceholder: true
     };
 
@@ -229,8 +224,7 @@ const JobFill = () => {
   const placementsArray = Array.isArray(placements) ? placements : [];
   const placeholderPlacements = placementsArray.filter(p => p.isPlaceholder);
   const existingPlacementsCount = placementsArray.filter(p => !p.isPlaceholder).length;
-  const remainingVacancies = job?.vacancies - placementsArray.length || 0;
-  const hasExistingPlacements = existingPlacementsCount > 0;
+  const hasPlacements = placementsArray.length > 0;
 
   // Ensure job.skills is always an array
   const jobSkills = Array.isArray(job.skills) ? job.skills : [];
@@ -251,13 +245,6 @@ const JobFill = () => {
               <p className="text-gray-600 mt-1">Job ID: {job.id}</p>
             </div>
           </div>
-          <Button 
-            onClick={handleConfirmPlacements}
-            disabled={placeholderPlacements.length === 0}
-            className="bg-[#712B71] hover:bg-[#712B71]/90"
-          >
-            Confirm Placements ({placeholderPlacements.length})
-          </Button>
         </div>
 
         {/* Job Summary Card */}
@@ -285,9 +272,9 @@ const JobFill = () => {
               <div>
                 <p className="text-sm text-gray-500">Vacancies</p>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{placementsArray.length}/{job.vacancies}</Badge>
+                  <Badge variant="outline">{job.vacancies} required</Badge>
                   <span className="text-sm text-gray-500">
-                    ({remainingVacancies} remaining)
+                    ({placementsArray.length} assigned)
                   </span>
                 </div>
               </div>
@@ -295,20 +282,32 @@ const JobFill = () => {
           </CardContent>
         </Card>
 
-        {/* Existing Placements */}
-        {hasExistingPlacements && (
+        {/* All Placements */}
+        {hasPlacements && (
           <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-[#000009]">Current Placements</CardTitle>
-              <CardDescription>Existing placements for this job</CardDescription>
+              <CardTitle className="text-[#000009]">Job Placements</CardTitle>
+              <CardDescription>All placements for this job</CardDescription>
             </CardHeader>
             <CardContent>
               <PlacementsTable 
-                placements={placementsArray.filter(p => !p.isPlaceholder)}
+                placements={placementsArray}
                 onRemoveUser={handleRemoveUser}
                 onUpdatePlacement={handleUpdatePlacement}
                 showStatusControls={false}
+                showConfirmedControls={false}
               />
+              {placeholderPlacements.length > 0 && (
+                <div className="mt-4 flex justify-end">
+                  <Button 
+                    onClick={handleConfirmPlacements}
+                    disabled={placeholderPlacements.length === 0}
+                    className="bg-[#712B71] hover:bg-[#712B71]/90"
+                  >
+                    Confirm Placements ({placeholderPlacements.length})
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -323,7 +322,7 @@ const JobFill = () => {
             <CardContent>
               <UserSearchForm 
                 onUserSelect={(user) => handleAddUser(user, 'search')}
-                disabled={remainingVacancies <= 0}
+                disabled={false}
               />
             </CardContent>
           </Card>
@@ -338,28 +337,12 @@ const JobFill = () => {
               <SuggestedCandidates 
                 skillIds={jobSkills}
                 onCandidateSelect={(user) => handleAddUser(user, 'suggested')}
-                disabled={remainingVacancies <= 0}
+                disabled={false}
               />
             </CardContent>
           </Card>
         </div>
 
-        {/* New Placements Table */}
-        {placeholderPlacements.length > 0 && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">New Placements</CardTitle>
-              <CardDescription>Review and configure new placements before confirming</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PlacementsTable 
-                placements={placeholderPlacements}
-                onRemoveUser={handleRemoveUser}
-                onUpdatePlacement={handleUpdatePlacement}
-              />
-            </CardContent>
-          </Card>
-        )}
       </div>
     </AdminLayout>
   );

@@ -28,6 +28,7 @@ interface PlacementsTableProps {
   onRemoveUser: (userId: number) => void;
   onUpdatePlacement: (userId: number, field: 'instructions' | 'notes' | 'status' | 'confirmed', value: string | boolean) => void;
   showStatusControls?: boolean;
+  showConfirmedControls?: boolean;
 }
 
 const statusOptions = [
@@ -44,7 +45,8 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
   placements,
   onRemoveUser,
   onUpdatePlacement,
-  showStatusControls = true
+  showStatusControls = true,
+  showConfirmedControls = true
 }) => {
   return (
     <Table>
@@ -54,7 +56,7 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
           <TableHead>Instructions</TableHead>
           <TableHead>Notes</TableHead>
           {showStatusControls && <TableHead>Status</TableHead>}
-          {showStatusControls && <TableHead>Confirmed</TableHead>}
+          {showStatusControls && showConfirmedControls && <TableHead>Confirmed</TableHead>}
           <TableHead className="w-12">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -101,7 +103,7 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
                 </Select>
               </TableCell>
             )}
-            {showStatusControls && (
+            {showStatusControls && showConfirmedControls && (
               <TableCell>
                 <div className="flex items-center space-x-2">
                   <Checkbox
