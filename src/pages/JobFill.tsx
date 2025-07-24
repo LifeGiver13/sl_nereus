@@ -123,13 +123,15 @@ const JobFill = () => {
           isPlaceholder: false,
           meta: {
             availability: placement.meta?.availability ? 
-              placement.meta.availability.map((window: any) => ({
-                startDate: new Date(window.startDate),
-                endDate: new Date(window.endDate)
-              })) : [{
-                startDate: new Date(job.startDate),
-                endDate: new Date(job.endDate)
-              }],
+              placement.meta.availability
+                .filter((window: any) => window && window.startDate && window.endDate)
+                .map((window: any) => ({
+                  startDate: new Date(window.startDate),
+                  endDate: new Date(window.endDate)
+                })) : [{
+                  startDate: new Date(job.startDate),
+                  endDate: new Date(job.endDate)
+                }],
             instructions: placement.meta?.instructions || '',
             notes: placement.meta?.notes || ''
           }

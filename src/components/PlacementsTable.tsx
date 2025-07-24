@@ -396,15 +396,17 @@ const AvailabilitySection: React.FC<{
               placeholder="Start date"
               jobStartDate={jobStart}
               jobEndDate={jobEnd}
-              allSelectedDates={availability.flatMap(w => {
-                const dates = [];
-                let current = new Date(w.startDate);
-                while (current <= w.endDate) {
-                  dates.push(new Date(current));
-                  current.setDate(current.getDate() + 1);
-                }
-                return dates;
-              })}
+              allSelectedDates={availability
+                .filter(w => w && w.startDate && w.endDate)
+                .flatMap(w => {
+                  const dates = [];
+                  let current = new Date(w.startDate);
+                  while (current <= w.endDate) {
+                    dates.push(new Date(current));
+                    current.setDate(current.getDate() + 1);
+                  }
+                  return dates;
+                })}
             />
             <span className="text-sm text-muted-foreground">to</span>
             <DatePickerButton
@@ -413,15 +415,17 @@ const AvailabilitySection: React.FC<{
               placeholder="End date"
               jobStartDate={jobStart}
               jobEndDate={jobEnd}
-              allSelectedDates={availability.flatMap(w => {
-                const dates = [];
-                let current = new Date(w.startDate);
-                while (current <= w.endDate) {
-                  dates.push(new Date(current));
-                  current.setDate(current.getDate() + 1);
-                }
-                return dates;
-              })}
+              allSelectedDates={availability
+                .filter(w => w && w.startDate && w.endDate)
+                .flatMap(w => {
+                  const dates = [];
+                  let current = new Date(w.startDate);
+                  while (current <= w.endDate) {
+                    dates.push(new Date(current));
+                    current.setDate(current.getDate() + 1);
+                  }
+                  return dates;
+                })}
             />
             <Button
               type="button"
