@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,7 @@ interface Skill {
 
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -156,6 +157,15 @@ const JobDetail = () => {
     setSelectedPlacement(null);
   };
 
+  const handleCancel = () => {
+    // Check if user came from a specific route, otherwise default to /jobs
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/jobs');
+    }
+  };
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -209,7 +219,7 @@ const JobDetail = () => {
                 Fill
               </Button>
             </Link>
-            <Button variant="destructive">
+            <Button variant="destructive" onClick={handleCancel}>
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
