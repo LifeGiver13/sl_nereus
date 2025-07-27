@@ -11,6 +11,7 @@ import { Eye, Edit, Briefcase, ChevronLeft, ChevronRight, Plus } from 'lucide-re
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { PageSizeSelector } from '../components/ui/page-size-selector';
 
 interface User {
   id: number;
@@ -44,7 +45,7 @@ const People = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
 
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const totalPages = Math.ceil(total / itemsPerPage);
 
   const fetchUsers = async () => {
@@ -98,7 +99,7 @@ const People = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchTerm, selectedRoles, selectedStatuses]);
+  }, [currentPage, searchTerm, selectedRoles, selectedStatuses, itemsPerPage]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -199,8 +200,20 @@ const People = () => {
 
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-[#000009]">User Management</CardTitle>
-            <CardDescription>Search and manage all users in the system</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[#000009]">User Management</CardTitle>
+                <CardDescription>Search and manage all users in the system</CardDescription>
+              </div>
+              <PageSizeSelector
+                pageSize={itemsPerPage}
+                onPageSizeChange={(size) => {
+                  setItemsPerPage(size);
+                  setCurrentPage(1);
+                }}
+                totalItems={total}
+              />
+            </div>
           </CardHeader>
           <CardContent>
             {/* Search and Filter Controls */}

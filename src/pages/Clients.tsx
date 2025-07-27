@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock, Plus, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { PageSizeSelector } from '../components/ui/page-size-selector';
 
 interface Client {
   id: number;
@@ -41,7 +42,7 @@ const Clients = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { toast } = useToast();
 
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchClients = async (page = 1, search = '') => {
     try {
@@ -91,7 +92,7 @@ const Clients = () => {
 
   useEffect(() => {
     fetchClients(currentPage, searchTerm);
-  }, [currentPage]);
+  }, [currentPage, pageSize]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -227,8 +228,20 @@ const Clients = () => {
 
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-[#000009]">Client Management</CardTitle>
-            <CardDescription>View and manage your client portfolio</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[#000009]">Client Management</CardTitle>
+                <CardDescription>View and manage your client portfolio</CardDescription>
+              </div>
+              <PageSizeSelector
+                pageSize={pageSize}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setCurrentPage(1);
+                }}
+                totalItems={totalClients}
+              />
+            </div>
           </CardHeader>
           <CardContent>
             {/* Search Bar */}

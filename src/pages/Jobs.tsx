@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 import { DateRangePicker } from '../components/DateRangePicker';
+import { PageSizeSelector } from '../components/ui/page-size-selector';
 
 interface Job {
   id: number;
@@ -113,7 +114,7 @@ const Jobs = () => {
   };
 
   const { data: jobsData, isLoading, error } = useQuery({
-    queryKey: ['jobs', currentPage, selectedClientId, selectedUserId, searchFilters],
+    queryKey: ['jobs', currentPage, pageSize, selectedClientId, selectedUserId, searchFilters],
     queryFn: async () => {
       const searchQuery = buildSearchQuery();
       const response = await fetch(`${API_BASE_URL}/jobs?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}${searchQuery}`);
@@ -125,7 +126,7 @@ const Jobs = () => {
   });
 
   const jobs = jobsData?.results || [];
-  const totalPages = Math.ceil((jobsData?.total || 0) / 10);
+  const totalPages = Math.ceil((jobsData?.total || 0) / pageSize);
 
   // Client search functions
   const searchClients = async (searchTerm: string) => {
@@ -371,8 +372,20 @@ const Jobs = () => {
 
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-[#000009]">Jobs ({jobsData?.total || 0})</CardTitle>
-            <CardDescription>All job postings in the system</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[#000009]">Jobs ({jobsData?.total || 0})</CardTitle>
+                <CardDescription>All job postings in the system</CardDescription>
+              </div>
+              <PageSizeSelector
+                pageSize={pageSize}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setCurrentPage(1);
+                }}
+                totalItems={jobsData?.total}
+              />
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto max-w-full">
