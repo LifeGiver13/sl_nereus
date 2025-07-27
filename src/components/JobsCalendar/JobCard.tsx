@@ -23,7 +23,6 @@ const JobCard: React.FC<JobCardProps> = ({ job, day, onClick }) => {
 
   return (
     <div
-      key={`${job.id}-${day.toISOString()}`}
       className="p-2 bg-white rounded border hover:bg-gray-50 transition-colors"
     >
       <div 
@@ -31,7 +30,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, day, onClick }) => {
         onClick={() => onClick(job.id)}
       >
         <div className="text-xs font-medium text-gray-900 truncate mb-1">
-          {job.clientName} - {job.title}
+          {job.clientName} - {job.title} (ID: {job.id})
         </div>
         <div className="text-xs text-gray-600 truncate mb-1">
           {job.departmentName}
