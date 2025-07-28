@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
+import { usePreferences } from '../hooks/usePreferences';
 
 interface User {
   id: number;
@@ -45,7 +46,8 @@ const People = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
 
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const { preferences, updateTablePreferences } = usePreferences();
+  const itemsPerPage = preferences.table.pageSize;
   const totalPages = Math.ceil(total / itemsPerPage);
 
   const fetchUsers = async () => {
@@ -208,7 +210,7 @@ const People = () => {
               <PageSizeSelector
                 pageSize={itemsPerPage}
                 onPageSizeChange={(size) => {
-                  setItemsPerPage(size);
+                  updateTablePreferences({ pageSize: size });
                   setCurrentPage(1);
                 }}
                 totalItems={total}

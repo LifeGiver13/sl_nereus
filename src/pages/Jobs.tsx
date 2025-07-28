@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 import { DateRangePicker } from '../components/DateRangePicker';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
+import { usePreferences } from '../hooks/usePreferences';
 
 interface Job {
   id: number;
@@ -46,7 +47,8 @@ interface User {
 
 const Jobs = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const { preferences, updateTablePreferences } = usePreferences();
+  const pageSize = preferences.table.pageSize;
   const [searchFilters, setSearchFilters] = useState({
     clientId: '',
     postedBy: '',
@@ -380,7 +382,7 @@ const Jobs = () => {
               <PageSizeSelector
                 pageSize={pageSize}
                 onPageSizeChange={(size) => {
-                  setPageSize(size);
+                  updateTablePreferences({ pageSize: size });
                   setCurrentPage(1);
                 }}
                 totalItems={jobsData?.total}

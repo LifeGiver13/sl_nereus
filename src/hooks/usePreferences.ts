@@ -7,8 +7,13 @@ interface CalendarPreferences {
   selectedDepartmentId: number | null;
 }
 
+interface TablePreferences {
+  pageSize: number;
+}
+
 interface Preferences {
   calendar: CalendarPreferences;
+  table: TablePreferences;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -16,6 +21,9 @@ const DEFAULT_PREFERENCES: Preferences = {
     viewType: 'weekly',
     currentDate: new Date().toISOString(),
     selectedDepartmentId: null
+  },
+  table: {
+    pageSize: 10
   }
 };
 
@@ -54,9 +62,16 @@ export const usePreferences = () => {
     });
   };
 
+  const updateTablePreferences = (updates: Partial<TablePreferences>) => {
+    updatePreferences({
+      table: { ...preferences.table, ...updates }
+    });
+  };
+
   return {
     preferences,
     updatePreferences,
-    updateCalendarPreferences
+    updateCalendarPreferences,
+    updateTablePreferences
   };
 };

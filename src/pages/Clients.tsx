@@ -14,6 +14,7 @@ import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock, Plus, MapPin
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
+import { usePreferences } from '../hooks/usePreferences';
 
 interface Client {
   id: number;

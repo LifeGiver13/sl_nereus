@@ -10,6 +10,7 @@ import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight } from 'lucide-
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
+import { usePreferences } from '../hooks/usePreferences';
 
 interface User {
   id: number;
@@ -42,9 +43,10 @@ const Applications = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const { token } = useAuth();
+  const { preferences, updateTablePreferences } = usePreferences();
+  const pageSize = preferences.table.pageSize;
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -151,7 +153,7 @@ const Applications = () => {
               <PageSizeSelector
                 pageSize={pageSize}
                 onPageSizeChange={(size) => {
-                  setPageSize(size);
+                  updateTablePreferences({ pageSize: size });
                   setCurrentPage(1);
                 }}
                 totalItems={total}
