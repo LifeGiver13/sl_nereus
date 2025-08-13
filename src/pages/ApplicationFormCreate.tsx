@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Save, ArrowLeft, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/AdminLayout';
 import {
@@ -60,14 +60,17 @@ const SortableField = ({
   fieldIndex, 
   sectionName, 
   onUpdateField, 
-  onDeleteField 
+  onDeleteField,
+  allFields 
 }: { 
   field: Field; 
   fieldIndex: number; 
   sectionName: string;
   onUpdateField: (sectionName: string, fieldIndex: number, field: Partial<Field>) => void;
   onDeleteField: (sectionName: string, fieldIndex: number) => void;
+  allFields: Field[];
 }) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const {
     attributes,
     listeners,
@@ -81,117 +84,207 @@ const SortableField = ({
     transition,
   };
 
+  const addOption = () => {
+    const currentOptions = field.options || [];
+    onUpdateField(sectionName, fieldIndex, { options: [...currentOptions, ''] });
+  };
+
+  const updateOption = (optionIndex: number, value: string) => {
+    const currentOptions = field.options || [];
+    const newOptions = [...currentOptions];
+    newOptions[optionIndex] = value;
+    onUpdateField(sectionName, fieldIndex, { options: newOptions });
+  };
+
+  const removeOption = (optionIndex: number) => {
+    const currentOptions = field.options || [];
+    const newOptions = currentOptions.filter((_, index) => index !== optionIndex);
+    onUpdateField(sectionName, fieldIndex, { options: newOptions });
+  };
+
   return (
-    <div ref={setNodeRef} style={style} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
-      <div className="flex items-center">
-        <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing mr-2">
-          <GripVertical className="h-4 w-4 text-gray-400" />
+    <div ref={setNodeRef} style={style} className="border rounded-lg p-4 space-y-4">
+      {/* Main row */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="flex items-center">
+          <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing mr-2">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="flex-1">
+            <Label className="text-xs">Name</Label>
+            <Input
+              placeholder="field_name"
+              value={field.name}
+              onChange={(e) => onUpdateField(sectionName, fieldIndex, { name: e.target.value })}
+              className="mt-1"
+            />
+          </div>
         </div>
-        <div className="flex-1">
-          <Label className="text-xs">Name</Label>
-          <Input
-            placeholder="field_name"
-            value={field.name}
-            onChange={(e) => onUpdateField(sectionName, fieldIndex, { name: e.target.value })}
-            className="mt-1"
-          />
-        </div>
-      </div>
-      <div>
-        <Label className="text-xs">Label</Label>
-        <Input
-          placeholder="Display Name"
-          value={field.label}
-          onChange={(e) => onUpdateField(sectionName, fieldIndex, { label: e.target.value })}
-          className="mt-1"
-        />
-      </div>
-      <div>
-        <Label className="text-xs">Type</Label>
-        <Select 
-          value={field.type} 
-          onValueChange={(value: any) => onUpdateField(sectionName, fieldIndex, { type: value })}
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="text">Text</SelectItem>
-            <SelectItem value="email">Email</SelectItem>
-            <SelectItem value="tel">Phone</SelectItem>
-            <SelectItem value="password">Password</SelectItem>
-            <SelectItem value="textArea">Text Area</SelectItem>
-            <SelectItem value="select">Select</SelectItem>
-            <SelectItem value="boolean">Boolean</SelectItem>
-            <SelectItem value="file">File Upload</SelectItem>
-            <SelectItem value="date">Date</SelectItem>
-            <SelectItem value="agreement">Agreement</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      {field.type === 'select' && (
         <div>
-          <Label className="text-xs">Options (comma-separated)</Label>
+          <Label className="text-xs">Label</Label>
           <Input
-            placeholder="Option 1, Option 2, Option 3"
-            value={field.options?.join(', ') || ''}
-            onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
-              options: e.target.value.split(',').map(opt => opt.trim()).filter(opt => opt) 
-            })}
+            placeholder="Display Name"
+            value={field.label}
+            onChange={(e) => onUpdateField(sectionName, fieldIndex, { label: e.target.value })}
             className="mt-1"
           />
         </div>
-      )}
-      {field.type === 'boolean' && (
-        <div className="space-y-2">
-          <div>
-            <Label className="text-xs">True Label</Label>
-            <Input
-              placeholder="Yes"
-              value={field.trueLabel || ''}
-              onChange={(e) => onUpdateField(sectionName, fieldIndex, { trueLabel: e.target.value })}
-              className="mt-1"
+        <div>
+          <Label className="text-xs">Type</Label>
+          <Select 
+            value={field.type} 
+            onValueChange={(value: any) => onUpdateField(sectionName, fieldIndex, { type: value })}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="text">Text</SelectItem>
+              <SelectItem value="email">Email</SelectItem>
+              <SelectItem value="tel">Phone</SelectItem>
+              <SelectItem value="password">Password</SelectItem>
+              <SelectItem value="textArea">Text Area</SelectItem>
+              <SelectItem value="select">Select</SelectItem>
+              <SelectItem value="boolean">Boolean</SelectItem>
+              <SelectItem value="file">File Upload</SelectItem>
+              <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="agreement">Agreement</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className="text-xs">Settings</Label>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`required-${sectionName}-${fieldIndex}`}
+              checked={field.required || false}
+              onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { required: !!checked })}
             />
+            <Label htmlFor={`required-${sectionName}-${fieldIndex}`} className="text-xs">Required</Label>
           </div>
-          <div>
-            <Label className="text-xs">False Label</Label>
-            <Input
-              placeholder="No"
-              value={field.falseLabel || ''}
-              onChange={(e) => onUpdateField(sectionName, fieldIndex, { falseLabel: e.target.value })}
-              className="mt-1"
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`disabled-${sectionName}-${fieldIndex}`}
+              checked={field.disabled || false}
+              onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { disabled: !!checked })}
             />
+            <Label htmlFor={`disabled-${sectionName}-${fieldIndex}`} className="text-xs">Disabled</Label>
           </div>
         </div>
-      )}
-      <div className="flex flex-col gap-2">
-        <Label className="text-xs">Settings</Label>
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id={`required-${sectionName}-${fieldIndex}`}
-            checked={field.required || false}
-            onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { required: !!checked })}
-          />
-          <Label htmlFor={`required-${sectionName}-${fieldIndex}`} className="text-xs">Required</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id={`disabled-${sectionName}-${fieldIndex}`}
-            checked={field.disabled || false}
-            onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { disabled: !!checked })}
-          />
-          <Label htmlFor={`disabled-${sectionName}-${fieldIndex}`} className="text-xs">Disabled</Label>
+        <div className="flex items-end justify-between">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+          >
+            {showAdvanced ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => onDeleteField(sectionName, fieldIndex)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
-      <div className="flex items-end">
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={() => onDeleteField(sectionName, fieldIndex)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
+
+      {/* Advanced options */}
+      {showAdvanced && (
+        <div className="space-y-4 pt-4 border-t">
+          {/* Condition */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs">Show if field equals</Label>
+              <Select 
+                value={field.condition?.field || ''} 
+                onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
+                  condition: { ...field.condition, field: value } 
+                })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select field" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No condition</SelectItem>
+                  {allFields.filter(f => f.name && f.name !== field.name).map((f) => (
+                    <SelectItem key={f.name} value={f.name}>{f.label || f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Value</Label>
+              <Input
+                placeholder="Expected value"
+                value={field.condition?.value || ''}
+                onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
+                  condition: { ...field.condition, value: e.target.value } 
+                })}
+                className="mt-1"
+                disabled={!field.condition?.field}
+              />
+            </div>
+          </div>
+
+          {/* Type-specific options */}
+          {field.type === 'select' && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs">Options</Label>
+                <Button size="sm" variant="outline" onClick={addOption}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Option
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {(field.options || []).map((option, optionIndex) => (
+                  <div key={optionIndex} className="flex gap-2">
+                    <Input
+                      placeholder="Option text"
+                      value={option}
+                      onChange={(e) => updateOption(optionIndex, e.target.value)}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => removeOption(optionIndex)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {(!field.options || field.options.length === 0) && (
+                  <p className="text-xs text-muted-foreground">No options added yet</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {field.type === 'boolean' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">True Label</Label>
+                <Input
+                  placeholder="Yes"
+                  value={field.trueLabel || ''}
+                  onChange={(e) => onUpdateField(sectionName, fieldIndex, { trueLabel: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">False Label</Label>
+                <Input
+                  placeholder="No"
+                  value={field.falseLabel || ''}
+                  onChange={(e) => onUpdateField(sectionName, fieldIndex, { falseLabel: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -452,16 +545,22 @@ const ApplicationFormCreate = () => {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-4">
-                      {form.sections[sectionName].fields.map((field, fieldIndex) => (
-                        <SortableField
-                          key={`${sectionName}-${fieldIndex}`}
-                          field={field}
-                          fieldIndex={fieldIndex}
-                          sectionName={sectionName}
-                          onUpdateField={updateField}
-                          onDeleteField={deleteField}
-                        />
-                      ))}
+                      {form.sections[sectionName].fields.map((field, fieldIndex) => {
+                        // Get all fields from all sections for condition references
+                        const allFields = Object.values(form.sections).flatMap(section => section.fields);
+                        
+                        return (
+                          <SortableField
+                            key={`${sectionName}-${fieldIndex}`}
+                            field={field}
+                            fieldIndex={fieldIndex}
+                            sectionName={sectionName}
+                            onUpdateField={updateField}
+                            onDeleteField={deleteField}
+                            allFields={allFields}
+                          />
+                        );
+                      })}
                     </div>
                   </SortableContext>
                 </DndContext>
