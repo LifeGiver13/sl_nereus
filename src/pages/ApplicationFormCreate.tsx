@@ -197,16 +197,16 @@ const SortableField = ({
             <div>
               <Label className="text-xs">Show if field equals</Label>
               <Select 
-                value={field.condition?.field || ''} 
+                value={field.condition?.field || 'none'} 
                 onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                  condition: { ...field.condition, field: value } 
+                  condition: value === 'none' ? undefined : { ...field.condition, field: value } 
                 })}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select field" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No condition</SelectItem>
+                  <SelectItem value="none">No condition</SelectItem>
                   {allFields.filter(f => f.name && f.name !== field.name).map((f) => (
                     <SelectItem key={f.name} value={f.name}>{f.label || f.name}</SelectItem>
                   ))}
