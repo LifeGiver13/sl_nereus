@@ -31,16 +31,23 @@ import { CSS } from '@dnd-kit/utilities';
 
 export type Field = {
   name: string;
-  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "date" | "agreement";
+  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox";
   label: string;
-  disabled?: boolean;
   required?: boolean;
-  value?: string;
   condition?: any;
-  options?: string[]; // Only for select fields
-  trueLabel?: string; // Only for boolean fields
-  falseLabel?: string; // Only for boolean fields
-  booleanValue?: string; // for conditional fields
+  options?: string[] | {
+    trueLabel: string;
+    trueValue: string;
+    falseLabel: string;
+    falseValue: string;
+  };
+  meta?: {
+    defaultValue?: string;
+    placeHolder?: string;
+    acceptedFormats?: string;
+    maxFileSize?: string;
+    fileName?: string;
+  };
 };
 
 type FormSection = {
@@ -84,22 +91,50 @@ const SortableField = ({
     transition,
   };
 
-  const addOption = () => {
-    const currentOptions = field.options || [];
+  // Helper functions for select field options
+  const addSelectOption = () => {
+    const currentOptions = Array.isArray(field.options) ? field.options : [];
     onUpdateField(sectionName, fieldIndex, { options: [...currentOptions, 'New Option'] });
   };
 
-  const updateOption = (optionIndex: number, value: string) => {
-    const currentOptions = field.options || [];
+  const updateSelectOption = (optionIndex: number, value: string) => {
+    const currentOptions = Array.isArray(field.options) ? field.options : [];
     const newOptions = [...currentOptions];
     newOptions[optionIndex] = value;
     onUpdateField(sectionName, fieldIndex, { options: newOptions });
   };
 
-  const removeOption = (optionIndex: number) => {
-    const currentOptions = field.options || [];
+  const removeSelectOption = (optionIndex: number) => {
+    const currentOptions = Array.isArray(field.options) ? field.options : [];
     const newOptions = currentOptions.filter((_, index) => index !== optionIndex);
     onUpdateField(sectionName, fieldIndex, { options: newOptions });
+  };
+
+  // Helper functions for boolean field options
+  const updateBooleanOptions = (key: 'trueLabel' | 'trueValue' | 'falseLabel' | 'falseValue', value: string) => {
+    const currentOptions = !Array.isArray(field.options) && field.options ? field.options : {
+      trueLabel: 'Yes',
+      trueValue: 'true',
+      falseLabel: 'No',
+      falseValue: 'false'
+    };
+    onUpdateField(sectionName, fieldIndex, { 
+      options: { ...currentOptions, [key]: value } 
+    });
+  };
+
+  // Helper function to update meta properties
+  const updateMeta = (key: string, value: string) => {
+    const currentMeta = field.meta || {};
+    onUpdateField(sectionName, fieldIndex, { 
+      meta: { ...currentMeta, [key]: value } 
+    });
+  };
+
+  // Get default meta values based on field type
+  const getDefaultMeta = () => {
+    if (!field.meta) return {};
+    return field.meta;
   };
 
   return (
@@ -133,7 +168,44 @@ const SortableField = ({
           <Label className="text-xs">Type</Label>
           <Select 
             value={field.type} 
-            onValueChange={(value: any) => onUpdateField(sectionName, fieldIndex, { type: value })}
+            onValueChange={(value: any) => {
+              // Reset options and meta when changing field type
+              const updates: Partial<Field> = { type: value };
+              
+              // Set default options for specific field types
+              if (value === 'boolean') {
+                updates.options = {
+                  trueLabel: 'Yes',
+                  trueValue: 'true',
+                  falseLabel: 'No',
+                  falseValue: 'false'
+                };
+                updates.meta = {
+                  defaultValue: '',
+                  placeHolder: ''
+                };
+              } else if (value === 'select') {
+                updates.options = [];
+                updates.meta = {
+                  defaultValue: ''
+                };
+              } else if (value === 'file') {
+                updates.options = undefined;
+                updates.meta = {
+                  acceptedFormats: '',
+                  maxFileSize: '',
+                  fileName: ''
+                };
+              } else {
+                updates.options = undefined;
+                updates.meta = {
+                  defaultValue: '',
+                  placeHolder: ''
+                };
+              }
+              
+              onUpdateField(sectionName, fieldIndex, updates);
+            }}
           >
             <SelectTrigger className="mt-1">
               <SelectValue />
@@ -145,10 +217,9 @@ const SortableField = ({
               <SelectItem value="password">Password</SelectItem>
               <SelectItem value="textArea">Text Area</SelectItem>
               <SelectItem value="select">Select</SelectItem>
+              <SelectItem value="checkbox">Checkbox</SelectItem>
               <SelectItem value="boolean">Boolean</SelectItem>
               <SelectItem value="file">File Upload</SelectItem>
-              <SelectItem value="date">Date</SelectItem>
-              <SelectItem value="agreement">Agreement</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -179,64 +250,170 @@ const SortableField = ({
         </TabsList>
         
         <TabsContent value="options" className="space-y-4">
+          {/* Select field options */}
           {field.type === 'select' && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-xs">Dropdown Options</Label>
-                <Button size="sm" variant="outline" onClick={addOption}>
+                <Button size="sm" variant="outline" onClick={addSelectOption}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Option
                 </Button>
               </div>
               <div className="space-y-2">
-                {(field.options || []).filter(option => option.trim() !== '').map((option, optionIndex) => (
+                {Array.isArray(field.options) && field.options.filter(option => option && option.trim() !== '').map((option, optionIndex) => (
                   <div key={optionIndex} className="flex gap-2">
                     <Input
                       placeholder="Option text"
                       value={option}
-                      onChange={(e) => updateOption(optionIndex, e.target.value)}
+                      onChange={(e) => updateSelectOption(optionIndex, e.target.value)}
                     />
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => removeOption(optionIndex)}
+                      onClick={() => removeSelectOption(optionIndex)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
-                {(!field.options || field.options.filter(opt => opt.trim() !== '').length === 0) && (
+                {(!Array.isArray(field.options) || field.options.filter(opt => opt && opt.trim() !== '').length === 0) && (
                   <p className="text-xs text-muted-foreground">No options added yet</p>
                 )}
               </div>
+              <div className="mt-4">
+                <Label className="text-xs">Default Value</Label>
+                <Input
+                  placeholder="Default selection"
+                  value={getDefaultMeta().defaultValue || ''}
+                  onChange={(e) => updateMeta('defaultValue', e.target.value)}
+                  className="mt-1"
+                />
+              </div>
             </div>
           )}
 
+          {/* Boolean field options */}
           {field.type === 'boolean' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">True Label</Label>
+                  <Input
+                    placeholder="Yes"
+                    value={!Array.isArray(field.options) && field.options ? field.options.trueLabel : 'Yes'}
+                    onChange={(e) => updateBooleanOptions('trueLabel', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">True Value</Label>
+                  <Input
+                    placeholder="true"
+                    value={!Array.isArray(field.options) && field.options ? field.options.trueValue : 'true'}
+                    onChange={(e) => updateBooleanOptions('trueValue', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">False Label</Label>
+                  <Input
+                    placeholder="No"
+                    value={!Array.isArray(field.options) && field.options ? field.options.falseLabel : 'No'}
+                    onChange={(e) => updateBooleanOptions('falseLabel', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">False Value</Label>
+                  <Input
+                    placeholder="false"
+                    value={!Array.isArray(field.options) && field.options ? field.options.falseValue : 'false'}
+                    onChange={(e) => updateBooleanOptions('falseValue', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Default Value</Label>
+                  <Input
+                    placeholder="Default value"
+                    value={getDefaultMeta().defaultValue || ''}
+                    onChange={(e) => updateMeta('defaultValue', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Placeholder</Label>
+                  <Input
+                    placeholder="Placeholder text"
+                    value={getDefaultMeta().placeHolder || ''}
+                    onChange={(e) => updateMeta('placeHolder', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* File field options */}
+          {field.type === 'file' && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs">Accepted Formats</Label>
+                <Input
+                  placeholder="e.g., .pdf,.doc,.docx"
+                  value={getDefaultMeta().acceptedFormats || ''}
+                  onChange={(e) => updateMeta('acceptedFormats', e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Max File Size</Label>
+                <Input
+                  placeholder="e.g., 5MB"
+                  value={getDefaultMeta().maxFileSize || ''}
+                  onChange={(e) => updateMeta('maxFileSize', e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">File Name</Label>
+                <Input
+                  placeholder="Default file name"
+                  value={getDefaultMeta().fileName || ''}
+                  onChange={(e) => updateMeta('fileName', e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Standard text-based fields (text, email, tel, password, textArea, checkbox) */}
+          {['text', 'email', 'tel', 'password', 'textArea', 'checkbox'].includes(field.type) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs">True Label</Label>
+                <Label className="text-xs">Default Value</Label>
                 <Input
-                  placeholder="Yes"
-                  value={field.trueLabel || ''}
-                  onChange={(e) => onUpdateField(sectionName, fieldIndex, { trueLabel: e.target.value })}
+                  placeholder="Default value"
+                  value={getDefaultMeta().defaultValue || ''}
+                  onChange={(e) => updateMeta('defaultValue', e.target.value)}
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label className="text-xs">False Label</Label>
+                <Label className="text-xs">Placeholder</Label>
                 <Input
-                  placeholder="No"
-                  value={field.falseLabel || ''}
-                  onChange={(e) => onUpdateField(sectionName, fieldIndex, { falseLabel: e.target.value })}
+                  placeholder="Placeholder text"
+                  value={getDefaultMeta().placeHolder || ''}
+                  onChange={(e) => updateMeta('placeHolder', e.target.value)}
                   className="mt-1"
                 />
               </div>
             </div>
-          )}
-
-          {!['select', 'boolean'].includes(field.type) && (
-            <p className="text-xs text-muted-foreground">No additional options for this field type</p>
           )}
         </TabsContent>
         
@@ -337,7 +514,11 @@ const ApplicationFormCreate = () => {
       name: '',
       label: '',
       type: 'text',
-      required: false
+      required: false,
+      meta: {
+        defaultValue: '',
+        placeHolder: ''
+      }
     };
 
     setForm(prev => ({
