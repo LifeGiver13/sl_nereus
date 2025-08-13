@@ -28,18 +28,23 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type FormField = {
-  property: string;
+export type Field = {
+  name: string;
+  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "date" | "agreement";
   label: string;
-  type: 'text' | 'textarea' | 'select' | 'checkbox' | 'file';
-  required: boolean;
-  options?: string[];
-  meta: { [key: string]: any };
+  disabled?: boolean;
+  required?: boolean;
+  value?: string;
+  condition?: any;
+  options?: string[]; // Only for select fields
+  trueLabel?: string; // Only for boolean fields
+  falseLabel?: string; // Only for boolean fields
+  booleanValue?: string; // for conditional fields
 };
 
 type FormSection = {
   name: string;
-  fields: FormField[];
+  fields: Field[];
 };
 
 type ApplicationForm = {
@@ -57,10 +62,10 @@ const SortableField = ({
   onUpdateField, 
   onDeleteField 
 }: { 
-  field: FormField; 
+  field: Field; 
   fieldIndex: number; 
   sectionName: string;
-  onUpdateField: (sectionName: string, fieldIndex: number, field: Partial<FormField>) => void;
+  onUpdateField: (sectionName: string, fieldIndex: number, field: Partial<Field>) => void;
   onDeleteField: (sectionName: string, fieldIndex: number) => void;
 }) => {
   const {
@@ -83,11 +88,11 @@ const SortableField = ({
           <GripVertical className="h-4 w-4 text-gray-400" />
         </div>
         <div className="flex-1">
-          <Label className="text-xs">Property</Label>
+          <Label className="text-xs">Name</Label>
           <Input
             placeholder="field_name"
-            value={field.property}
-            onChange={(e) => onUpdateField(sectionName, fieldIndex, { property: e.target.value })}
+            value={field.name}
+            onChange={(e) => onUpdateField(sectionName, fieldIndex, { name: e.target.value })}
             className="mt-1"
           />
         </div>
@@ -112,10 +117,15 @@ const SortableField = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="text">Text</SelectItem>
-            <SelectItem value="textarea">Textarea</SelectItem>
+            <SelectItem value="email">Email</SelectItem>
+            <SelectItem value="tel">Phone</SelectItem>
+            <SelectItem value="password">Password</SelectItem>
+            <SelectItem value="textArea">Text Area</SelectItem>
             <SelectItem value="select">Select</SelectItem>
-            <SelectItem value="checkbox">Checkbox</SelectItem>
+            <SelectItem value="boolean">Boolean</SelectItem>
             <SelectItem value="file">File Upload</SelectItem>
+            <SelectItem value="date">Date</SelectItem>
+            <SelectItem value="agreement">Agreement</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -132,6 +142,28 @@ const SortableField = ({
           />
         </div>
       )}
+      {field.type === 'boolean' && (
+        <div className="space-y-2">
+          <div>
+            <Label className="text-xs">True Label</Label>
+            <Input
+              placeholder="Yes"
+              value={field.trueLabel || ''}
+              onChange={(e) => onUpdateField(sectionName, fieldIndex, { trueLabel: e.target.value })}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">False Label</Label>
+            <Input
+              placeholder="No"
+              value={field.falseLabel || ''}
+              onChange={(e) => onUpdateField(sectionName, fieldIndex, { falseLabel: e.target.value })}
+              className="mt-1"
+            />
+          </div>
+        </div>
+      )}
       <div className="flex flex-col gap-2">
         <Label className="text-xs">Settings</Label>
         <div className="flex items-center space-x-2">
@@ -141,6 +173,14 @@ const SortableField = ({
             onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { required: !!checked })}
           />
           <Label htmlFor={`required-${sectionName}-${fieldIndex}`} className="text-xs">Required</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id={`disabled-${sectionName}-${fieldIndex}`}
+            checked={field.disabled || false}
+            onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { disabled: !!checked })}
+          />
+          <Label htmlFor={`disabled-${sectionName}-${fieldIndex}`} className="text-xs">Disabled</Label>
         </div>
       </div>
       <div className="flex items-end">
@@ -209,12 +249,11 @@ const ApplicationFormCreate = () => {
   };
 
   const addField = (sectionName: string) => {
-    const newField: FormField = {
-      property: '',
+    const newField: Field = {
+      name: '',
       label: '',
       type: 'text',
-      required: false,
-      meta: {}
+      required: false
     };
 
     setForm(prev => ({
@@ -229,7 +268,7 @@ const ApplicationFormCreate = () => {
     }));
   };
 
-  const updateField = (sectionName: string, fieldIndex: number, field: Partial<FormField>) => {
+  const updateField = (sectionName: string, fieldIndex: number, field: Partial<Field>) => {
     setForm(prev => ({
       ...prev,
       sections: {
