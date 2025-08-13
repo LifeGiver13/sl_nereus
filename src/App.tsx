@@ -21,6 +21,7 @@ import JobCreate from "./pages/JobCreate";
 import JobEdit from "./pages/JobEdit";
 import JobFill from "./pages/JobFill";
 import Settings from "./pages/Settings";
+import ApplicationFormCreate from "./pages/ApplicationFormCreate";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -153,6 +154,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings/application-forms/create"
+              element={
+                <ProtectedRoute>
+                  <ApplicationFormCreate />
                 </ProtectedRoute>
               }
             />
