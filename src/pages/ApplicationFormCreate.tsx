@@ -7,9 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Save, ArrowLeft, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, GripVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/AdminLayout';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DndContext,
   closestCenter,
@@ -70,7 +71,6 @@ const SortableField = ({
   onDeleteField: (sectionName: string, fieldIndex: number) => void;
   allFields: Field[];
 }) => {
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const {
     attributes,
     listeners,
@@ -86,7 +86,7 @@ const SortableField = ({
 
   const addOption = () => {
     const currentOptions = field.options || [];
-    onUpdateField(sectionName, fieldIndex, { options: [...currentOptions, ''] });
+    onUpdateField(sectionName, fieldIndex, { options: [...currentOptions, 'New Option'] });
   };
 
   const updateOption = (optionIndex: number, value: string) => {
@@ -105,7 +105,7 @@ const SortableField = ({
   return (
     <div ref={setNodeRef} style={style} className="border rounded-lg p-4 space-y-4">
       {/* Main row */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="flex items-center">
           <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing mr-2">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -152,8 +152,7 @@ const SortableField = ({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex flex-col gap-2">
-          <Label className="text-xs">Settings</Label>
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Checkbox
               id={`required-${sectionName}-${fieldIndex}`}
@@ -162,23 +161,6 @@ const SortableField = ({
             />
             <Label htmlFor={`required-${sectionName}-${fieldIndex}`} className="text-xs">Required</Label>
           </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id={`disabled-${sectionName}-${fieldIndex}`}
-              checked={field.disabled || false}
-              onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { disabled: !!checked })}
-            />
-            <Label htmlFor={`disabled-${sectionName}-${fieldIndex}`} className="text-xs">Disabled</Label>
-          </div>
-        </div>
-        <div className="flex items-end justify-between">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-          >
-            {showAdvanced ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </Button>
           <Button
             size="sm"
             variant="destructive"
@@ -189,56 +171,25 @@ const SortableField = ({
         </div>
       </div>
 
-      {/* Advanced options */}
-      {showAdvanced && (
-        <div className="space-y-4 pt-4 border-t">
-          {/* Condition */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs">Show if field equals</Label>
-              <Select 
-                value={field.condition?.field || 'none'} 
-                onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                  condition: value === 'none' ? undefined : { ...field.condition, field: value } 
-                })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select field" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No condition</SelectItem>
-                  {allFields.filter(f => f.name && f.name !== field.name).map((f) => (
-                    <SelectItem key={f.name} value={f.name}>{f.label || f.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Value</Label>
-              <Input
-                placeholder="Expected value"
-                value={field.condition?.value || ''}
-                onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
-                  condition: { ...field.condition, value: e.target.value } 
-                })}
-                className="mt-1"
-                disabled={!field.condition?.field}
-              />
-            </div>
-          </div>
-
-          {/* Type-specific options */}
+      {/* Tabs for Options and Conditions */}
+      <Tabs defaultValue="options" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="options">Options</TabsTrigger>
+          <TabsTrigger value="conditions">Conditions</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="options" className="space-y-4">
           {field.type === 'select' && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-xs">Options</Label>
+                <Label className="text-xs">Dropdown Options</Label>
                 <Button size="sm" variant="outline" onClick={addOption}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Option
                 </Button>
               </div>
               <div className="space-y-2">
-                {(field.options || []).map((option, optionIndex) => (
+                {(field.options || []).filter(option => option.trim() !== '').map((option, optionIndex) => (
                   <div key={optionIndex} className="flex gap-2">
                     <Input
                       placeholder="Option text"
@@ -254,7 +205,7 @@ const SortableField = ({
                     </Button>
                   </div>
                 ))}
-                {(!field.options || field.options.length === 0) && (
+                {(!field.options || field.options.filter(opt => opt.trim() !== '').length === 0) && (
                   <p className="text-xs text-muted-foreground">No options added yet</p>
                 )}
               </div>
@@ -283,8 +234,48 @@ const SortableField = ({
               </div>
             </div>
           )}
-        </div>
-      )}
+
+          {!['select', 'boolean'].includes(field.type) && (
+            <p className="text-xs text-muted-foreground">No additional options for this field type</p>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="conditions" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs">Show if field equals</Label>
+              <Select 
+                value={field.condition?.field || 'none'} 
+                onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
+                  condition: value === 'none' ? undefined : { ...field.condition, field: value } 
+                })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select field" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No condition</SelectItem>
+                  {allFields.filter(f => f.name && f.name !== field.name && f.name.trim() !== '').map((f) => (
+                    <SelectItem key={f.name} value={f.name}>{f.label || f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Value</Label>
+              <Input
+                placeholder="Expected value"
+                value={field.condition?.value || ''}
+                onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
+                  condition: { ...field.condition, value: e.target.value } 
+                })}
+                className="mt-1"
+                disabled={!field.condition?.field}
+              />
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
