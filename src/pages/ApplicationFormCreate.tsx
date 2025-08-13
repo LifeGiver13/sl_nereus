@@ -94,7 +94,7 @@ const SortableField = ({
   // Helper functions for select field options
   const addSelectOption = () => {
     const currentOptions = Array.isArray(field.options) ? field.options : [];
-    onUpdateField(sectionName, fieldIndex, { options: [...currentOptions, 'New Option'] });
+    onUpdateField(sectionName, fieldIndex, { options: [...currentOptions, ''] });
   };
 
   const updateSelectOption = (optionIndex: number, value: string) => {
@@ -418,38 +418,87 @@ const SortableField = ({
         </TabsContent>
         
         <TabsContent value="conditions" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs">Show if field equals</Label>
-              <Select 
-                value={field.condition?.field || 'none'} 
-                onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                  condition: value === 'none' ? undefined : { ...field.condition, field: value } 
-                })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select field" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No condition</SelectItem>
-                  {allFields.filter(f => f.name && f.name !== field.name && f.name.trim() !== '').map((f) => (
-                    <SelectItem key={f.name} value={f.name}>{f.label || f.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">Condition Action</Label>
+                <Select 
+                  value={field.condition?.action || 'show'} 
+                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
+                    condition: { ...field.condition, action: value } 
+                  })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select action" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="show">Show/Enable</SelectItem>
+                    <SelectItem value="hide">Hide/Disable</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Target Field</Label>
+                <Select 
+                  value={field.condition?.field || 'none'} 
+                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
+                    condition: value === 'none' ? undefined : { ...field.condition, field: value } 
+                  })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select field" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No condition</SelectItem>
+                    {allFields.filter(f => f.name && f.name !== field.name && f.name.trim() !== '').map((f) => (
+                      <SelectItem key={f.name} value={f.name}>{f.label || f.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label className="text-xs">Value</Label>
-              <Input
-                placeholder="Expected value"
-                value={field.condition?.value || ''}
-                onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
-                  condition: { ...field.condition, value: e.target.value } 
-                })}
-                className="mt-1"
-                disabled={!field.condition?.field}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label className="text-xs">Comparison</Label>
+                <Select 
+                  value={field.condition?.operator || 'equals'} 
+                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
+                    condition: { ...field.condition, operator: value } 
+                  })}
+                  disabled={!field.condition?.field}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select comparison" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="equals">Equals</SelectItem>
+                    <SelectItem value="not_equals">Not Equals</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-xs">Expected Value</Label>
+                <Input
+                  placeholder="Value to compare against"
+                  value={field.condition?.value || ''}
+                  onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
+                    condition: { ...field.condition, value: e.target.value } 
+                  })}
+                  className="mt-1"
+                  disabled={!field.condition?.field}
+                />
+              </div>
             </div>
+            {field.condition?.field && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  This field will be <strong>{field.condition?.action === 'hide' ? 'hidden/disabled' : 'shown/enabled'}</strong> when 
+                  the field "{allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" 
+                  {field.condition?.operator === 'not_equals' ? ' does not equal ' : ' equals '}
+                  "{field.condition?.value || '[empty]'}"
+                </p>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
