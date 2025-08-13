@@ -419,26 +419,9 @@ const SortableField = ({
         
         <TabsContent value="conditions" className="space-y-4">
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
-                <Label className="text-xs">Condition Action</Label>
-                <Select 
-                  value={field.condition?.action || 'show'} 
-                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: { ...field.condition, action: value } 
-                  })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select action" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="show">Show/Enable</SelectItem>
-                    <SelectItem value="hide">Hide/Disable</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Target Field</Label>
+                <Label className="text-xs">Related Field</Label>
                 <Select 
                   value={field.condition?.field || 'none'} 
                   onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
@@ -456,8 +439,6 @@ const SortableField = ({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label className="text-xs">Comparison</Label>
                 <Select 
@@ -476,10 +457,10 @@ const SortableField = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="md:col-span-2">
-                <Label className="text-xs">Expected Value</Label>
+              <div>
+                <Label className="text-xs">Value</Label>
                 <Input
-                  placeholder="Value to compare against"
+                  placeholder="Value to compare"
                   value={field.condition?.value || ''}
                   onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
                     condition: { ...field.condition, value: e.target.value } 
@@ -487,6 +468,24 @@ const SortableField = ({
                   className="mt-1"
                   disabled={!field.condition?.field}
                 />
+              </div>
+              <div>
+                <Label className="text-xs">Action</Label>
+                <Select 
+                  value={field.condition?.action || 'show'} 
+                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
+                    condition: { ...field.condition, action: value } 
+                  })}
+                  disabled={!field.condition?.field}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select action" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="show">Show/Enable</SelectItem>
+                    <SelectItem value="hide">Hide/Disable</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             {field.condition?.field && (
