@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import DepartmentManagement from '../components/DepartmentManagement';
 import ViewManagement from '../components/ViewManagement';
+import ApplicationFormsManager from '../components/ApplicationFormsManager';
 
 const Settings = () => {
   return (
@@ -37,6 +38,15 @@ const Settings = () => {
                 </AccordionTrigger>
                 <AccordionContent>
                   <ViewManagement />
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="application-forms">
+                <AccordionTrigger className="text-lg font-semibold">
+                  Application Forms Manager
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ApplicationFormsManager />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
