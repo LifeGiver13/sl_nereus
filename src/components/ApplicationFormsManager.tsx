@@ -204,10 +204,12 @@ const ApplicationFormsManager = () => {
                       <TableCell>{form.description || 'No description'}</TableCell>
                       <TableCell>
                         {form.sections 
-                          ? Object.values(form.sections).reduce((total, section) => total + section.fields.length, 0) 
+                          ? Object.values(form.sections).reduce((total, section) => {
+                              return total + (section?.fields?.length || 0);
+                            }, 0)
                           : 0} fields
                       </TableCell>
-                      <TableCell>{format(new Date(form.createdAt), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>{form.createdAt ? format(new Date(form.createdAt), 'MMM d, yyyy') : 'Unknown'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Button
