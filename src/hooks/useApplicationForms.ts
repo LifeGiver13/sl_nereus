@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { apiRequest } from '@/lib/utils';
 
+export interface FormSection {
+  name: string;
+  fields: Array<any>;
+}
+
 export interface ApplicationForm {
   id?: number;
   name: string;
   description?: string;
-  status?: string;
-  fields?: any[];
+  sections?: { [x: string]: FormSection };
   meta?: { [x: string]: any };
   createdAt?: string;
   updatedAt?: string;
@@ -40,7 +44,7 @@ export const useApplicationForms = () => {
     }
   };
 
-  const createForm = async (formData: { name: string; description?: string; fields?: any[] }) => {
+  const createForm = async (formData: { name: string; description?: string; sections?: { [x: string]: FormSection }; meta?: { [x: string]: any } }) => {
     setLoading(true);
     setError(null);
     try {

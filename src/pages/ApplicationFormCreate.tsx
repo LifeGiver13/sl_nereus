@@ -650,7 +650,7 @@ const ApplicationFormCreate = () => {
               id: existingForm.id,
               name: existingForm.name,
               description: existingForm.description || '',
-              sections: existingForm.fields ? parseFieldsToSections(existingForm.fields) : {},
+              sections: existingForm.sections || {},
               meta: existingForm.meta || {}
             });
           }
@@ -718,8 +718,8 @@ const ApplicationFormCreate = () => {
       const formData = {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
-        fields: flattenSectionsToFields(),
-        status: 'draft'
+        sections: form.sections,
+        meta: form.meta
       };
 
       let savedForm;

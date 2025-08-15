@@ -37,7 +37,8 @@ const ApplicationFormsManager = () => {
       await createForm({
         name: newFormName.trim(),
         description: newFormDescription.trim() || undefined,
-        fields: []
+        sections: {},
+        meta: {}
       });
       
       toast({
@@ -201,7 +202,11 @@ const ApplicationFormsManager = () => {
                     <TableRow key={form.id}>
                       <TableCell className="font-medium">{form.name}</TableCell>
                       <TableCell>{form.description || 'No description'}</TableCell>
-                      <TableCell>{getStatusBadge(form.status)}</TableCell>
+                      <TableCell>
+                        {form.sections 
+                          ? Object.values(form.sections).reduce((total, section) => total + section.fields.length, 0) 
+                          : 0} fields
+                      </TableCell>
                       <TableCell>{format(new Date(form.createdAt), 'MMM d, yyyy')}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
