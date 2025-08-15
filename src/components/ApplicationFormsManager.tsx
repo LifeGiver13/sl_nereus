@@ -5,35 +5,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus, Edit, Trash2, Save, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-
-interface ApplicationForm {
-  id: number;
-  name: string;
-  description?: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ApplicationFormsResponse {
-  total: number;
-  results: ApplicationForm[];
-}
+import { useApplicationForms } from '@/hooks/useApplicationForms';
+import { format } from 'date-fns';
 
 const ApplicationFormsManager = () => {
   const [newFormName, setNewFormName] = useState('');
+  const [newFormDescription, setNewFormDescription] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingForm, setEditingForm] = useState<{ id: number; name: string; description: string } | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { forms, loading, createForm, updateForm, deleteForm } = useApplicationForms();
 
-  // For now, assume there are 0 forms (empty state)
-  const forms: ApplicationForm[] = [];
-
-  const handleCreateForm = () => {
+  const handleCreateForm = async () => {
     if (!newFormName.trim()) {
       toast({
         title: "Error",
@@ -43,10 +33,86 @@ const ApplicationFormsManager = () => {
       return;
     }
 
-    // Navigate to the form configuration page
-    navigate(`/settings/application-forms/create?name=${encodeURIComponent(newFormName)}`);
-    setIsCreateDialogOpen(false);
-    setNewFormName('');
+    try {
+      await createForm({
+        name: newFormName.trim(),
+        description: newFormDescription.trim() || undefined,
+        fields: []
+      });
+      
+      toast({
+        title: "Success",
+        description: "Application form created successfully",
+      });
+      
+      setIsCreateDialogOpen(false);
+      setNewFormName('');
+      setNewFormDescription('');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create application form",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditForm = async () => {
+    if (!editingForm) return;
+
+    try {
+      await updateForm(editingForm.id, {
+        name: editingForm.name.trim(),
+        description: editingForm.description.trim() || undefined,
+      });
+      
+      toast({
+        title: "Success",
+        description: "Application form updated successfully",
+      });
+      
+      setEditingForm(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update application form",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteForm = async (id: number, name: string) => {
+    try {
+      await deleteForm(id);
+      toast({
+        title: "Success",
+        description: `Application form "${name}" deleted successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete application form",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleConfigureForm = (formId: number, formName: string) => {
+    navigate(`/settings/application-forms/create?id=${formId}&name=${encodeURIComponent(formName)}`);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusColors = {
+      active: 'bg-green-100 text-green-800',
+      draft: 'bg-yellow-100 text-yellow-800',
+      inactive: 'bg-gray-100 text-gray-800',
+    };
+    
+    return (
+      <Badge className={statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}>
+        {status}
+      </Badge>
+    );
   };
 
   return (
@@ -70,7 +136,7 @@ const ApplicationFormsManager = () => {
               <DialogHeader>
                 <DialogTitle>Create Application Form</DialogTitle>
                 <DialogDescription>
-                  Enter a name for your new application form. You'll be able to configure the form details on the next page.
+                  Create a new application form. You can configure the form fields after creation.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -81,11 +147,16 @@ const ApplicationFormsManager = () => {
                     value={newFormName}
                     onChange={(e) => setNewFormName(e.target.value)}
                     placeholder="Enter form name"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleCreateForm();
-                      }
-                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="form-description">Description (Optional)</Label>
+                  <Textarea
+                    id="form-description"
+                    value={newFormDescription}
+                    onChange={(e) => setNewFormDescription(e.target.value)}
+                    placeholder="Enter form description"
+                    rows={3}
                   />
                 </div>
               </div>
@@ -93,7 +164,8 @@ const ApplicationFormsManager = () => {
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreateForm} disabled={!newFormName.trim()}>
+                <Button onClick={handleCreateForm} disabled={!newFormName.trim() || loading}>
+                  {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create Form
                 </Button>
               </DialogFooter>
@@ -101,26 +173,129 @@ const ApplicationFormsManager = () => {
           </Dialog>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {forms.length === 0 && (
+          {loading && forms.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              Loading application forms...
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No application forms found. Click "Add New Form" to create one.
-                  </TableCell>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {forms.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      No application forms found. Click "Add New Form" to create one.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  forms.map((form) => (
+                    <TableRow key={form.id}>
+                      <TableCell className="font-medium">{form.name}</TableCell>
+                      <TableCell>{form.description || 'No description'}</TableCell>
+                      <TableCell>{getStatusBadge(form.status)}</TableCell>
+                      <TableCell>{format(new Date(form.createdAt), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleConfigureForm(form.id, form.name)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Configure
+                          </Button>
+                          
+                          <Dialog open={editingForm?.id === form.id} onOpenChange={(open) => !open && setEditingForm(null)}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingForm({ id: form.id, name: form.name, description: form.description || '' })}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Edit Application Form</DialogTitle>
+                                <DialogDescription>
+                                  Update the form name and description.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="edit-form-name">Form Name</Label>
+                                  <Input
+                                    id="edit-form-name"
+                                    value={editingForm?.name || ''}
+                                    onChange={(e) => setEditingForm(prev => prev ? { ...prev, name: e.target.value } : null)}
+                                    placeholder="Enter form name"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="edit-form-description">Description</Label>
+                                  <Textarea
+                                    id="edit-form-description"
+                                    value={editingForm?.description || ''}
+                                    onChange={(e) => setEditingForm(prev => prev ? { ...prev, description: e.target.value } : null)}
+                                    placeholder="Enter form description"
+                                    rows={3}
+                                  />
+                                </div>
+                              </div>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => setEditingForm(null)}>
+                                  Cancel
+                                </Button>
+                                <Button onClick={handleEditForm} disabled={!editingForm?.name.trim() || loading}>
+                                  {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                  Update Form
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Application Form</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{form.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteForm(form.id, form.name)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

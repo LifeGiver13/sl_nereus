@@ -7,10 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Save, ArrowLeft, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, GripVertical, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/AdminLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useApplicationForms } from '@/hooks/useApplicationForms';
 import {
   DndContext,
   closestCenter,
@@ -509,6 +510,7 @@ const ApplicationFormCreate = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { createForm, updateForm, getForm } = useApplicationForms();
   
   const [form, setForm] = useState<ApplicationForm>({
     name: searchParams.get('name') || '',
@@ -516,6 +518,10 @@ const ApplicationFormCreate = () => {
     sections: {},
     meta: {}
   });
+  
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const formId = searchParams.get('id');
 
   const [newSectionName, setNewSectionName] = useState('');
 
@@ -632,6 +638,71 @@ const ApplicationFormCreate = () => {
     }
   };
 
+  // Load existing form data if editing
+  useEffect(() => {
+    const loadForm = async () => {
+      if (formId) {
+        setLoading(true);
+        try {
+          const existingForm = await getForm(parseInt(formId));
+          if (existingForm) {
+            setForm({
+              id: existingForm.id,
+              name: existingForm.name,
+              description: existingForm.description || '',
+              sections: existingForm.fields ? parseFieldsToSections(existingForm.fields) : {},
+              meta: existingForm.meta || {}
+            });
+          }
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to load form data",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadForm();
+  }, [formId, getForm, toast]);
+
+  // Helper function to parse fields array back to sections format
+  const parseFieldsToSections = (fields: any[]): { [x: string]: FormSection } => {
+    const sections: { [x: string]: FormSection } = {};
+    
+    fields.forEach((field) => {
+      const sectionName = field.section || 'Default Section';
+      if (!sections[sectionName]) {
+        sections[sectionName] = {
+          name: sectionName,
+          fields: []
+        };
+      }
+      sections[sectionName].fields.push(field);
+    });
+    
+    return sections;
+  };
+
+  // Helper function to flatten sections back to fields array for API
+  const flattenSectionsToFields = (): any[] => {
+    const fields: any[] = [];
+    
+    Object.entries(form.sections).forEach(([sectionName, section]) => {
+      section.fields.forEach((field) => {
+        fields.push({
+          ...field,
+          section: sectionName
+        });
+      });
+    });
+    
+    return fields;
+  };
+
   const saveForm = async () => {
     if (!form.name.trim()) {
       toast({
@@ -642,15 +713,52 @@ const ApplicationFormCreate = () => {
       return;
     }
 
-    // For now, just show success message since we don't have the API endpoint
-    toast({
-      title: "Success",
-      description: "Application form saved successfully",
-    });
-    
-    // Navigate back to settings
-    navigate('/settings');
+    setSaving(true);
+    try {
+      const formData = {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        fields: flattenSectionsToFields(),
+        status: 'draft'
+      };
+
+      let savedForm;
+      if (formId) {
+        // Update existing form
+        savedForm = await updateForm(parseInt(formId), formData);
+      } else {
+        // Create new form
+        savedForm = await createForm(formData);
+      }
+
+      toast({
+        title: "Success",
+        description: `Application form ${formId ? 'updated' : 'created'} successfully`,
+      });
+      
+      // Navigate back to settings
+      navigate('/settings');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to ${formId ? 'update' : 'create'} application form`,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin mr-2" />
+          Loading form data...
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -662,13 +770,16 @@ const ApplicationFormCreate = () => {
               Back to Settings
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Create Application Form</h1>
-              <p className="text-muted-foreground mt-1">Configure your application form structure</p>
+              <h1 className="text-3xl font-bold text-foreground">{formId ? 'Edit' : 'Create'} Application Form</h1>
+              <p className="text-muted-foreground mt-1">
+                {formId ? 'Update the form configuration' : 'Configure your application form structure'}
+              </p>
             </div>
           </div>
-          <Button onClick={saveForm}>
+          <Button onClick={saveForm} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             <Save className="h-4 w-4 mr-2" />
-            Save Form
+            {saving ? 'Saving...' : 'Save Form'}
           </Button>
         </div>
 
