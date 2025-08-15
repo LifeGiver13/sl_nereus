@@ -174,7 +174,7 @@ const ApplicationFormsManager = () => {
           </Dialog>
         </CardHeader>
         <CardContent>
-          {loading && forms.length === 0 ? (
+          {loading && (!forms || forms.length === 0) ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin mr-2" />
               Loading application forms...
@@ -191,14 +191,14 @@ const ApplicationFormsManager = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {forms.length === 0 ? (
+                {!forms || forms.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                       No application forms found. Click "Add New Form" to create one.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  forms.map((form) => (
+                  (forms || []).map((form) => (
                     <TableRow key={form.id}>
                       <TableCell className="font-medium">{form.name}</TableCell>
                       <TableCell>{form.description || 'No description'}</TableCell>
