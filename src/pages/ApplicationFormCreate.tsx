@@ -261,10 +261,10 @@ const SortableField = ({
                 </Button>
               </div>
               <div className="space-y-2">
-                {Array.isArray(field.options) && field.options.filter(option => option && option.trim() !== '').map((option, optionIndex) => (
+                {Array.isArray(field.options) && field.options.map((option, optionIndex) => (
                   <div key={optionIndex} className="flex gap-2">
                     <Input
-                      placeholder="Option text"
+                      placeholder="New Option"
                       value={option}
                       onChange={(e) => updateSelectOption(optionIndex, e.target.value)}
                     />
@@ -277,7 +277,7 @@ const SortableField = ({
                     </Button>
                   </div>
                 ))}
-                {(!Array.isArray(field.options) || field.options.filter(opt => opt && opt.trim() !== '').length === 0) && (
+                {(!Array.isArray(field.options) || field.options.length === 0) && (
                   <p className="text-xs text-muted-foreground">No options added yet</p>
                 )}
               </div>
