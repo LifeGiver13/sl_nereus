@@ -667,7 +667,7 @@ const ApplicationFormCreate = () => {
     };
 
     loadForm();
-  }, [formId, getForm, toast]);
+  }, [formId, toast]);
 
   // Helper function to parse fields array back to sections format
   const parseFieldsToSections = (fields: any[]): { [x: string]: FormSection } => {
