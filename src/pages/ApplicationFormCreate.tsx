@@ -265,7 +265,7 @@ const SortableField = ({
                 {Array.isArray(field.options) && field.options.map((option, optionIndex) => (
                   <div key={optionIndex} className="flex gap-2">
                     <Input
-                      placeholder="New Option"
+                      placeholder="Option value"
                       value={option}
                       onChange={(e) => updateSelectOption(optionIndex, e.target.value)}
                     />

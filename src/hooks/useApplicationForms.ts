@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { apiRequest } from '@/lib/utils';
 
@@ -16,11 +17,6 @@ export interface ApplicationForm {
   updatedAt?: string;
 }
 
-export interface ApplicationFormsResponse {
-  total: number;
-  results: ApplicationForm[];
-}
-
 export const useApplicationForms = () => {
   const [forms, setForms] = useState<ApplicationForm[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,8 +28,8 @@ export const useApplicationForms = () => {
     try {
       const response = await apiRequest('/application-forms');
       if (response.ok) {
-        const data: ApplicationFormsResponse = await response.json();
-        setForms(data.results);
+        const data: ApplicationForm[] = await response.json();
+        setForms(data);
       } else {
         throw new Error('Failed to fetch application forms');
       }
