@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '@/lib/utils';
 
 export interface FormSection {
@@ -109,7 +109,7 @@ export const useApplicationForms = () => {
     }
   };
 
-  const getForm = async (id: number): Promise<ApplicationForm | null> => {
+  const getForm = useCallback(async (id: number): Promise<ApplicationForm | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -126,7 +126,7 @@ export const useApplicationForms = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchForms();
