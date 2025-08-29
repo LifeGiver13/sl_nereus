@@ -54,6 +54,10 @@ export type Field = {
 type FormSection = {
   name: string;
   fields: Field[];
+  meta?: {
+    action?: string;
+    [key: string]: any;
+  };
 };
 
 type ApplicationForm = {
@@ -550,7 +554,10 @@ const ApplicationFormCreate = () => {
         ...prev.sections,
         [newSectionName]: {
           name: newSectionName,
-          fields: []
+          fields: [],
+          meta: {
+            action: 'default'
+          }
         }
       }
     }));
@@ -860,6 +867,35 @@ const ApplicationFormCreate = () => {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+              <div className="mt-4">
+                <Label className="text-xs">Section Action</Label>
+                <Select 
+                  value={form.sections[sectionName].meta?.action || 'default'} 
+                  onValueChange={(value) => {
+                    setForm(prev => ({
+                      ...prev,
+                      sections: {
+                        ...prev.sections,
+                        [sectionName]: {
+                          ...prev.sections[sectionName],
+                          meta: {
+                            ...prev.sections[sectionName].meta,
+                            action: value
+                          }
+                        }
+                      }
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default</SelectItem>
+                    <SelectItem value="verifyEmail">Verify Email</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </CardHeader>
             <CardContent>
