@@ -309,13 +309,13 @@ const ApplicationDetail = () => {
             const shouldRender = !field.condition || (() => {
               const conditionValue = sectionData[field.condition.field];
               const targetValue = field.condition.value;
-              const comparison = field.condition.comparison || 'equals';
+              const operator = field.condition.operator || 'equals';
               const action = field.condition.action || 'hide';
               
               let conditionMet = false;
-              if (comparison === 'equals') {
+              if (operator === 'equals') {
                 conditionMet = conditionValue === targetValue;
-              } else if (comparison === 'not_equals') {
+              } else if (operator === 'not_equals') {
                 conditionMet = conditionValue !== targetValue;
               }
               

@@ -15,7 +15,7 @@ export interface WizardField {
   condition?: {
     field: string;
     value: string | string[];
-    comparison?: string;
+    operator?: string;
     action?: string;
     validate: boolean;
   };

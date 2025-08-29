@@ -432,9 +432,10 @@ const SortableField = ({
                   onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
                     condition: value === 'none' ? undefined : { 
                       field: value, 
-                      comparison: field.condition?.comparison || 'equals', 
+                      operator: field.condition?.operator || 'equals', 
                       action: field.condition?.action || 'hide',
-                      value: field.condition?.value || ''
+                      value: field.condition?.value || '',
+                      validate: field.condition?.validate || false
                     } 
                   })}
                 >
@@ -452,9 +453,9 @@ const SortableField = ({
               <div>
                 <Label className="text-xs">Comparison</Label>
                 <Select 
-                  value={field.condition?.comparison || 'equals'} 
+                  value={field.condition?.operator || 'equals'} 
                   onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: { ...field.condition, comparison: value } 
+                    condition: { ...field.condition, operator: value } 
                   })}
                   disabled={!field.condition?.field}
                 >
