@@ -15,6 +15,8 @@ export interface WizardField {
   condition?: {
     field: string;
     value: string | string[];
+    comparison?: string;
+    action?: string;
     validate: boolean;
   };
   checkableExtraLabel?: string;

@@ -306,7 +306,23 @@ const ApplicationDetail = () => {
         <div className="space-y-4">
           {sectionConfig.fields.map((field) => {
             const fieldValue = sectionData[field.name];
-            const shouldRender = !field.condition || (sectionData[field.condition.field] === field.condition.value);
+            const shouldRender = !field.condition || (() => {
+              const conditionValue = sectionData[field.condition.field];
+              const targetValue = field.condition.value;
+              const comparison = field.condition.comparison || 'equals';
+              const action = field.condition.action || 'hide';
+              
+              let conditionMet = false;
+              if (comparison === 'equals') {
+                conditionMet = conditionValue === targetValue;
+              } else if (comparison === 'not_equals') {
+                conditionMet = conditionValue !== targetValue;
+              }
+              
+              // If action is 'hide', we show when condition is NOT met
+              // If action is 'show', we show when condition IS met
+              return action === 'hide' ? !conditionMet : conditionMet;
+            })();
             
             if (!shouldRender) return null;
             

@@ -430,7 +430,12 @@ const SortableField = ({
                 <Select 
                   value={field.condition?.field || 'none'} 
                   onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: value === 'none' ? undefined : { ...field.condition, field: value } 
+                    condition: value === 'none' ? undefined : { 
+                      field: value, 
+                      comparison: field.condition?.comparison || 'equals', 
+                      action: field.condition?.action || 'hide',
+                      value: field.condition?.value || ''
+                    } 
                   })}
                 >
                   <SelectTrigger className="mt-1">
@@ -447,9 +452,9 @@ const SortableField = ({
               <div>
                 <Label className="text-xs">Comparison</Label>
                 <Select 
-                  value={field.condition?.operator || 'equals'} 
+                  value={field.condition?.comparison || 'equals'} 
                   onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: { ...field.condition, operator: value } 
+                    condition: { ...field.condition, comparison: value } 
                   })}
                   disabled={!field.condition?.field}
                 >
@@ -477,7 +482,7 @@ const SortableField = ({
               <div>
                 <Label className="text-xs">Action</Label>
                 <Select 
-                  value={field.condition?.action || 'show'} 
+                  value={field.condition?.action || 'hide'} 
                   onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
                     condition: { ...field.condition, action: value } 
                   })}
@@ -487,8 +492,8 @@ const SortableField = ({
                     <SelectValue placeholder="Select action" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="show">Show/Enable</SelectItem>
-                    <SelectItem value="hide">Hide/Disable</SelectItem>
+                    <SelectItem value="hide">Hide</SelectItem>
+                    <SelectItem value="show">Show</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
