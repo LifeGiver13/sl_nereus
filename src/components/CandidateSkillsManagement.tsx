@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Edit, Power, Search } from 'lucide-react';
+import { Edit, Power, Search, Plus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import SkillFormModal from './SkillFormModal';
 
 interface Skill {
   id: number;
@@ -16,13 +18,26 @@ interface Skill {
   subCategory?: string;
   meta?: {
     fortunaID: number;
+    disabled?: boolean;
   };
   createdAt: string;
   updatedAt: string;
 }
 
+type SkillFormData = {
+  name: string;
+  category: string;
+  subCategory?: string;
+};
+
 const CandidateSkillsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ['candidate-skills'],
     queryFn: async () => {
@@ -77,14 +92,112 @@ const CandidateSkillsManagement = () => {
       return a.name.localeCompare(b.name);
     }) || [];
 
+  // Create skill mutation
+  const createSkillMutation = useMutation({
+    mutationFn: async (skillData: SkillFormData) => {
+      const response = await apiRequest('/candidate/skill', {
+        method: 'POST',
+        body: JSON.stringify(skillData),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to create skill');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-skills'] });
+      toast({
+        title: 'Success',
+        description: 'Skill created successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create skill',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Update skill mutation
+  const updateSkillMutation = useMutation({
+    mutationFn: async ({ id, skillData }: { id: number; skillData: SkillFormData }) => {
+      const response = await apiRequest(`/candidate/skill/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(skillData),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update skill');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-skills'] });
+      toast({
+        title: 'Success',
+        description: 'Skill updated successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update skill',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Toggle skill status mutation
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ id, action }: { id: number; action: 'enable' | 'disable' }) => {
+      const response = await apiRequest(`/candidate/skill/${id}/${action}`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} skill`);
+      }
+      return response.json();
+    },
+    onSuccess: (_, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-skills'] });
+      toast({
+        title: 'Success',
+        description: `Skill ${action}d successfully`,
+      });
+    },
+    onError: (error, { action }) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : `Failed to ${action} skill`,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleCreateSkill = async (skillData: SkillFormData) => {
+    await createSkillMutation.mutateAsync(skillData);
+  };
+
+  const handleEditSkill = async (skillData: SkillFormData) => {
+    if (selectedSkill) {
+      await updateSkillMutation.mutateAsync({ 
+        id: selectedSkill.id, 
+        skillData 
+      });
+      setSelectedSkill(null);
+    }
+  };
+
   const handleEdit = (skill: Skill) => {
-    // TODO: Implement edit functionality
-    console.log('Edit skill:', skill);
+    setSelectedSkill(skill);
+    setIsEditModalOpen(true);
   };
 
   const handleToggleStatus = (skill: Skill) => {
-    // TODO: Implement disable/enable functionality
-    console.log('Toggle skill status:', skill);
+    const isDisabled = skill.meta?.disabled === true;
+    const action = isDisabled ? 'enable' : 'disable';
+    toggleStatusMutation.mutate({ id: skill.id, action });
   };
 
   return (
@@ -96,19 +209,25 @@ const CandidateSkillsManagement = () => {
         </p>
       </div>
 
-      <div className="flex items-center gap-4 mb-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search skills, categories, or subcategories..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search skills, categories, or subcategories..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {filteredAndSortedSkills.length} skill{filteredAndSortedSkills.length !== 1 ? 's' : ''}
+          </div>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {filteredAndSortedSkills.length} skill{filteredAndSortedSkills.length !== 1 ? 's' : ''}
-        </div>
+        <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          New Skill
+        </Button>
       </div>
 
       {filteredAndSortedSkills.length === 0 ? (
@@ -130,7 +249,16 @@ const CandidateSkillsManagement = () => {
               <TableBody>
                 {filteredAndSortedSkills.map((skill) => (
                   <TableRow key={skill.id}>
-                    <TableCell className="font-medium">{skill.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {skill.name}
+                        {skill.meta?.disabled && (
+                          <Badge variant="secondary" className="text-xs">
+                            Disabled
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">
                         {skill.category || 'Uncategorized'}
@@ -148,6 +276,7 @@ const CandidateSkillsManagement = () => {
                           size="sm"
                           onClick={() => handleEdit(skill)}
                           className="h-8 w-8 p-0"
+                          disabled={updateSkillMutation.isPending}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -156,8 +285,9 @@ const CandidateSkillsManagement = () => {
                           size="sm"
                           onClick={() => handleToggleStatus(skill)}
                           className="h-8 w-8 p-0"
+                          disabled={toggleStatusMutation.isPending}
                         >
-                          <Power className="h-4 w-4" />
+                          <Power className={`h-4 w-4 ${skill.meta?.disabled ? 'text-muted-foreground' : 'text-green-600'}`} />
                         </Button>
                       </div>
                     </TableCell>
@@ -168,6 +298,26 @@ const CandidateSkillsManagement = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Create Skill Modal */}
+      <SkillFormModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateSkill}
+        isLoading={createSkillMutation.isPending}
+      />
+
+      {/* Edit Skill Modal */}
+      <SkillFormModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedSkill(null);
+        }}
+        onSubmit={handleEditSkill}
+        skill={selectedSkill}
+        isLoading={updateSkillMutation.isPending}
+      />
     </div>
   );
 };
