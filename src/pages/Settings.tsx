@@ -6,6 +6,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import DepartmentManagement from '../components/DepartmentManagement';
 import ViewManagement from '../components/ViewManagement';
 import ApplicationFormsManager from '../components/ApplicationFormsManager';
+import CandidateSkillsManagement from '../components/CandidateSkillsManagement';
 
 const Settings = () => {
   return (
@@ -47,6 +48,15 @@ const Settings = () => {
                 </AccordionTrigger>
                 <AccordionContent>
                   <ApplicationFormsManager />
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="candidate-skills">
+                <AccordionTrigger className="text-lg font-semibold">
+                  Candidate Skills Management
+                </AccordionTrigger>
+                <AccordionContent>
+                  <CandidateSkillsManagement />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
