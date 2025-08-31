@@ -9,11 +9,12 @@ interface Skill {
   id: number;
   name: string;
   category: string;
-  subcategory?: string;
-}
-
-interface SkillsResponse {
-  skills: Skill[];
+  subCategory?: string;
+  meta?: {
+    fortunaID: number;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 const CandidateSkillsManagement = () => {
@@ -24,7 +25,7 @@ const CandidateSkillsManagement = () => {
       if (!response.ok) {
         throw new Error('Failed to fetch skills');
       }
-      return response.json() as Promise<SkillsResponse>;
+      return response.json() as Promise<Skill[]>;
     }
   });
 
@@ -47,9 +48,9 @@ const CandidateSkillsManagement = () => {
   }
 
   // Group skills by category, then by subcategory
-  const groupedSkills = data?.skills?.reduce((acc, skill) => {
+  const groupedSkills = data?.reduce((acc, skill) => {
     const category = skill.category || 'Uncategorized';
-    const subcategory = skill.subcategory || 'General';
+    const subcategory = skill.subCategory || 'General';
     
     if (!acc[category]) {
       acc[category] = {};
