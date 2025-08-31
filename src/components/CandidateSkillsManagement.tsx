@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Edit, Power, Search, Plus } from 'lucide-react';
+import { Edit, Power, Search, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import SkillFormModal from './SkillFormModal';
 
 interface Skill {
@@ -35,6 +36,9 @@ const CandidateSkillsManagement = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [skillToDelete, setSkillToDelete] = useState<Skill | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -134,6 +138,36 @@ const CandidateSkillsManagement = () => {
     },
   });
 
+  // Delete skill mutation
+  const deleteSkillMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest(`/candidate/skill/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete skill');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-skills'] });
+      toast({
+        title: 'Success',
+        description: 'Skill deleted successfully',
+      });
+      setIsDeleteDialogOpen(false);
+      setSkillToDelete(null);
+      setDeleteConfirmation('');
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete skill',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleCreateSkill = async (skillData: SkillFormData) => {
     await createSkillMutation.mutateAsync(skillData);
   };
@@ -158,6 +192,19 @@ const CandidateSkillsManagement = () => {
     const action = isDisabled ? 'enable' : 'disable';
     toggleStatusMutation.mutate({ id: skill.id, action });
   };
+
+  const handleDelete = (skill: Skill) => {
+    setSkillToDelete(skill);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (skillToDelete && deleteConfirmation === skillToDelete.name) {
+      deleteSkillMutation.mutate(skillToDelete.id);
+    }
+  };
+
+  const isDeleteDisabled = !skillToDelete || deleteConfirmation !== skillToDelete.name;
 
   // Early returns after all hooks have been called
   if (isLoading) {
@@ -292,6 +339,15 @@ const CandidateSkillsManagement = () => {
                         >
                           <Power className={`h-4 w-4 ${skill.meta?.disabled ? 'text-muted-foreground' : 'text-green-600'}`} />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(skill)}
+                          className="h-8 w-8 p-0"
+                          disabled={deleteSkillMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -321,6 +377,47 @@ const CandidateSkillsManagement = () => {
         skill={selectedSkill}
         isLoading={updateSkillMutation.isPending}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Skill</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action is irreversible and will remove the skill assignment from any candidates who currently have it.
+              {skillToDelete && (
+                <div className="mt-4">
+                  <p className="font-medium mb-2">
+                    Type "{skillToDelete.name}" to confirm deletion:
+                  </p>
+                  <Input
+                    value={deleteConfirmation}
+                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                    placeholder="Type skill name here"
+                    className="mt-2"
+                  />
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsDeleteDialogOpen(false);
+              setSkillToDelete(null);
+              setDeleteConfirmation('');
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleteDisabled || deleteSkillMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteSkillMutation.isPending ? 'Deleting...' : 'Delete Skill'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
