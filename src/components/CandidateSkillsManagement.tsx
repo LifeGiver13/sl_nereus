@@ -2,8 +2,11 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Edit, Power } from 'lucide-react';
 
 interface Skill {
   id: number;
@@ -47,21 +50,31 @@ const CandidateSkillsManagement = () => {
     );
   }
 
-  // Group skills by category, then by subcategory
-  const groupedSkills = data?.reduce((acc, skill) => {
-    const category = skill.category || 'Uncategorized';
-    const subcategory = skill.subCategory || 'General';
+  // Sort skills by category, then subcategory, then name
+  const sortedSkills = data?.slice().sort((a, b) => {
+    const categoryA = a.category || 'Uncategorized';
+    const categoryB = b.category || 'Uncategorized';
+    const subcategoryA = a.subCategory || 'General';
+    const subcategoryB = b.subCategory || 'General';
     
-    if (!acc[category]) {
-      acc[category] = {};
+    if (categoryA !== categoryB) {
+      return categoryA.localeCompare(categoryB);
     }
-    if (!acc[category][subcategory]) {
-      acc[category][subcategory] = [];
+    if (subcategoryA !== subcategoryB) {
+      return subcategoryA.localeCompare(subcategoryB);
     }
-    
-    acc[category][subcategory].push(skill);
-    return acc;
-  }, {} as Record<string, Record<string, Skill[]>>) || {};
+    return a.name.localeCompare(b.name);
+  }) || [];
+
+  const handleEdit = (skill: Skill) => {
+    // TODO: Implement edit functionality
+    console.log('Edit skill:', skill);
+  };
+
+  const handleToggleStatus = (skill: Skill) => {
+    // TODO: Implement disable/enable functionality
+    console.log('Toggle skill status:', skill);
+  };
 
   return (
     <div className="space-y-6">
@@ -72,42 +85,62 @@ const CandidateSkillsManagement = () => {
         </p>
       </div>
 
-      {Object.keys(groupedSkills).length === 0 ? (
+      {sortedSkills.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           No skills found
         </div>
       ) : (
-        <div className="space-y-4">
-          {Object.entries(groupedSkills).map(([category, subcategories]) => (
-            <Card key={category} className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold text-primary">
-                  {category}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {Object.entries(subcategories).map(([subcategory, skills]) => (
-                  <div key={subcategory} className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">
-                      {subcategory}
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {skills.map((skill) => (
-                        <Badge
-                          key={skill.id}
-                          variant="secondary"
-                          className="text-xs"
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Skill Name</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Subcategory</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedSkills.map((skill) => (
+                  <TableRow key={skill.id}>
+                    <TableCell className="font-medium">{skill.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {skill.category || 'Uncategorized'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {skill.subCategory || 'General'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(skill)}
+                          className="h-8 w-8 p-0"
                         >
-                          {skill.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleStatus(skill)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Power className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
