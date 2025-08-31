@@ -38,6 +38,8 @@ const CandidateSkillsManagement = () => {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // All hooks must be called at the top level, before any early returns
   const { data, isLoading, error } = useQuery({
     queryKey: ['candidate-skills'],
     queryFn: async () => {
@@ -48,49 +50,6 @@ const CandidateSkillsManagement = () => {
       return response.json() as Promise<Skill[]>;
     }
   });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-destructive">
-        Error loading skills: {error instanceof Error ? error.message : 'Unknown error'}
-      </div>
-    );
-  }
-
-  // Sort and filter skills by category, then subcategory, then name
-  const filteredAndSortedSkills = data?.slice()
-    .filter((skill) => {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        skill.name.toLowerCase().includes(searchLower) ||
-        (skill.category || '').toLowerCase().includes(searchLower) ||
-        (skill.subCategory || '').toLowerCase().includes(searchLower)
-      );
-    })
-    .sort((a, b) => {
-      const categoryA = a.category || 'Uncategorized';
-      const categoryB = b.category || 'Uncategorized';
-      const subcategoryA = a.subCategory || 'General';
-      const subcategoryB = b.subCategory || 'General';
-      
-      if (categoryA !== categoryB) {
-        return categoryA.localeCompare(categoryB);
-      }
-      if (subcategoryA !== subcategoryB) {
-        return subcategoryA.localeCompare(subcategoryB);
-      }
-      return a.name.localeCompare(b.name);
-    }) || [];
 
   // Create skill mutation
   const createSkillMutation = useMutation({
@@ -199,6 +158,50 @@ const CandidateSkillsManagement = () => {
     const action = isDisabled ? 'enable' : 'disable';
     toggleStatusMutation.mutate({ id: skill.id, action });
   };
+
+  // Early returns after all hooks have been called
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-destructive">
+        Error loading skills: {error instanceof Error ? error.message : 'Unknown error'}
+      </div>
+    );
+  }
+
+  // Sort and filter skills by category, then subcategory, then name
+  const filteredAndSortedSkills = data?.slice()
+    .filter((skill) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        skill.name.toLowerCase().includes(searchLower) ||
+        (skill.category || '').toLowerCase().includes(searchLower) ||
+        (skill.subCategory || '').toLowerCase().includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      const categoryA = a.category || 'Uncategorized';
+      const categoryB = b.category || 'Uncategorized';
+      const subcategoryA = a.subCategory || 'General';
+      const subcategoryB = b.subCategory || 'General';
+      
+      if (categoryA !== categoryB) {
+        return categoryA.localeCompare(categoryB);
+      }
+      if (subcategoryA !== subcategoryB) {
+        return subcategoryA.localeCompare(subcategoryB);
+      }
+      return a.name.localeCompare(b.name);
+    }) || [];
 
   return (
     <div className="space-y-6">
