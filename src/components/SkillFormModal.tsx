@@ -61,7 +61,7 @@ const SkillFormModal = ({ isOpen, onClose, onSubmit, skill, isLoading }: SkillFo
         subCategory: '',
       });
     }
-  }, [skill, form]);
+  }, [skill]);
 
   const handleSubmit = async (data: SkillFormData) => {
     try {
