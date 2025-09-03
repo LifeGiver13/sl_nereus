@@ -5,6 +5,7 @@ import { apiRequest } from '@/lib/utils';
 export interface FormSection {
   name: string;
   fields: Array<any>;
+  displayOrder?: number;
   meta?: {
     action?: string;
     [key: string]: any;

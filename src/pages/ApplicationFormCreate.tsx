@@ -54,6 +54,7 @@ export type Field = {
 type FormSection = {
   name: string;
   fields: Field[];
+  displayOrder?: number;
   meta?: {
     action?: string;
     [key: string]: any;
@@ -519,23 +520,22 @@ const SortableField = ({
 };
 
 const ApplicationFormCreate = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { toast } = useToast();
-  const { createForm, updateForm, getForm } = useApplicationForms();
-  
   const [form, setForm] = useState<ApplicationForm>({
-    name: searchParams.get('name') || '',
+    name: '',
     description: '',
     sections: {},
     meta: {}
   });
-  
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const formId = searchParams.get('id');
-
   const [newSectionName, setNewSectionName] = useState('');
+  const [isSortingSections, setIsSortingSections] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
+  const { createForm, updateForm, getForm } = useApplicationForms();
+
+  const formId = searchParams.get('id');
+  const formName = searchParams.get('name');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -544,32 +544,31 @@ const ApplicationFormCreate = () => {
     })
   );
 
+  // Helper function to get sections sorted by displayOrder
+  const getSortedSections = () => {
+    return Object.entries(form.sections).sort(([, a], [, b]) => {
+      const orderA = a.displayOrder ?? 0;
+      const orderB = b.displayOrder ?? 0;
+      return orderA - orderB;
+    });
+  };
+
   const addSection = () => {
-    if (!newSectionName.trim()) return;
-
-    if (form.sections[newSectionName]) {
-      toast({
-        title: "Error",
-        description: "Section already exists",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setForm(prev => ({
-      ...prev,
-      sections: {
-        ...prev.sections,
-        [newSectionName]: {
-          name: newSectionName,
-          fields: [],
-          meta: {
-            action: 'default'
+    if (newSectionName.trim()) {
+      const existingSectionCount = Object.keys(form.sections).length;
+      setForm(prev => ({
+        ...prev,
+        sections: {
+          ...prev.sections,
+          [newSectionName]: {
+            name: newSectionName,
+            fields: [],
+            displayOrder: existingSectionCount
           }
         }
-      }
-    }));
-    setNewSectionName('');
+      }));
+      setNewSectionName('');
+    }
   };
 
   const deleteSection = (sectionName: string) => {
@@ -630,27 +629,76 @@ const ApplicationFormCreate = () => {
     }));
   };
 
-  const handleFieldDragEnd = (event: DragEndEvent, sectionName: string) => {
+  const handleFieldDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (active.id !== over?.id) {
-      const fields = form.sections[sectionName].fields;
-      const oldIndex = fields.findIndex((_, index) => `field-${index}` === active.id);
-      const newIndex = fields.findIndex((_, index) => `field-${index}` === over?.id);
-
-      const newFields = arrayMove(fields, oldIndex, newIndex);
-
-      setForm(prev => ({
-        ...prev,
-        sections: {
-          ...prev.sections,
-          [sectionName]: {
-            ...prev.sections[sectionName],
-            fields: newFields
-          }
-        }
-      }));
+    if (!over || !active.id.toString().startsWith('field-') || !over.id.toString().startsWith('field-')) {
+      return;
     }
+
+    // Find the section containing these fields
+    const activeFieldIndex = parseInt(active.id.toString().replace('field-', ''));
+    const overFieldIndex = parseInt(over.id.toString().replace('field-', ''));
+
+    // Find which section contains the active field
+    const sectionName = Object.keys(form.sections).find(sectionName => {
+      const section = form.sections[sectionName];
+      return activeFieldIndex < section.fields.length;
+    });
+
+    if (!sectionName || activeFieldIndex === overFieldIndex) {
+      return;
+    }
+
+    setForm(prev => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        [sectionName]: {
+          ...prev.sections[sectionName],
+          fields: arrayMove(prev.sections[sectionName].fields, activeFieldIndex, overFieldIndex)
+        }
+      }
+    }));
+  };
+
+  const handleSectionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || !active.id.toString().startsWith('section-') || !over.id.toString().startsWith('section-')) {
+      return;
+    }
+
+    const activeSectionName = active.id.toString().replace('section-', '');
+    const overSectionName = over.id.toString().replace('section-', '');
+
+    if (activeSectionName === overSectionName) {
+      return;
+    }
+
+    const sectionEntries = getSortedSections();
+    const activeIndex = sectionEntries.findIndex(([name]) => name === activeSectionName);
+    const overIndex = sectionEntries.findIndex(([name]) => name === overSectionName);
+
+    if (activeIndex === -1 || overIndex === -1) {
+      return;
+    }
+
+    const reorderedSections = arrayMove(sectionEntries, activeIndex, overIndex);
+    
+    // Update displayOrder for all sections
+    const updatedSections = { ...form.sections };
+    reorderedSections.forEach(([sectionName], index) => {
+      updatedSections[sectionName] = {
+        ...updatedSections[sectionName],
+        displayOrder: index
+      };
+    });
+
+    setForm(prev => ({
+      ...prev,
+      sections: updatedSections
+    }));
   };
 
   // Load existing form data if editing
@@ -661,11 +709,22 @@ const ApplicationFormCreate = () => {
         try {
           const existingForm = await getForm(parseInt(formId));
           if (existingForm) {
+            // Ensure sections have displayOrder, assign based on current order if missing
+            const sectionsWithOrder = { ...existingForm.sections };
+            Object.entries(sectionsWithOrder).forEach(([sectionName, section], index) => {
+              if (section.displayOrder === undefined) {
+                sectionsWithOrder[sectionName] = {
+                  ...section,
+                  displayOrder: index
+                };
+              }
+            });
+
             setForm({
               id: existingForm.id,
               name: existingForm.name,
               description: existingForm.description || '',
-              sections: existingForm.sections || {},
+              sections: sectionsWithOrder,
               meta: existingForm.meta || {}
             });
           }
@@ -684,38 +743,86 @@ const ApplicationFormCreate = () => {
     loadForm();
   }, [formId, getForm, toast]);
 
-  // Helper function to parse fields array back to sections format
-  const parseFieldsToSections = (fields: any[]): { [x: string]: FormSection } => {
-    const sections: { [x: string]: FormSection } = {};
-    
-    fields.forEach((field) => {
-      const sectionName = field.section || 'Default Section';
-      if (!sections[sectionName]) {
-        sections[sectionName] = {
-          name: sectionName,
-          fields: []
-        };
-      }
-      sections[sectionName].fields.push(field);
-    });
-    
-    return sections;
-  };
+  // Initialize form name from URL params
+  useEffect(() => {
+    if (formName && !formId) {
+      setForm(prev => ({ ...prev, name: formName }));
+    }
+  }, [formName, formId]);
 
-  // Helper function to flatten sections back to fields array for API
-  const flattenSectionsToFields = (): any[] => {
-    const fields: any[] = [];
-    
-    Object.entries(form.sections).forEach(([sectionName, section]) => {
-      section.fields.forEach((field) => {
-        fields.push({
-          ...field,
-          section: sectionName
-        });
-      });
-    });
-    
-    return fields;
+  // Get all fields across all sections for condition setup
+  const allFields = Object.values(form.sections).flatMap(section => section.fields);
+
+  // Sortable Section Component
+  const SortableSection = ({ sectionName, section }: { sectionName: string; section: FormSection }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+    } = useSortable({ id: `section-${sectionName}` });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <Card key={sectionName} ref={setNodeRef} style={style} className="mb-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {isSortingSections && (
+                <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+                  <GripVertical className="h-5 w-5 text-muted-foreground" />
+                </div>
+              )}
+              <CardTitle className="text-lg">{section.name}</CardTitle>
+            </div>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => deleteSection(sectionName)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleFieldDragEnd}
+          >
+            <SortableContext items={section.fields.map((_, index) => `field-${index}`)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-4">
+                {section.fields.map((field, fieldIndex) => (
+                  <SortableField
+                    key={fieldIndex}
+                    field={field}
+                    fieldIndex={fieldIndex}
+                    sectionName={sectionName}
+                    onUpdateField={updateField}
+                    onDeleteField={deleteField}
+                    allFields={allFields}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+          
+          <Button
+            onClick={() => addField(sectionName)}
+            variant="outline"
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Field
+          </Button>
+        </CardContent>
+      </Card>
+    );
   };
 
   const saveForm = async () => {
@@ -728,7 +835,7 @@ const ApplicationFormCreate = () => {
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
     try {
       const formData = {
         name: form.name.trim(),
@@ -737,13 +844,10 @@ const ApplicationFormCreate = () => {
         meta: form.meta
       };
 
-      let savedForm;
       if (formId) {
-        // Update existing form
-        savedForm = await updateForm(parseInt(formId), formData);
+        await updateForm(parseInt(formId), formData);
       } else {
-        // Create new form
-        savedForm = await createForm(formData);
+        await createForm(formData);
       }
 
       toast({
@@ -751,7 +855,6 @@ const ApplicationFormCreate = () => {
         description: `Application form ${formId ? 'updated' : 'created'} successfully`,
       });
       
-      // Navigate back to settings
       navigate('/settings');
     } catch (error) {
       toast({
@@ -760,11 +863,11 @@ const ApplicationFormCreate = () => {
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  if (loading) {
+  if (loading && formId) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -791,10 +894,10 @@ const ApplicationFormCreate = () => {
               </p>
             </div>
           </div>
-          <Button onClick={saveForm} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          <Button onClick={saveForm} disabled={loading}>
+            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Saving...' : 'Save Form'}
+            {loading ? 'Saving...' : 'Save Form'}
           </Button>
         </div>
 
@@ -827,25 +930,34 @@ const ApplicationFormCreate = () => {
           </CardContent>
         </Card>
 
-        {/* Add Section */}
+        {/* Section Management */}
         <Card>
           <CardHeader>
-            <CardTitle>Add Section</CardTitle>
-            <CardDescription>Organize your form fields into logical sections</CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Form Sections</CardTitle>
+                <CardDescription>Organize your form fields into logical sections</CardDescription>
+              </div>
+              
+              {Object.keys(form.sections).length > 1 && (
+                <Button
+                  variant={isSortingSections ? "default" : "outline"}
+                  onClick={() => setIsSortingSections(!isSortingSections)}
+                >
+                  <GripVertical className="h-4 w-4 mr-2" />
+                  {isSortingSections ? "Done Sorting" : "Sort Sections"}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
               <Input
+                placeholder="Section name"
                 value={newSectionName}
                 onChange={(e) => setNewSectionName(e.target.value)}
-                placeholder="Section name"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    addSection();
-                  }
-                }}
               />
-              <Button onClick={addSection} disabled={!newSectionName.trim()}>
+              <Button onClick={addSection}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Section
               </Button>
@@ -854,19 +966,26 @@ const ApplicationFormCreate = () => {
         </Card>
 
         {/* Sections */}
-        {Object.keys(form.sections).map((sectionName) => (
-          <Card key={sectionName} className="border">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{sectionName}</CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => addField(sectionName)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+        {isSortingSections ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleSectionDragEnd}
+          >
+            <SortableContext items={getSortedSections().map(([name]) => `section-${name}`)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-6">
+                {getSortedSections().map(([sectionName, section]) => (
+                  <SortableSection key={sectionName} sectionName={sectionName} section={section} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        ) : (
+          getSortedSections().map(([sectionName, section]) => (
+            <Card key={sectionName} className="mb-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{section.name}</CardTitle>
                   <Button
                     size="sm"
                     variant="destructive"
@@ -875,74 +994,42 @@ const ApplicationFormCreate = () => {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-              <div className="mt-4">
-                <Label className="text-xs">Section Action</Label>
-                <Select 
-                  value={form.sections[sectionName].meta?.action || 'default'} 
-                  onValueChange={(value) => {
-                    setForm(prev => ({
-                      ...prev,
-                      sections: {
-                        ...prev.sections,
-                        [sectionName]: {
-                          ...prev.sections[sectionName],
-                          meta: {
-                            ...prev.sections[sectionName].meta,
-                            action: value
-                          }
-                        }
-                      }
-                    }));
-                  }}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleFieldDragEnd}
                 >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Default</SelectItem>
-                    <SelectItem value="verifyEmail">Verify Email</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {form.sections[sectionName].fields.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No fields added yet</p>
-              ) : (
-                <DndContext 
-                  sensors={sensors} 
-                  collisionDetection={closestCenter} 
-                  onDragEnd={(event) => handleFieldDragEnd(event, sectionName)}
-                >
-                  <SortableContext 
-                    items={form.sections[sectionName].fields.map((_, index) => `field-${index}`)} 
-                    strategy={verticalListSortingStrategy}
-                  >
+                  <SortableContext items={section.fields.map((_, index) => `field-${index}`)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-4">
-                      {form.sections[sectionName].fields.map((field, fieldIndex) => {
-                        // Get all fields from all sections for condition references
-                        const allFields = Object.values(form.sections).flatMap(section => section.fields);
-                        
-                        return (
-                          <SortableField
-                            key={`${sectionName}-${fieldIndex}`}
-                            field={field}
-                            fieldIndex={fieldIndex}
-                            sectionName={sectionName}
-                            onUpdateField={updateField}
-                            onDeleteField={deleteField}
-                            allFields={allFields}
-                          />
-                        );
-                      })}
+                      {section.fields.map((field, fieldIndex) => (
+                        <SortableField
+                          key={fieldIndex}
+                          field={field}
+                          fieldIndex={fieldIndex}
+                          sectionName={sectionName}
+                          onUpdateField={updateField}
+                          onDeleteField={deleteField}
+                          allFields={allFields}
+                        />
+                      ))}
                     </div>
                   </SortableContext>
                 </DndContext>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                
+                <Button
+                  onClick={() => addField(sectionName)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Field
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        )}
 
         {Object.keys(form.sections).length === 0 && (
           <Card>
