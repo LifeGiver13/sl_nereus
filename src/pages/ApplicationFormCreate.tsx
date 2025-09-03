@@ -768,16 +768,38 @@ const ApplicationFormCreate = () => {
       transition,
     };
 
+    if (isSortingSections) {
+      // Collapsed view for sorting mode
+      return (
+        <Card key={sectionName} ref={setNodeRef} style={style} className="mb-4">
+          <CardHeader className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+                  <GripVertical className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">{section.name}</CardTitle>
+                  <CardDescription className="text-sm">
+                    {section.fields.length} field{section.fields.length !== 1 ? 's' : ''}
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Order: {section.displayOrder ?? 0}
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+      );
+    }
+
+    // Full view for editing mode
     return (
       <Card key={sectionName} ref={setNodeRef} style={style} className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {isSortingSections && (
-                <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
-                  <GripVertical className="h-5 w-5 text-muted-foreground" />
-                </div>
-              )}
               <CardTitle className="text-lg">{section.name}</CardTitle>
             </div>
             <Button
