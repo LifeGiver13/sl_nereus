@@ -35,6 +35,7 @@ export type Field = {
   type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList";
   label: string;
   required?: boolean;
+  readOnly?: boolean;
   condition?: any;
   options?: string[] | {
     trueLabel: string;
@@ -232,13 +233,23 @@ const SortableField = ({
           </Select>
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id={`required-${sectionName}-${fieldIndex}`}
-              checked={field.required || false}
-              onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { required: !!checked })}
-            />
-            <Label htmlFor={`required-${sectionName}-${fieldIndex}`} className="text-xs">Required</Label>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id={`required-${sectionName}-${fieldIndex}`}
+                checked={field.required || false}
+                onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { required: !!checked })}
+              />
+              <Label htmlFor={`required-${sectionName}-${fieldIndex}`} className="text-xs">Required</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id={`readonly-${sectionName}-${fieldIndex}`}
+                checked={field.readOnly || false}
+                onCheckedChange={(checked) => onUpdateField(sectionName, fieldIndex, { readOnly: !!checked })}
+              />
+              <Label htmlFor={`readonly-${sectionName}-${fieldIndex}`} className="text-xs">Read Only</Label>
+            </div>
           </div>
           <Button
             size="sm"
