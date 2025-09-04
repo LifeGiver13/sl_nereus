@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit, Trash2, Save, X, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Loader2, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useApplicationForms } from '@/hooks/useApplicationForms';
@@ -20,9 +20,12 @@ const ApplicationFormsManager = () => {
   const [newFormDescription, setNewFormDescription] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<{ id: number; name: string; description: string } | null>(null);
+  const [isCloneDialogOpen, setIsCloneDialogOpen] = useState(false);
+  const [cloneFormName, setCloneFormName] = useState('');
+  const [formToClone, setFormToClone] = useState<{ id: number; name: string } | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { forms, loading, createForm, updateForm, deleteForm } = useApplicationForms();
+  const { forms, loading, createForm, updateForm, deleteForm, getForm } = useApplicationForms();
 
   const handleCreateForm = async () => {
     if (!newFormName.trim()) {
@@ -101,6 +104,59 @@ const ApplicationFormsManager = () => {
 
   const handleConfigureForm = (formId: number, formName: string) => {
     navigate(`/settings/application-forms/create?id=${formId}&name=${encodeURIComponent(formName)}`);
+  };
+
+  const handleCloneForm = (formId: number, formName: string) => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const defaultCloneName = `${formName} - Copy ${today}`;
+    setFormToClone({ id: formId, name: formName });
+    setCloneFormName(defaultCloneName);
+    setIsCloneDialogOpen(true);
+  };
+
+  const handleConfirmClone = async () => {
+    if (!formToClone || !cloneFormName.trim()) {
+      toast({
+        title: "Error",
+        description: "Clone name cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get the original form data
+      const originalForm = await getForm(formToClone.id);
+      if (!originalForm) {
+        throw new Error('Failed to fetch original form');
+      }
+
+      // Create the cloned form
+      const clonedForm = await createForm({
+        name: cloneFormName.trim(),
+        description: originalForm.description || '',
+        sections: originalForm.sections || {},
+        meta: originalForm.meta || {}
+      });
+
+      toast({
+        title: "Success",
+        description: `Application form "${cloneFormName}" cloned successfully`,
+      });
+
+      // Navigate to the edit page for the new form
+      navigate(`/settings/application-forms/create?id=${clonedForm.id}&name=${encodeURIComponent(clonedForm.name)}`);
+      
+      setIsCloneDialogOpen(false);
+      setCloneFormName('');
+      setFormToClone(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clone application form",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -222,6 +278,15 @@ const ApplicationFormsManager = () => {
                             Configure
                           </Button>
                           
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCloneForm(form.id, form.name)}
+                          >
+                            <Copy className="h-4 w-4 mr-1" />
+                            Clone
+                          </Button>
+                          
                           <Dialog open={editingForm?.id === form.id} onOpenChange={(open) => !open && setEditingForm(null)}>
                             <DialogTrigger asChild>
                               <Button
@@ -306,6 +371,38 @@ const ApplicationFormsManager = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Clone Form Dialog */}
+      <Dialog open={isCloneDialogOpen} onOpenChange={setIsCloneDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clone Application Form</DialogTitle>
+            <DialogDescription>
+              Create a copy of "{formToClone?.name}". Enter a name for the cloned form.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="clone-form-name">Clone Name</Label>
+              <Input
+                id="clone-form-name"
+                value={cloneFormName}
+                onChange={(e) => setCloneFormName(e.target.value)}
+                placeholder="Enter clone name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCloneDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmClone} disabled={!cloneFormName.trim() || loading}>
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Clone Form
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
