@@ -846,13 +846,9 @@ const ApplicationFormCreate = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No Action</SelectItem>
-                <SelectItem value="send_email">Send Email Notification</SelectItem>
-                <SelectItem value="redirect_page">Redirect to Page</SelectItem>
-                <SelectItem value="show_message">Show Success Message</SelectItem>
-                <SelectItem value="trigger_webhook">Trigger Webhook</SelectItem>
-                <SelectItem value="create_task">Create Task</SelectItem>
-                <SelectItem value="update_status">Update Candidate Status</SelectItem>
-                <SelectItem value="assign_to_team">Assign to Team</SelectItem>
+                <SelectItem value="verifyEmailAddress">Send Verification Email</SelectItem>
+                <SelectItem value="preRegistration">Submit Pre-Registration</SelectItem>
+                <SelectItem value="submitApplication">Submit Complete Application</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1">
@@ -1090,13 +1086,9 @@ const ApplicationFormCreate = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No Action</SelectItem>
-                      <SelectItem value="send_email">Send Email Notification</SelectItem>
-                      <SelectItem value="redirect_page">Redirect to Page</SelectItem>
-                      <SelectItem value="show_message">Show Success Message</SelectItem>
-                      <SelectItem value="trigger_webhook">Trigger Webhook</SelectItem>
-                      <SelectItem value="create_task">Create Task</SelectItem>
-                      <SelectItem value="update_status">Update Candidate Status</SelectItem>
-                      <SelectItem value="assign_to_team">Assign to Team</SelectItem>
+                      <SelectItem value="verifyEmailAddress">Send Verification Email</SelectItem>
+                      <SelectItem value="preRegistration">Submit Pre-Registration</SelectItem>
+                      <SelectItem value="submitApplication">Submit Complete Application</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
