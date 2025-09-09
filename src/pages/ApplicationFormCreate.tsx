@@ -868,47 +868,46 @@ const ApplicationFormCreate = () => {
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg">{section.name}</CardTitle>
             </div>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => deleteSection(sectionName)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="mt-4">
-            <Label className="text-sm font-medium">Section Action</Label>
-            <Select
-              value={section.meta?.action || 'none'}
-              onValueChange={(value) => {
-                setForm(prev => ({
-                  ...prev,
-                  sections: {
-                    ...prev.sections,
-                    [sectionName]: {
-                      ...prev.sections[sectionName],
-                      meta: {
-                        ...prev.sections[sectionName].meta,
-                        action: value === 'none' ? undefined : value
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm font-medium whitespace-nowrap">Section Action:</Label>
+                <Select
+                  value={section.meta?.action || 'none'}
+                  onValueChange={(value) => {
+                    setForm(prev => ({
+                      ...prev,
+                      sections: {
+                        ...prev.sections,
+                        [sectionName]: {
+                          ...prev.sections[sectionName],
+                          meta: {
+                            ...prev.sections[sectionName].meta,
+                            action: value === 'none' ? undefined : value
+                          }
+                        }
                       }
-                    }
-                  }
-                }));
-              }}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select action to execute when section is completed" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Action</SelectItem>
-                <SelectItem value="verifyEmailAddress">Send Verification Email</SelectItem>
-                <SelectItem value="preRegistration">Submit Pre-Registration</SelectItem>
-                <SelectItem value="submitApplication">Submit Complete Application</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              This action will be executed when the candidate completes this section of the form
-            </p>
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select action" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Action</SelectItem>
+                    <SelectItem value="verifyEmailAddress">Send Verification Email</SelectItem>
+                    <SelectItem value="preRegistration">Submit Pre-Registration</SelectItem>
+                    <SelectItem value="submitApplication">Submit Complete Application</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => deleteSection(sectionName)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1115,7 +1114,38 @@ const ApplicationFormCreate = () => {
                           <CardTitle className="text-lg">{section.name}</CardTitle>
                           {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
                         </div>
-                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm font-medium whitespace-nowrap">Section Action:</Label>
+                            <Select
+                              value={section.meta?.action || 'none'}
+                              onValueChange={(value) => {
+                                setForm(prev => ({
+                                  ...prev,
+                                  sections: {
+                                    ...prev.sections,
+                                    [sectionName]: {
+                                      ...prev.sections[sectionName],
+                                      meta: {
+                                        ...prev.sections[sectionName].meta,
+                                        action: value === 'none' ? undefined : value
+                                      }
+                                    }
+                                  }
+                                }));
+                              }}
+                            >
+                              <SelectTrigger className="w-48">
+                                <SelectValue placeholder="Select action" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">No Action</SelectItem>
+                                <SelectItem value="verifyEmailAddress">Send Verification Email</SelectItem>
+                                <SelectItem value="preRegistration">Submit Pre-Registration</SelectItem>
+                                <SelectItem value="submitApplication">Submit Complete Application</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <Button
                             size="sm"
                             variant="outline"
@@ -1135,40 +1165,6 @@ const ApplicationFormCreate = () => {
                     </CardHeader>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                <div className="mt-4">
-                  <Label className="text-sm font-medium">Section Action</Label>
-                  <Select
-                    value={section.meta?.action || 'none'}
-                    onValueChange={(value) => {
-                      setForm(prev => ({
-                        ...prev,
-                        sections: {
-                          ...prev.sections,
-                          [sectionName]: {
-                            ...prev.sections[sectionName],
-                            meta: {
-                              ...prev.sections[sectionName].meta,
-                              action: value === 'none' ? undefined : value
-                            }
-                          }
-                        }
-                      }));
-                    }}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select action to execute when section is completed" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Action</SelectItem>
-                      <SelectItem value="verifyEmailAddress">Send Verification Email</SelectItem>
-                      <SelectItem value="preRegistration">Submit Pre-Registration</SelectItem>
-                      <SelectItem value="submitApplication">Submit Complete Application</SelectItem>
-                    </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      This action will be executed when the candidate completes this section of the form
-                    </p>
-                  </div>
                   <CardContent className="space-y-4">
                     <DndContext
                       sensors={sensors}
