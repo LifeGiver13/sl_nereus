@@ -7,11 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Save, ArrowLeft, GripVertical, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, GripVertical, Loader2, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/AdminLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApplicationForms } from '@/hooks/useApplicationForms';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   DndContext,
   closestCenter,
@@ -539,6 +541,8 @@ const ApplicationFormCreate = () => {
   });
   const [loading, setLoading] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
+  const [cloneSectionDialog, setCloneSectionDialog] = useState({ open: false, sectionName: '', newName: '' });
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [isSortingSections, setIsSortingSections] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -586,6 +590,57 @@ const ApplicationFormCreate = () => {
     const newSections = { ...form.sections };
     delete newSections[sectionName];
     setForm(prev => ({ ...prev, sections: newSections }));
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(sectionName);
+      return newSet;
+    });
+  };
+
+  const cloneSection = (sectionName: string, newName: string) => {
+    const originalSection = form.sections[sectionName];
+    if (!originalSection || !newName.trim()) return;
+
+    // Check if section name already exists
+    if (form.sections[newName]) {
+      toast({
+        title: "Error",
+        description: "A section with this name already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const clonedSection = {
+      ...originalSection,
+      name: newName,
+      displayOrder: Object.keys(form.sections).length
+    };
+
+    setForm(prev => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        [newName]: clonedSection
+      }
+    }));
+
+    toast({
+      title: "Success",
+      description: `Section "${newName}" cloned successfully`,
+    });
+  };
+
+  const toggleSectionCollapse = (sectionName: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionName)) {
+        newSet.delete(sectionName);
+      } else {
+        newSet.add(sectionName);
+      }
+      return newSet;
+    });
   };
 
   const addField = (sectionName: string) => {
@@ -922,7 +977,7 @@ const ApplicationFormCreate = () => {
         description: `Application form ${formId ? 'updated' : 'created'} successfully`,
       });
       
-      navigate('/settings');
+      // Stay on the edit screen instead of navigating away
     } catch (error) {
       toast({
         title: "Error",
@@ -1048,19 +1103,38 @@ const ApplicationFormCreate = () => {
             </SortableContext>
           </DndContext>
         ) : (
-          getSortedSections().map(([sectionName, section]) => (
-            <Card key={sectionName} className="mb-6">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{section.name}</CardTitle>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => deleteSection(sectionName)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+          getSortedSections().map(([sectionName, section]) => {
+            const isCollapsed = collapsedSections.has(sectionName);
+            return (
+              <Collapsible key={sectionName} open={!isCollapsed} onOpenChange={() => toggleSectionCollapse(sectionName)}>
+                <Card className="mb-6">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-lg">{section.name}</CardTitle>
+                          {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                        </div>
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setCloneSectionDialog({ open: true, sectionName, newName: `${section.name} Copy` })}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteSection(sectionName)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                 <div className="mt-4">
                   <Label className="text-sm font-medium">Section Action</Label>
                   <Select
@@ -1090,46 +1164,48 @@ const ApplicationFormCreate = () => {
                       <SelectItem value="preRegistration">Submit Pre-Registration</SelectItem>
                       <SelectItem value="submitApplication">Submit Complete Application</SelectItem>
                     </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    This action will be executed when the candidate completes this section of the form
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleFieldDragEnd}
-                >
-                  <SortableContext items={section.fields.map((_, index) => `field-${index}`)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-4">
-                      {section.fields.map((field, fieldIndex) => (
-                        <SortableField
-                          key={fieldIndex}
-                          field={field}
-                          fieldIndex={fieldIndex}
-                          sectionName={sectionName}
-                          onUpdateField={updateField}
-                          onDeleteField={deleteField}
-                          allFields={allFields}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-                
-                <Button
-                  onClick={() => addField(sectionName)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Field
-                </Button>
-              </CardContent>
-            </Card>
-          ))
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This action will be executed when the candidate completes this section of the form
+                    </p>
+                  </div>
+                  <CardContent className="space-y-4">
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleFieldDragEnd}
+                    >
+                      <SortableContext items={section.fields.map((_, index) => `field-${index}`)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-4">
+                          {section.fields.map((field, fieldIndex) => (
+                            <SortableField
+                              key={fieldIndex}
+                              field={field}
+                              fieldIndex={fieldIndex}
+                              sectionName={sectionName}
+                              onUpdateField={updateField}
+                              onDeleteField={deleteField}
+                              allFields={allFields}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                    
+                    <Button
+                      onClick={() => addField(sectionName)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Field
+                    </Button>
+                  </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            );
+          })
         )}
 
         {Object.keys(form.sections).length === 0 && (
@@ -1139,6 +1215,43 @@ const ApplicationFormCreate = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Clone Section Dialog */}
+        <Dialog open={cloneSectionDialog.open} onOpenChange={(open) => setCloneSectionDialog(prev => ({ ...prev, open }))}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Clone Section</DialogTitle>
+              <DialogDescription>
+                Enter a name for the cloned section. All fields and settings will be copied.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="clone-section-name">Section Name</Label>
+                <Input
+                  id="clone-section-name"
+                  value={cloneSectionDialog.newName}
+                  onChange={(e) => setCloneSectionDialog(prev => ({ ...prev, newName: e.target.value }))}
+                  placeholder="Enter new section name"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCloneSectionDialog({ open: false, sectionName: '', newName: '' })}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  cloneSection(cloneSectionDialog.sectionName, cloneSectionDialog.newName);
+                  setCloneSectionDialog({ open: false, sectionName: '', newName: '' });
+                }}
+                disabled={!cloneSectionDialog.newName.trim()}
+              >
+                Clone Section
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
