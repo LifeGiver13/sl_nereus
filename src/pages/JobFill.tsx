@@ -184,7 +184,7 @@ const JobFill = () => {
 
     // Fetch complete user object with placements
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${user.id}`, {
+      const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
         headers: {
           'x-service-user': localStorage.getItem('session_token') || '',
         },
