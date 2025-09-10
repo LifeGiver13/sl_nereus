@@ -89,7 +89,7 @@ const Jobs = () => {
       searchObject.postedBy = selectedUserId;
     }
     if (searchFilters.title) {
-      searchObject.title = { "like": `%${searchFilters.title}%` };
+      searchObject.title = { "iLike": `%${searchFilters.title}%` };
     }
     if (searchFilters.startDateRange.from) {
       searchObject.startDate = { "gte": searchFilters.startDateRange.from };

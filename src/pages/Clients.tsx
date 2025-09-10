@@ -52,7 +52,7 @@ const Clients = () => {
       
       if (search.trim()) {
         const searchObject = {
-          name: { "like": `%${search}%` }
+          name: { "iLike": `%${search}%` }
         };
         url += `&search=${encodeURIComponent(JSON.stringify(searchObject))}`;
       }
