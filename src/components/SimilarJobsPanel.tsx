@@ -57,6 +57,9 @@ const SimilarJobsPanel: React.FC<SimilarJobsPanelProps> = ({ jobs, isLoading }) 
                 <div className="space-y-1">
                   <h4 className="font-medium text-sm">{job.title}</h4>
                   <p className="text-xs text-muted-foreground">{job.clientName}</p>
+                  {job.owner?.username && (
+                    <p className="text-xs text-muted-foreground">Posted by: {job.owner.username}</p>
+                  )}
                 </div>
                 <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className="text-xs">
                   {job.status}
@@ -68,7 +71,7 @@ const SimilarJobsPanel: React.FC<SimilarJobsPanelProps> = ({ jobs, isLoading }) 
                   <Calendar className="h-3 w-3" />
                   <span>
                     {format(new Date(job.startDate), 'MMM d, yyyy')}
-                    {job.endDate && ` - ${format(new Date(job.endDate), 'MMM d, yyyy')}`}
+                    {job.endDate ? ` - ${format(new Date(job.endDate), 'MMM d, yyyy')}` : ' - Ongoing'}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">

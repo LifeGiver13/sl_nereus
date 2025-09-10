@@ -61,6 +61,7 @@ const JobCreate = () => {
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
   const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -292,6 +293,12 @@ const JobCreate = () => {
         description: "End date must be later than start date",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Check for similar jobs and show confirmation if any exist
+    if (hasSimilarJobs && !showDuplicateModal) {
+      setShowDuplicateModal(true);
       return;
     }
 
@@ -597,6 +604,16 @@ const JobCreate = () => {
             </Card>
           </div>
 
+          {/* Similar Jobs Panel */}
+          {(hasSimilarJobs || isLoadingSimilarJobs) && (
+            <div className="mt-6">
+              <SimilarJobsPanel 
+                jobs={similarJobs} 
+                isLoading={isLoadingSimilarJobs}
+              />
+            </div>
+          )}
+
           <div className="flex justify-end space-x-4 mt-6">
             <Link to="/jobs">
               <Button variant="outline">Cancel</Button>
@@ -612,12 +629,33 @@ const JobCreate = () => {
           </div>
         </form>
 
-        {/* Similar Jobs Panel */}
-        {(hasSimilarJobs || isLoadingSimilarJobs) && (
-          <SimilarJobsPanel 
-            jobs={similarJobs} 
-            isLoading={isLoadingSimilarJobs}
-          />
+        {/* Duplicate Job Confirmation Modal */}
+        {showDuplicateModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Potential Duplicate Job</h3>
+              <p className="text-gray-600 mb-6">
+                Similar jobs were found. Are you sure you want to create this job and it's not a duplicate?
+              </p>
+              <div className="flex justify-end space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDuplicateModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowDuplicateModal(false);
+                    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+                  }}
+                  className="bg-[#712B71] hover:bg-[#712B71]/90"
+                >
+                  Create Anyway
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {selectedClientId && (

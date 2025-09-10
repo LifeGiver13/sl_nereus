@@ -11,6 +11,11 @@ export interface Job {
   departmentName?: string;
   shiftId: number;
   shiftName?: string;
+  owner?: {
+    id: number;
+    username: string;
+    profile?: any;
+  };
   body?: {
     includeWeekends?: boolean;
   };
