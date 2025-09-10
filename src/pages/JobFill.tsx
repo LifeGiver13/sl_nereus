@@ -171,7 +171,7 @@ const JobFill = () => {
     return overlappingPlacements.length > 0 ? overlappingPlacements : null;
   };
 
-  const handleAddUser = (user: any, source: 'search' | 'suggested') => {
+  const handleAddUser = async (user: any, source: 'search' | 'suggested') => {
     const existingPlacement = placements.find(p => p.userId === user.id);
     if (existingPlacement) {
       toast({
@@ -182,22 +182,49 @@ const JobFill = () => {
       return;
     }
 
-    // Check for overlapping placements
-    const overlappingPlacements = checkForOverlappingPlacements(user);
-    if (overlappingPlacements && overlappingPlacements.length > 0) {
-      const overlapInfo = overlappingPlacements.map((placement: any) => 
-        `${placement.job.title} (${new Date(placement.job.startDate).toLocaleDateString()} - ${new Date(placement.job.endDate).toLocaleDateString()})`
-      ).join(', ');
+    // Fetch complete user object with placements
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${user.id}`, {
+        headers: {
+          'x-service-user': localStorage.getItem('session_token') || '',
+        },
+      });
       
-      setOverlapDetails(overlapInfo);
-      setPendingUser(user);
-      setPendingSource(source);
-      setShowOverlapDialog(true);
-      return;
-    }
+      if (!response.ok) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch user details.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // No overlaps, proceed with adding the user
-    addUserToJob(user, source);
+      const completeUser = await response.json();
+
+      // Check for overlapping placements using complete user data
+      const overlappingPlacements = checkForOverlappingPlacements(completeUser);
+      if (overlappingPlacements && overlappingPlacements.length > 0) {
+        const overlapInfo = overlappingPlacements.map((placement: any) => 
+          `${placement.job.title} (${new Date(placement.job.startDate).toLocaleDateString()} - ${new Date(placement.job.endDate).toLocaleDateString()})`
+        ).join(', ');
+        
+        setOverlapDetails(overlapInfo);
+        setPendingUser(user); // Keep original user for display purposes
+        setPendingSource(source);
+        setShowOverlapDialog(true);
+        return;
+      }
+
+      // No overlaps, proceed with adding the user
+      addUserToJob(user, source);
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch user details.",
+        variant: "destructive",
+      });
+    }
   };
 
   const addUserToJob = (user: any, source: 'search' | 'suggested') => {
