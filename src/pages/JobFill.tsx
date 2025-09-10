@@ -102,7 +102,7 @@ const JobFill = () => {
   useEffect(() => {
     console.log('Existing placements data:', existingPlacements);
     
-    if (existingPlacements?.results && Array.isArray(existingPlacements.results)) {
+    if (existingPlacements?.results && Array.isArray(existingPlacements.results) && job) {
       const existingPlacementRows = existingPlacements.results.map((placement: any) => {
         const firstName = placement.user?.profile?.Forename || 'Unknown';
         const lastName = placement.user?.profile?.Surname || 'User';
@@ -141,7 +141,7 @@ const JobFill = () => {
     } else {
       setPlacements([]);
     }
-  }, [existingPlacements]);
+  }, [existingPlacements, job]);
 
   const handleAddUser = (user: any, source: 'search' | 'suggested') => {
     const existingPlacement = placements.find(p => p.userId === user.id);
