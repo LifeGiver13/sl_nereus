@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import CreateShiftModal from '../components/CreateShiftModal';
 import CreatePositionModal from '../components/CreatePositionModal';
+import SimilarJobsPanel from '../components/SimilarJobsPanel';
+import { useSimilarJobs } from '../hooks/useSimilarJobs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +71,15 @@ const JobCreate = () => {
     departmentId: '',
     shiftId: '',
     includeWeekends: false
+  });
+
+  // Check for similar jobs
+  const { similarJobs, isLoading: isLoadingSimilarJobs, hasSimilarJobs } = useSimilarJobs({
+    clientId: selectedClientId,
+    departmentId: formData.departmentId,
+    positionId: selectedPositionId,
+    startDate: formData.startDate,
+    endDate: formData.endDate
   });
 
   // Fetch skills data
@@ -600,6 +611,14 @@ const JobCreate = () => {
             </Button>
           </div>
         </form>
+
+        {/* Similar Jobs Panel */}
+        {(hasSimilarJobs || isLoadingSimilarJobs) && (
+          <SimilarJobsPanel 
+            jobs={similarJobs} 
+            isLoading={isLoadingSimilarJobs}
+          />
+        )}
 
         {selectedClientId && (
           <>
