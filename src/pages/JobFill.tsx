@@ -11,6 +11,8 @@ import { API_BASE_URL } from '../config/env';
 import UserSearchForm from '../components/UserSearchForm';
 import PlacementsTable from '../components/PlacementsTable';
 import SuggestedCandidates from '../components/SuggestedCandidates';
+import { useToast } from '@/components/ui/use-toast';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Job {
   id: number;
@@ -68,6 +70,11 @@ interface PlacementRow {
 const JobFill = () => {
   const { id } = useParams<{ id: string }>();
   const [placements, setPlacements] = useState<PlacementRow[]>([]);
+  const [showOverlapDialog, setShowOverlapDialog] = useState(false);
+  const [pendingUser, setPendingUser] = useState<any>(null);
+  const [pendingSource, setPendingSource] = useState<'search' | 'suggested' | null>(null);
+  const [overlapDetails, setOverlapDetails] = useState<string>('');
+  const { toast } = useToast();
 
   const { data: job, isLoading, error } = useQuery({
     queryKey: ['job', id],
@@ -143,11 +150,57 @@ const JobFill = () => {
     }
   }, [existingPlacements, job]);
 
+  const checkForOverlappingPlacements = (user: any) => {
+    if (!user.placements || !Array.isArray(user.placements) || !job) {
+      return null;
+    }
+
+    const jobStart = new Date(job.startDate);
+    const jobEnd = new Date(job.endDate);
+
+    const overlappingPlacements = user.placements.filter((placement: any) => {
+      if (!placement.job) return false;
+      
+      const placementStart = new Date(placement.job.startDate);
+      const placementEnd = new Date(placement.job.endDate);
+      
+      // Check for date overlap
+      return (placementStart <= jobEnd && placementEnd >= jobStart);
+    });
+
+    return overlappingPlacements.length > 0 ? overlappingPlacements : null;
+  };
+
   const handleAddUser = (user: any, source: 'search' | 'suggested') => {
     const existingPlacement = placements.find(p => p.userId === user.id);
     if (existingPlacement) {
+      toast({
+        title: "User already added",
+        description: "This user has already been added to this job.",
+        variant: "destructive",
+      });
       return;
     }
+
+    // Check for overlapping placements
+    const overlappingPlacements = checkForOverlappingPlacements(user);
+    if (overlappingPlacements && overlappingPlacements.length > 0) {
+      const overlapInfo = overlappingPlacements.map((placement: any) => 
+        `${placement.job.title} (${new Date(placement.job.startDate).toLocaleDateString()} - ${new Date(placement.job.endDate).toLocaleDateString()})`
+      ).join(', ');
+      
+      setOverlapDetails(overlapInfo);
+      setPendingUser(user);
+      setPendingSource(source);
+      setShowOverlapDialog(true);
+      return;
+    }
+
+    // No overlaps, proceed with adding the user
+    addUserToJob(user, source);
+  };
+
+  const addUserToJob = (user: any, source: 'search' | 'suggested') => {
 
     let displayName: string;
     
@@ -184,6 +237,23 @@ const JobFill = () => {
     };
 
     setPlacements([...placements, newPlacement]);
+  };
+
+  const handleConfirmOverlap = () => {
+    if (pendingUser && pendingSource) {
+      addUserToJob(pendingUser, pendingSource);
+    }
+    setShowOverlapDialog(false);
+    setPendingUser(null);
+    setPendingSource(null);
+    setOverlapDetails('');
+  };
+
+  const handleCancelOverlap = () => {
+    setShowOverlapDialog(false);
+    setPendingUser(null);
+    setPendingSource(null);
+    setOverlapDetails('');
   };
 
   const handleRemoveUser = (userId: number) => {
@@ -387,6 +457,28 @@ const JobFill = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Overlap Warning Dialog */}
+        <AlertDialog open={showOverlapDialog} onOpenChange={setShowOverlapDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Potential Scheduling Conflict</AlertDialogTitle>
+              <AlertDialogDescription>
+                This candidate already has placements that overlap with this job's timeframe:
+                <br /><br />
+                <strong>{overlapDetails}</strong>
+                <br /><br />
+                Are you sure you want to add them to this job?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleCancelOverlap}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmOverlap}>
+                Add Anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
       </div>
     </AdminLayout>
