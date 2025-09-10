@@ -16,6 +16,10 @@ export interface Job {
     username: string;
     profile?: any;
   };
+  placements?: Array<{
+    id: number;
+    status: string;
+  }>;
   body?: {
     includeWeekends?: boolean;
   };

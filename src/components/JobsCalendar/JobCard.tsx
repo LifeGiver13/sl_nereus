@@ -40,7 +40,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, day, onClick }) => {
         </div>
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs text-gray-500">
-            Filled: 0/{job.vacancies}
+            Filled: {job.placements?.length || 0}/{job.vacancies}
           </div>
           <Badge className={`${getStatusColor(job.status)} text-xs`} variant="outline">
             {job.status}

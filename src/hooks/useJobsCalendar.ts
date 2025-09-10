@@ -76,7 +76,7 @@ export const useJobsCalendar = () => {
         ]
       };
 
-      const response = await apiRequest(`/jobs?search=${encodeURIComponent(JSON.stringify(searchParams))}&expand=client,shift`);
+      const response = await apiRequest(`/jobs?search=${encodeURIComponent(JSON.stringify(searchParams))}&expand=client,shift&placementStatus=accepted`);
       if (!response.ok) {
         throw new Error('Failed to fetch jobs');
       }
