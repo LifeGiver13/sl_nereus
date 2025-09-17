@@ -34,7 +34,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 export type Field = {
   name: string;
-  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList";
+  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden";
   label: string;
   required?: boolean;
   readOnly?: boolean;
@@ -231,6 +231,9 @@ const SortableField = ({
               <SelectItem value="file">File Upload</SelectItem>
               <SelectItem value="skillsSelector">Skills Selector</SelectItem>
               <SelectItem value="countryList">Country List</SelectItem>
+              <SelectItem value="employmentHistory">Employment History</SelectItem>
+              <SelectItem value="referees">Referees</SelectItem>
+              <SelectItem value="hidden">Hidden</SelectItem>
             </SelectContent>
           </Select>
         </div>
