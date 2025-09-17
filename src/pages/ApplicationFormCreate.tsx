@@ -536,6 +536,7 @@ const SortableField = ({
                     <SelectItem value="show">Show</SelectItem>
                     <SelectItem value="setValue">Set value</SelectItem>
                     <SelectItem value="clearValue">Clear value</SelectItem>
+                    <SelectItem value="matchValue">Match value</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -563,6 +564,7 @@ const SortableField = ({
                   {field.condition?.action === 'show' && `This field will be shown/enabled when the field "${allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" ${getConditionDescription(field.condition)}`}
                   {field.condition?.action === 'setValue' && `This field will be set to "${field.condition?.setValue || '[no value]'}" when the field "${allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" ${getConditionDescription(field.condition)}`}
                   {field.condition?.action === 'clearValue' && `This field will be cleared when the field "${allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" ${getConditionDescription(field.condition)}`}
+                  {field.condition?.action === 'matchValue' && `This field will be set to match the value of "${allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" when it ${getConditionDescription(field.condition)}`}
                 </p>
               </div>
             )}
