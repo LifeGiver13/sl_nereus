@@ -72,6 +72,24 @@ type ApplicationForm = {
   meta: { [x: string]: any };
 };
 
+// Helper function to generate condition descriptions
+const getConditionDescription = (condition: any) => {
+  if (!condition) return '';
+  
+  switch (condition.operator) {
+    case 'equals':
+      return `equals "${condition.value || '[empty]'}"`;
+    case 'not_equals':
+      return `does not equal "${condition.value || '[empty]'}"`;
+    case 'isSet':
+      return 'is set (has any value)';
+    case 'isNotSet':
+      return 'is not set (is empty)';
+    default:
+      return `equals "${condition.value || '[empty]'}"`;
+  }
+};
+
 const SortableField = ({ 
   field, 
   fieldIndex, 
@@ -484,6 +502,8 @@ const SortableField = ({
                   <SelectContent>
                     <SelectItem value="equals">Equals</SelectItem>
                     <SelectItem value="not_equals">Not Equals</SelectItem>
+                    <SelectItem value="isSet">Is set</SelectItem>
+                    <SelectItem value="isNotSet">Is not set</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -496,7 +516,7 @@ const SortableField = ({
                     condition: { ...field.condition, value: e.target.value } 
                   })}
                   className="mt-1"
-                  disabled={!field.condition?.field}
+                  disabled={!field.condition?.field || ['isSet', 'isNotSet'].includes(field.condition?.operator)}
                 />
               </div>
               <div>
@@ -514,17 +534,35 @@ const SortableField = ({
                   <SelectContent>
                     <SelectItem value="hide">Hide</SelectItem>
                     <SelectItem value="show">Show</SelectItem>
+                    <SelectItem value="setValue">Set value</SelectItem>
+                    <SelectItem value="clearValue">Clear value</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+            
+            {/* Show setValue input when action is setValue */}
+            {field.condition?.field && field.condition?.action === 'setValue' && (
+              <div>
+                <Label className="text-xs">Value to Set</Label>
+                <Input
+                  placeholder="Value to set on this field"
+                  value={field.condition?.setValue || ''}
+                  onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
+                    condition: { ...field.condition, setValue: e.target.value } 
+                  })}
+                  className="mt-1"
+                />
+              </div>
+            )}
+            
             {field.condition?.field && (
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-xs text-muted-foreground">
-                  This field will be <strong>{field.condition?.action === 'hide' ? 'hidden/disabled' : 'shown/enabled'}</strong> when 
-                  the field "{allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" 
-                  {field.condition?.operator === 'not_equals' ? ' does not equal ' : ' equals '}
-                  "{field.condition?.value || '[empty]'}"
+                  {field.condition?.action === 'hide' && `This field will be hidden/disabled when the field "${allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" ${getConditionDescription(field.condition)}`}
+                  {field.condition?.action === 'show' && `This field will be shown/enabled when the field "${allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" ${getConditionDescription(field.condition)}`}
+                  {field.condition?.action === 'setValue' && `This field will be set to "${field.condition?.setValue || '[no value]'}" when the field "${allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" ${getConditionDescription(field.condition)}`}
+                  {field.condition?.action === 'clearValue' && `This field will be cleared when the field "${allFields.find(f => f.name === field.condition?.field)?.label || field.condition?.field}" ${getConditionDescription(field.condition)}`}
                 </p>
               </div>
             )}
