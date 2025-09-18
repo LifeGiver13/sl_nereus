@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
@@ -18,12 +19,24 @@ interface SuggestedCandidatesProps {
   skillIds: number[];
   onCandidateSelect: (user: User) => void;
   disabled?: boolean;
+  showSlotSelection?: boolean;
+  selectedSlotId?: number;
+  onSlotChange?: (slotId: number) => void;
+  slots?: Array<{
+    id: number;
+    placements: any[];
+    occupiedDates: Set<string>;
+  }>;
 }
 
 const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
   skillIds,
   onCandidateSelect,
-  disabled
+  disabled,
+  showSlotSelection = false,
+  selectedSlotId,
+  onSlotChange,
+  slots = []
 }) => {
   const { data: matchingCandidates, isLoading: isLoadingMatches } = useQuery({
     queryKey: ['candidateMatches', skillIds],
@@ -95,11 +108,30 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
   const results = Array.isArray(matchingCandidates?.results) ? matchingCandidates.results : [];
 
   return (
-    <Tabs defaultValue="skill-match" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="skill-match">Good Fit</TabsTrigger>
-        <TabsTrigger value="recent">Recently Placed</TabsTrigger>
-      </TabsList>
+    <div className="space-y-4">
+      {showSlotSelection && (
+        <div>
+          <label className="text-sm font-medium mb-2 block">Select Slot</label>
+          <Select value={selectedSlotId?.toString()} onValueChange={(value) => onSlotChange?.(parseInt(value))}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {slots.map((slot) => (
+                <SelectItem key={slot.id} value={slot.id.toString()}>
+                  Slot {slot.id} ({slot.placements.length} candidates, {slot.occupiedDates.size} days occupied)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      
+      <Tabs defaultValue="skill-match" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="skill-match">Good Fit</TabsTrigger>
+          <TabsTrigger value="recent">Recently Placed</TabsTrigger>
+        </TabsList>
       
       <TabsContent value="skill-match" className="mt-4">
         {renderCandidateList(
@@ -117,6 +149,7 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
         </div>
       </TabsContent>
     </Tabs>
+    </div>
   );
 };
 

@@ -10,6 +10,7 @@ import { API_BASE_URL } from '../config/env';
 import UserSearchForm from '../components/UserSearchForm';
 import PlacementsTable from '../components/PlacementsTable';
 import SuggestedCandidates from '../components/SuggestedCandidates';
+import PlacementDateModal from '../components/PlacementDateModal';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,6 +80,7 @@ const JobFill = () => {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<number>(1);
   const [showOverlapDialog, setShowOverlapDialog] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [pendingSource, setPendingSource] = useState<'search' | 'suggested' | null>(null);
   const [overlapDetails, setOverlapDetails] = useState<string>('');
@@ -295,8 +297,10 @@ const JobFill = () => {
         return;
       }
 
-      // No overlaps, proceed with adding the user
-      addUserToSlot(user, source, selectedSlotId);
+      // No overlaps, show date selection modal
+      setPendingUser(user);
+      setPendingSource(source);
+      setShowDateModal(true);
     } catch (error) {
       console.error('Error fetching user details:', error);
       toast({
@@ -307,12 +311,12 @@ const JobFill = () => {
     }
   };
 
-  const addUserToSlot = (user: any, source: 'search' | 'suggested', slotId: number) => {
+  const addUserToSlot = (user: any, slotId: number, availability: AvailabilityWindow[]) => {
     if (!job) return;
     
     let displayName: string;
     
-    if (source === 'search') {
+    if (pendingSource === 'search') {
       // For search results, use the name as provided
       displayName = `${user.firstName} ${user.lastName}`;
     } else {
@@ -321,21 +325,6 @@ const JobFill = () => {
       const lastName = user.profile?.Surname || 'User';
       const email = user.username || '';
       displayName = `${firstName} ${lastName} (${email})`;
-    }
-
-    const defaultAvailability = [{
-      startDate: new Date(job.startDate),
-      endDate: new Date(job.endDate)
-    }];
-
-    // Check if the full job period is available in the selected slot
-    if (!checkSlotAvailability(slotId, defaultAvailability)) {
-      toast({
-        title: "Slot unavailable",
-        description: "The selected slot has conflicts for the full job period. Please select another slot or adjust dates later.",
-        variant: "destructive",
-      });
-      return;
     }
 
     const newPlacement: PlacementRow = {
@@ -351,7 +340,7 @@ const JobFill = () => {
       confirmed: true,
       isPlaceholder: true,
       meta: {
-        availability: defaultAvailability,
+        availability: availability,
         instructions: '',
         notes: ''
       }
@@ -369,16 +358,19 @@ const JobFill = () => {
       }
       return slot;
     }));
+
+    // Clear pending state
+    setPendingUser(null);
+    setPendingSource(null);
+    setShowDateModal(false);
   };
 
   const handleConfirmOverlap = () => {
     if (pendingUser && pendingSource) {
-      addUserToSlot(pendingUser, pendingSource, selectedSlotId);
+      setShowOverlapDialog(false);
+      setOverlapDetails('');
+      setShowDateModal(true);
     }
-    setShowOverlapDialog(false);
-    setPendingUser(null);
-    setPendingSource(null);
-    setOverlapDetails('');
   };
 
   const handleCancelOverlap = () => {
@@ -638,10 +630,25 @@ const JobFill = () => {
                 skillIds={jobSkills}
                 onCandidateSelect={(user) => handleAddUser(user, 'suggested')}
                 disabled={false}
+                showSlotSelection={true}
+                selectedSlotId={selectedSlotId}
+                onSlotChange={setSelectedSlotId}
+                slots={slots}
               />
             </CardContent>
           </Card>
         </div>
+
+        {/* Date Selection Modal */}
+        <PlacementDateModal
+          open={showDateModal}
+          onOpenChange={setShowDateModal}
+          user={pendingUser}
+          slots={slots}
+          jobStartDate={job?.startDate || ''}
+          jobEndDate={job?.endDate || ''}
+          onConfirm={addUserToSlot}
+        />
 
         {/* Overlap Warning Dialog */}
         <AlertDialog open={showOverlapDialog} onOpenChange={setShowOverlapDialog}>
@@ -653,13 +660,13 @@ const JobFill = () => {
                 <br /><br />
                 <strong>{overlapDetails}</strong>
                 <br /><br />
-                Are you sure you want to add them to Slot {selectedSlotId}?
+                Do you still want to proceed with adding them?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={handleCancelOverlap}>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleConfirmOverlap}>
-                Add to Slot {selectedSlotId}
+                Continue
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
