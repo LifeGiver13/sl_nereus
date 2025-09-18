@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -13,6 +12,7 @@ import PlacementsTable from '../components/PlacementsTable';
 import SuggestedCandidates from '../components/SuggestedCandidates';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Job {
   id: number;
@@ -51,6 +51,7 @@ interface AvailabilityWindow {
 interface PlacementRow {
   id?: number;
   userId: number;
+  slotId: number;
   user: {
     id: number;
     displayName: string;
@@ -67,9 +68,16 @@ interface PlacementRow {
   };
 }
 
+interface Slot {
+  id: number;
+  placements: PlacementRow[];
+  occupiedDates: Set<string>; // ISO date strings for dates already filled
+}
+
 const JobFill = () => {
   const { id } = useParams<{ id: string }>();
-  const [placements, setPlacements] = useState<PlacementRow[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [selectedSlotId, setSelectedSlotId] = useState<number>(1);
   const [showOverlapDialog, setShowOverlapDialog] = useState(false);
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [pendingSource, setPendingSource] = useState<'search' | 'suggested' | null>(null);
@@ -105,20 +113,62 @@ const JobFill = () => {
     enabled: !!id
   });
 
-  // Update placements state when existing placements are loaded
+  // Initialize slots when job data is available
+  useEffect(() => {
+    if (job && job.vacancies) {
+      const initialSlots: Slot[] = [];
+      for (let i = 1; i <= job.vacancies; i++) {
+        initialSlots.push({
+          id: i,
+          placements: [],
+          occupiedDates: new Set()
+        });
+      }
+      setSlots(initialSlots);
+      setSelectedSlotId(1);
+    }
+  }, [job]);
+
+  // Calculate occupied dates for a slot based on its placements
+  const calculateOccupiedDates = (placements: PlacementRow[]): Set<string> => {
+    const dates = new Set<string>();
+    placements.forEach(placement => {
+      if (placement.meta?.availability) {
+        placement.meta.availability.forEach(window => {
+          const current = new Date(window.startDate);
+          const end = new Date(window.endDate);
+          while (current <= end) {
+            dates.add(current.toISOString().split('T')[0]);
+            current.setDate(current.getDate() + 1);
+          }
+        });
+      }
+    });
+    return dates;
+  };
+
+  // Update slots when existing placements are loaded
   useEffect(() => {
     console.log('Existing placements data:', existingPlacements);
     
-    if (existingPlacements?.results && Array.isArray(existingPlacements.results) && job) {
-      const existingPlacementRows = existingPlacements.results.map((placement: any) => {
+    if (existingPlacements?.results && Array.isArray(existingPlacements.results) && job && slots.length > 0) {
+      const updatedSlots = slots.map(slot => ({ ...slot, placements: [] }));
+      
+      existingPlacements.results.forEach((placement: any) => {
         const firstName = placement.user?.profile?.Forename || 'Unknown';
         const lastName = placement.user?.profile?.Surname || 'User';
         const email = placement.user?.username || '';
         const displayName = `${firstName} ${lastName} (${email})`;
         
-        return {
+        // Assign to slot based on placement metadata or default to first available slot
+        const assignedSlotId = placement.meta?.slotId || 1;
+        const slotIndex = updatedSlots.findIndex(s => s.id === assignedSlotId);
+        const targetSlotIndex = slotIndex >= 0 ? slotIndex : 0;
+        
+        const placementRow: PlacementRow = {
           id: placement.id,
           userId: placement.userId,
+          slotId: assignedSlotId,
           user: {
             id: placement.user?.id || placement.userId,
             displayName: displayName
@@ -143,10 +193,16 @@ const JobFill = () => {
             notes: placement.meta?.notes || ''
           }
         };
+        
+        updatedSlots[targetSlotIndex].placements.push(placementRow);
       });
-      setPlacements(existingPlacementRows);
-    } else {
-      setPlacements([]);
+      
+      // Update occupied dates for each slot
+      updatedSlots.forEach(slot => {
+        slot.occupiedDates = calculateOccupiedDates(slot.placements);
+      });
+      
+      setSlots(updatedSlots);
     }
   }, [existingPlacements, job]);
 
@@ -171,8 +227,32 @@ const JobFill = () => {
     return overlappingPlacements.length > 0 ? overlappingPlacements : null;
   };
 
+  const checkSlotAvailability = (slotId: number, proposedAvailability: AvailabilityWindow[]): boolean => {
+    const slot = slots.find(s => s.id === slotId);
+    if (!slot) return false;
+    
+    // Check if any of the proposed dates overlap with existing placements in this slot
+    for (const window of proposedAvailability) {
+      const current = new Date(window.startDate);
+      const end = new Date(window.endDate);
+      while (current <= end) {
+        const dateString = current.toISOString().split('T')[0];
+        if (slot.occupiedDates.has(dateString)) {
+          return false;
+        }
+        current.setDate(current.getDate() + 1);
+      }
+    }
+    
+    return true;
+  };
+
   const handleAddUser = async (user: any, source: 'search' | 'suggested') => {
-    const existingPlacement = placements.find(p => p.userId === user.id);
+    // Check if user is already in any slot
+    const existingPlacement = slots.some(slot => 
+      slot.placements.some(p => p.userId === user.id)
+    );
+    
     if (existingPlacement) {
       toast({
         title: "User already added",
@@ -216,7 +296,7 @@ const JobFill = () => {
       }
 
       // No overlaps, proceed with adding the user
-      addUserToJob(user, source);
+      addUserToSlot(user, source, selectedSlotId);
     } catch (error) {
       console.error('Error fetching user details:', error);
       toast({
@@ -227,8 +307,9 @@ const JobFill = () => {
     }
   };
 
-  const addUserToJob = (user: any, source: 'search' | 'suggested') => {
-
+  const addUserToSlot = (user: any, source: 'search' | 'suggested', slotId: number) => {
+    if (!job) return;
+    
     let displayName: string;
     
     if (source === 'search') {
@@ -242,8 +323,24 @@ const JobFill = () => {
       displayName = `${firstName} ${lastName} (${email})`;
     }
 
+    const defaultAvailability = [{
+      startDate: new Date(job.startDate),
+      endDate: new Date(job.endDate)
+    }];
+
+    // Check if the full job period is available in the selected slot
+    if (!checkSlotAvailability(slotId, defaultAvailability)) {
+      toast({
+        title: "Slot unavailable",
+        description: "The selected slot has conflicts for the full job period. Please select another slot or adjust dates later.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newPlacement: PlacementRow = {
       userId: user.id,
+      slotId: slotId,
       user: {
         id: user.id,
         displayName: displayName
@@ -254,21 +351,29 @@ const JobFill = () => {
       confirmed: true,
       isPlaceholder: true,
       meta: {
-        availability: job ? [{
-          startDate: new Date(job.startDate),
-          endDate: new Date(job.endDate)
-        }] : [],
+        availability: defaultAvailability,
         instructions: '',
         notes: ''
       }
     };
 
-    setPlacements([...placements, newPlacement]);
+    // Update the specific slot
+    setSlots(slots.map(slot => {
+      if (slot.id === slotId) {
+        const updatedPlacements = [...slot.placements, newPlacement];
+        return {
+          ...slot,
+          placements: updatedPlacements,
+          occupiedDates: calculateOccupiedDates(updatedPlacements)
+        };
+      }
+      return slot;
+    }));
   };
 
   const handleConfirmOverlap = () => {
     if (pendingUser && pendingSource) {
-      addUserToJob(pendingUser, pendingSource);
+      addUserToSlot(pendingUser, pendingSource, selectedSlotId);
     }
     setShowOverlapDialog(false);
     setPendingUser(null);
@@ -284,28 +389,44 @@ const JobFill = () => {
   };
 
   const handleRemoveUser = (userId: number) => {
-    setPlacements(placements.filter(p => p.userId !== userId));
+    setSlots(slots.map(slot => ({
+      ...slot,
+      placements: slot.placements.filter(p => p.userId !== userId),
+      occupiedDates: calculateOccupiedDates(slot.placements.filter(p => p.userId !== userId))
+    })));
   };
 
   const handleUpdatePlacement = (userId: number, field: 'instructions' | 'notes' | 'status' | 'confirmed' | 'meta', value: string | boolean | any) => {
-    setPlacements(placements.map(p => {
-      if (p.userId === userId) {
-        if (field === 'meta') {
-          return { ...p, meta: { ...p.meta, ...value } };
+    setSlots(slots.map(slot => ({
+      ...slot,
+      placements: slot.placements.map(p => {
+        if (p.userId === userId) {
+          if (field === 'meta') {
+            const updatedPlacement = { ...p, meta: { ...p.meta, ...value } };
+            // Recalculate occupied dates if availability changed
+            if (value.availability) {
+              slot.occupiedDates = calculateOccupiedDates(slot.placements.map(placement => 
+                placement.userId === userId ? updatedPlacement : placement
+              ));
+            }
+            return updatedPlacement;
+          }
+          return { ...p, [field]: value };
         }
-        return { ...p, [field]: value };
-      }
-      return p;
-    }));
+        return p;
+      })
+    })));
   };
 
   const handleConfirmPlacements = async () => {
     if (!job) return;
 
     try {
-      const placeholderPlacements = placements.filter(p => p.isPlaceholder);
+      const allPlaceholderPlacements = slots.flatMap(slot => 
+        slot.placements.filter(p => p.isPlaceholder)
+      );
       
-      for (const placement of placeholderPlacements) {
+      for (const placement of allPlaceholderPlacements) {
         const placementData = {
           userId: placement.userId,
           jobId: job.id,
@@ -314,6 +435,7 @@ const JobFill = () => {
           confirmed: placement.confirmed,
           status: placement.status,
           meta: {
+            slotId: placement.slotId,
             instructions: placement.instructions,
             notes: placement.notes,
             availability: placement.meta?.availability?.map((window: any) => ({
@@ -359,11 +481,10 @@ const JobFill = () => {
     );
   }
 
-  // Ensure placements is always an array
-  const placementsArray = Array.isArray(placements) ? placements : [];
-  const placeholderPlacements = placementsArray.filter(p => p.isPlaceholder);
-  const existingPlacementsCount = placementsArray.filter(p => !p.isPlaceholder).length;
-  const hasPlacements = placementsArray.length > 0;
+  // Calculate totals
+  const allPlacements = slots.flatMap(slot => slot.placements);
+  const placeholderPlacements = allPlacements.filter(p => p.isPlaceholder);
+  const hasPlacements = allPlacements.length > 0;
 
   // Ensure job.skills is always an array
   const jobSkills = Array.isArray(job.skills) ? job.skills : [];
@@ -411,9 +532,9 @@ const JobFill = () => {
               <div>
                 <p className="text-sm text-gray-500">Vacancies</p>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{job.vacancies} required</Badge>
+                  <Badge variant="outline">{job.vacancies} slots</Badge>
                   <span className="text-sm text-gray-500">
-                    ({placementsArray.length} assigned)
+                    ({allPlacements.length} assigned)
                   </span>
                 </div>
               </div>
@@ -421,35 +542,57 @@ const JobFill = () => {
           </CardContent>
         </Card>
 
-        {/* All Placements */}
-        {hasPlacements && (
-          <Card className="border-0 shadow-lg">
+        {/* Slot-based Placements */}
+        {slots.map((slot) => (
+          <Card key={slot.id} className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-[#000009]">Job Placements</CardTitle>
-              <CardDescription>All placements for this job</CardDescription>
+              <CardTitle className="text-[#000009]">
+                Slot {slot.id}
+                <Badge variant="secondary" className="ml-2">
+                  {slot.placements.length} candidates
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Placements for vacancy slot {slot.id}
+                {slot.occupiedDates.size > 0 && (
+                  <span className="text-sm text-amber-600 ml-2">
+                    ({slot.occupiedDates.size} days occupied)
+                  </span>
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <PlacementsTable 
-                placements={placementsArray}
-                onRemoveUser={handleRemoveUser}
-                onUpdatePlacement={handleUpdatePlacement}
-                onRefresh={refetchPlacements}
-                jobStartDate={job.startDate}
-                jobEndDate={job.endDate}
-                showStatusControls={false}
-                showConfirmedControls={false}
-              />
-              {placeholderPlacements.length > 0 && (
-                <div className="mt-4 flex justify-end">
-                  <Button 
-                    onClick={handleConfirmPlacements}
-                    disabled={placeholderPlacements.length === 0}
-                    className="bg-[#712B71] hover:bg-[#712B71]/90"
-                  >
-                    Confirm Placements ({placeholderPlacements.length})
-                  </Button>
-                </div>
+              {slot.placements.length > 0 ? (
+                <PlacementsTable 
+                  placements={slot.placements}
+                  onRemoveUser={handleRemoveUser}
+                  onUpdatePlacement={handleUpdatePlacement}
+                  onRefresh={refetchPlacements}
+                  jobStartDate={job.startDate}
+                  jobEndDate={job.endDate}
+                  showStatusControls={false}
+                  showConfirmedControls={false}
+                />
+              ) : (
+                <p className="text-gray-500 text-center py-4">No candidates assigned to this slot</p>
               )}
+            </CardContent>
+          </Card>
+        ))}
+
+        {/* Confirm Placements Button */}
+        {placeholderPlacements.length > 0 && (
+          <Card className="border-0 shadow-lg">
+            <CardContent className="pt-6">
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleConfirmPlacements}
+                  disabled={placeholderPlacements.length === 0}
+                  className="bg-[#712B71] hover:bg-[#712B71]/90"
+                >
+                  Confirm Placements ({placeholderPlacements.length})
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -461,7 +604,22 @@ const JobFill = () => {
               <CardTitle className="text-[#000009]">Search Users</CardTitle>
               <CardDescription>Find and add users to fill this job</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Select Slot</label>
+                <Select value={selectedSlotId.toString()} onValueChange={(value) => setSelectedSlotId(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {slots.map((slot) => (
+                      <SelectItem key={slot.id} value={slot.id.toString()}>
+                        Slot {slot.id} ({slot.placements.length} candidates, {slot.occupiedDates.size} days occupied)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <UserSearchForm 
                 onUserSelect={(user) => handleAddUser(user, 'search')}
                 disabled={false}
@@ -495,13 +653,13 @@ const JobFill = () => {
                 <br /><br />
                 <strong>{overlapDetails}</strong>
                 <br /><br />
-                Are you sure you want to add them to this job?
+                Are you sure you want to add them to Slot {selectedSlotId}?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={handleCancelOverlap}>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleConfirmOverlap}>
-                Add Anyway
+                Add to Slot {selectedSlotId}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
