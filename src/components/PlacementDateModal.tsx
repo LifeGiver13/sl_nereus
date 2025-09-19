@@ -183,7 +183,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 Slot {selectedSlotId} has {selectedSlot.occupiedDates.size} occupied days. 
-                Available dates are highlighted in blue, conflicting dates in red.
+                Available dates are highlighted with a blue border, occupied dates are shown in red with strikethrough and cannot be selected.
               </p>
             </div>
           )}

@@ -43,7 +43,15 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
           selected={selectedDates}
           onSelect={(dates) => {
             if (dates) {
-              onDatesChange(Array.isArray(dates) ? dates : [dates]);
+              // Filter out any conflicting dates from selection
+              const validDates = (Array.isArray(dates) ? dates : [dates]).filter(date => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`;
+                return !conflictingDates.has(dateStr);
+              });
+              onDatesChange(validDates);
             } else {
               onDatesChange([]);
             }
@@ -73,7 +81,7 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
               if (dayOfWeek === 0 || dayOfWeek === 6) return true;
             }
             
-            // Check for conflicting dates
+            // Disable conflicting dates (occupied by other placements in this slot)
             return conflictingDates.has(dateStr);
           }}
           modifiers={{
@@ -82,9 +90,9 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
               const month = String(date.getMonth() + 1).padStart(2, '0');
               const day = String(date.getDate()).padStart(2, '0');
               const dateStr = `${year}-${month}-${day}`;
-              return availableDates.has(dateStr);
+              return availableDates.has(dateStr) && !conflictingDates.has(dateStr);
             },
-            conflicting: (date) => {
+            occupied: (date) => {
               const year = date.getFullYear();
               const month = String(date.getMonth() + 1).padStart(2, '0');
               const day = String(date.getDate()).padStart(2, '0');
@@ -93,8 +101,17 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
             }
           }}
           modifiersStyles={{
-            available: { backgroundColor: 'hsl(var(--primary) / 0.2)', color: 'hsl(var(--primary))' },
-            conflicting: { backgroundColor: 'hsl(var(--destructive) / 0.2)', color: 'hsl(var(--destructive))' }
+            available: { 
+              backgroundColor: 'hsl(var(--primary) / 0.1)', 
+              color: 'hsl(var(--primary))',
+              border: '1px solid hsl(var(--primary) / 0.3)'
+            },
+            occupied: { 
+              backgroundColor: 'hsl(var(--destructive) / 0.1)', 
+              color: 'hsl(var(--destructive))',
+              border: '1px solid hsl(var(--destructive) / 0.3)',
+              textDecoration: 'line-through'
+            }
           }}
           className={cn("p-3 pointer-events-auto")}
         />
