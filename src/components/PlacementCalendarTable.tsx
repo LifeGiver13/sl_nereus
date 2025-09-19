@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from '@dnd-kit/core';
 
 interface AvailabilityWindow {
   startDate: Date;
@@ -59,6 +60,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     return startOfWeek(jobStart, { weekStartsOn: 1 }); // Monday start
   });
   const [editingCell, setEditingCell] = useState<{ slotId: number; date: Date } | null>(null);
+  const [draggedCandidate, setDraggedCandidate] = useState<PlacementRow | null>(null);
   const { toast } = useToast();
 
   const jobStart = parseDate(job.startDate);
@@ -184,6 +186,28 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     });
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const [slotId, candidateId] = active.id.toString().split('-');
+    const slot = slots.find(s => s.id === parseInt(slotId));
+    const candidate = slot?.placements.find(p => p.userId === parseInt(candidateId));
+    setDraggedCandidate(candidate || null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setDraggedCandidate(null);
+
+    if (!over) return;
+
+    const [, candidateId] = active.id.toString().split('-');
+    const [targetSlotId, dateString] = over.id.toString().split('-');
+    const targetDate = new Date(dateString);
+
+    handleAssignCandidate(parseInt(targetSlotId), parseInt(candidateId), targetDate);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'accepted': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -193,39 +217,139 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     }
   };
 
-  return (
-    <Card className="shadow-lg">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Placement Calendar</CardTitle>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToPreviousWeek}
-              disabled={!canGoToPrevious}
-              className="h-8"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Previous Week
-            </Button>
-            <div className="text-sm font-medium text-muted-foreground px-3">
-              {format(currentWeekStart, 'MMM dd')} - {format(currentWeekEnd, 'MMM dd, yyyy')}
+  // Draggable candidate component
+  const DraggableCandidate: React.FC<{ candidate: PlacementRow; slotId: number }> = ({ candidate, slotId }) => {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+      id: `${slotId}-${candidate.userId}`,
+    });
+
+    const style = transform ? {
+      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    } : undefined;
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...listeners}
+        {...attributes}
+        className={`text-xs font-medium truncate max-w-40 cursor-grab active:cursor-grabbing ${
+          isDragging ? 'opacity-50' : ''
+        }`}
+        title={candidate.user.displayName}
+      >
+        {candidate.user.displayName.split(' ').slice(0, 2).join(' ')}
+      </div>
+    );
+  };
+
+  // Droppable calendar cell component
+  const DroppableCalendarCell: React.FC<{
+    slotId: number;
+    date: Date;
+    assignment: PlacementRow | null;
+    isApplicable: boolean;
+    candidates: PlacementRow[];
+  }> = ({ slotId, date, assignment, isApplicable, candidates }) => {
+    const { isOver, setNodeRef } = useDroppable({
+      id: `${slotId}-${date.toISOString()}`,
+      disabled: !isApplicable || !!assignment || candidates.length === 0,
+    });
+
+    const isFilled = assignment && isApplicable;
+    const canBeAssigned = !assignment && isApplicable && candidates.length > 0;
+    const isEditing = editingCell?.slotId === slotId && editingCell?.date.getTime() === date.getTime();
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={`h-full ${isOver && canBeAssigned ? 'bg-amber-200 dark:bg-amber-700' : ''}`}
+      >
+        {isFilled ? (
+          // Filled day - green background
+          <div className="bg-green-100 dark:bg-green-900 rounded-md p-2 space-y-1 border border-green-200 dark:border-green-800">
+            <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={assignment.user.displayName}>
+              {assignment.user.displayName.split(' ')[0]}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToNextWeek}
-              disabled={!canGoToNext}
-              className="h-8"
-            >
-              Next Week
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+            <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+              {assignment.user.displayName.split(' ')[1]?.charAt(0)}.
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
+        ) : canBeAssigned ? (
+          // Unfilled but assignable day - amber background, clickable
+          isEditing ? (
+            <div className="bg-amber-100 dark:bg-amber-900 rounded-md p-2 border border-amber-200 dark:border-amber-800">
+              <Select 
+                open={true}
+                onValueChange={(value) => handleAssignCandidate(slotId, parseInt(value), date)}
+                onOpenChange={(open) => !open && setEditingCell(null)}
+              >
+                <SelectTrigger className="h-6 text-xs border-0 bg-transparent">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {candidates.map((candidate) => (
+                    <SelectItem key={candidate.userId} value={candidate.userId.toString()}>
+                      <span className="text-xs">{candidate.user.displayName}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div 
+              className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
+              onClick={() => setEditingCell({ slotId, date })}
+            >
+              <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+                Click to assign
+              </div>
+            </div>
+          )
+        ) : (
+          // Not applicable or no candidates
+          <div className={`text-xs text-muted-foreground py-4 ${!isApplicable ? 'opacity-40' : ''}`}>
+            {!isApplicable ? '-' : candidates.length === 0 ? 'No candidates' : '-'}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Placement Calendar</CardTitle>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousWeek}
+                disabled={!canGoToPrevious}
+                className="h-8"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous Week
+              </Button>
+              <div className="text-sm font-medium text-muted-foreground px-3">
+                {format(currentWeekStart, 'MMM dd')} - {format(currentWeekEnd, 'MMM dd, yyyy')}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextWeek}
+                disabled={!canGoToNext}
+                className="h-8"
+              >
+                Next Week
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
         <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
@@ -264,9 +388,11 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                         <div className="space-y-1">
                           {candidates.length > 0 ? (
                             candidates.map((candidate) => (
-                              <div key={candidate.userId} className="text-xs font-medium truncate max-w-40" title={candidate.user.displayName}>
-                                {candidate.user.displayName.split(' ').slice(0, 2).join(' ')}
-                              </div>
+                              <DraggableCandidate 
+                                key={candidate.userId} 
+                                candidate={candidate} 
+                                slotId={slot.id}
+                              />
                             ))
                           ) : (
                             <div className="text-xs text-muted-foreground italic">No candidates</div>
@@ -278,55 +404,16 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                       const assignment = getAssignmentForSlotAndDate(slot.id, day);
                       const isApplicable = isDayApplicable(day);
                       const candidates = getCandidatesForSlot(slot.id);
-                      const isFilled = assignment && isApplicable;
-                      const canBeAssigned = !assignment && isApplicable && candidates.length > 0;
-                      const isEditing = editingCell?.slotId === slot.id && editingCell?.date.getTime() === day.getTime();
 
                       return (
                         <TableCell key={dayIndex} className={`text-center p-2 border-r last:border-r-0 ${!isApplicable ? 'bg-muted/30' : ''}`}>
-                          {isFilled ? (
-                            // Filled day - green background
-                            <div className="bg-green-100 dark:bg-green-900 rounded-md p-2 space-y-1 border border-green-200 dark:border-green-800">
-                              <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={assignment.user.displayName}>
-                                {assignment.user.displayName.split(' ')[0]}
-                              </div>
-                              <div className="text-xs text-green-600 dark:text-green-400 font-medium">
-                                {assignment.user.displayName.split(' ')[1]?.charAt(0)}.
-                              </div>
-                            </div>
-                          ) : canBeAssigned ? (
-                            // Unfilled but assignable day - amber background, clickable
-                            isEditing ? (
-                              <div className="bg-amber-100 dark:bg-amber-900 rounded-md p-2 border border-amber-200 dark:border-amber-800">
-                                <Select onValueChange={(value) => handleAssignCandidate(slot.id, parseInt(value), day)}>
-                                  <SelectTrigger className="h-6 text-xs border-0 bg-transparent">
-                                    <SelectValue placeholder="Select..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {candidates.map((candidate) => (
-                                      <SelectItem key={candidate.userId} value={candidate.userId.toString()}>
-                                        <span className="text-xs">{candidate.user.displayName}</span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            ) : (
-                              <div 
-                                className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
-                                onClick={() => setEditingCell({ slotId: slot.id, date: day })}
-                              >
-                                <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
-                                  Click to assign
-                                </div>
-                              </div>
-                            )
-                          ) : (
-                            // Not applicable or no candidates
-                            <div className={`text-xs text-muted-foreground py-4 ${!isApplicable ? 'opacity-40' : ''}`}>
-                              {!isApplicable ? '-' : candidates.length === 0 ? 'No candidates' : '-'}
-                            </div>
-                          )}
+                          <DroppableCalendarCell
+                            slotId={slot.id}
+                            date={day}
+                            assignment={assignment}
+                            isApplicable={isApplicable}
+                            candidates={candidates}
+                          />
                         </TableCell>
                       );
                     })}
@@ -337,7 +424,17 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
           </Table>
         </div>
       </CardContent>
+      <DragOverlay>
+        {draggedCandidate ? (
+          <div className="bg-background border rounded-md p-2 shadow-lg">
+            <div className="text-xs font-medium">
+              {draggedCandidate.user.displayName}
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
     </Card>
+    </DndContext>
   );
 };
 
