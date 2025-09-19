@@ -104,20 +104,55 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   // Fetch existing placements for the same slot to check for conflicts
   useEffect(() => {
     const fetchExistingPlacements = async () => {
-      if (!placement?.jobId || !selectedSlotId) return;
+      if (!placement?.jobId || !selectedSlotId) {
+        console.log('Skipping fetch - missing data:', { jobId: placement?.jobId, selectedSlotId });
+        return;
+      }
+      
+      console.log('=== FETCHING EXISTING PLACEMENTS ===');
+      console.log('Job ID:', placement.jobId);
+      console.log('Current placement ID:', placement.id);
+      console.log('Selected slot ID:', selectedSlotId);
       
       try {
         const response = await fetch(`${API_BASE_URL}/job/${placement.jobId}/placement`);
         if (response.ok) {
           const data = await response.json();
+          console.log('Raw API response:', data);
+          console.log('All placements count:', data.results?.length || 0);
+          
+          // Log each placement with its slot info
+          data.results?.forEach((p: any, index: number) => {
+            console.log(`Placement ${index + 1} (ID: ${p.id}):`, {
+              slotId: p.meta?.slotId,
+              isCurrentPlacement: p.id === placement.id,
+              hasAvailability: p.meta?.availability?.length > 0,
+              meta: p.meta
+            });
+          });
+          
           // Filter placements for the same slot, excluding current placement
           const slotPlacements = data.results?.filter((p: any) => {
             const placementSlotId = p.meta?.slotId || 1; // Default to slot 1 if not set
-            return placementSlotId === selectedSlotId && p.id !== placement.id;
+            const isSameSlot = placementSlotId === selectedSlotId;
+            const isNotCurrentPlacement = p.id !== placement.id;
+            
+            console.log(`Filtering placement ${p.id}:`, {
+              placementSlotId,
+              selectedSlotId,
+              isSameSlot,
+              isNotCurrentPlacement,
+              included: isSameSlot && isNotCurrentPlacement
+            });
+            
+            return isSameSlot && isNotCurrentPlacement;
           }) || [];
           
-          console.log('Existing placements for slot', selectedSlotId, ':', slotPlacements);
+          console.log('Filtered placements for slot', selectedSlotId, ':', slotPlacements);
+          console.log('Final existing placements count:', slotPlacements.length);
           setExistingPlacements(slotPlacements);
+        } else {
+          console.error('Failed to fetch placements:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('Error fetching existing placements:', error);
