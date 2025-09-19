@@ -672,35 +672,41 @@ const JobFill = () => {
                             })}
                           </div>
                         )}
-                        <details className="text-sm">
-                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                            Additional information
-                          </summary>
-                          <div className="mt-2 space-y-1">
-                            {placement.meta?.instructions && (
-                              <p className="text-muted-foreground"><strong>Instructions:</strong> {placement.meta.instructions}</p>
-                            )}
-                            {placement.meta?.notes && (
-                              <p className="text-muted-foreground"><strong>Notes:</strong> {placement.meta.notes}</p>
-                            )}
-                            {placement.meta?.availability && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground"><strong>Availability:</strong></span>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => {
-                                    setPendingUser(placement.user);
-                                    setEditingPlacement(placement);
-                                    setShowDateModal(true);
-                                  }}
-                                >
-                                  Edit Dates
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </details>
+                         <div className="flex items-center gap-2 mt-2">
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => {
+                               setSelectedPlacement(placement);
+                               setShowPlacementDetail(true);
+                             }}
+                           >
+                             View Details
+                           </Button>
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => {
+                               setSelectedPlacement(placement);
+                               setShowPlacementEdit(true);
+                             }}
+                           >
+                             Edit
+                           </Button>
+                         </div>
+                         <details className="text-sm">
+                           <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                             Additional information
+                           </summary>
+                           <div className="mt-2 space-y-1">
+                             {placement.meta?.instructions && (
+                               <p className="text-muted-foreground"><strong>Instructions:</strong> {placement.meta.instructions}</p>
+                             )}
+                             {placement.meta?.notes && (
+                               <p className="text-muted-foreground"><strong>Notes:</strong> {placement.meta.notes}</p>
+                             )}
+                           </div>
+                         </details>
                       </div>
                     </div>
                   ))}
@@ -824,6 +830,9 @@ const JobFill = () => {
               refetchPlacements();
             }}
             placement={selectedPlacement}
+            slots={job?.slots || []}
+            jobStartDate={job?.startDate}
+            jobEndDate={job?.endDate}
           />
         )}
 

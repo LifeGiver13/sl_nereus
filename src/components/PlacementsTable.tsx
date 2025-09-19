@@ -48,6 +48,8 @@ interface PlacementsTableProps {
   jobEndDate?: string;
   showStatusControls?: boolean;
   showConfirmedControls?: boolean;
+  onViewPlacement?: (placement: any) => void;
+  onEditPlacement?: (placement: any) => void;
 }
 
 const statusOptions = [
@@ -68,7 +70,9 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
   jobStartDate = '',
   jobEndDate = '',
   showStatusControls = true,
-  showConfirmedControls = true
+  showConfirmedControls = true,
+  onViewPlacement,
+  onEditPlacement
 }) => {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [placementChanges, setPlacementChanges] = useState<Map<number, Partial<PlacementRow>>>(new Map());
@@ -216,11 +220,22 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                {!placement.isPlaceholder && (
+                {!placement.isPlaceholder && onViewPlacement && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => toggleRowExpansion(placement.userId)}
+                    onClick={() => onViewPlacement((placement as any).placement)}
+                    title="View Details"
+                  >
+                    View
+                  </Button>
+                )}
+                {!placement.isPlaceholder && onEditPlacement && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEditPlacement((placement as any).placement)}
+                    title="Edit Placement"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>

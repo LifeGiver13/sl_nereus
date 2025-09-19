@@ -12,6 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, Plus, X } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 
@@ -20,6 +25,14 @@ interface PlacementEditModalProps {
   onClose: () => void;
   onSave: () => void;
   placement: any;
+  slots?: any[];
+  jobStartDate?: string;
+  jobEndDate?: string;
+}
+
+interface AvailabilityPeriod {
+  startDate: Date;
+  endDate: Date;
 }
 
 const statusOptions = [
@@ -36,13 +49,18 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  placement
+  placement,
+  slots = [],
+  jobStartDate,
+  jobEndDate
 }) => {
   const [instructions, setInstructions] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('awaiting_confirmation');
   const [confirmed, setConfirmed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
+  const [availabilityPeriods, setAvailabilityPeriods] = useState<AvailabilityPeriod[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -51,14 +69,70 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setNotes(placement.meta?.notes || '');
       setStatus(placement.status || 'awaiting_confirmation');
       setConfirmed(placement.confirmed || false);
+      setSelectedSlotId(placement.slotId || null);
+      
+      // Parse existing availability periods
+      const existingPeriods = placement.meta?.availabilityPeriods || [];
+      if (existingPeriods.length > 0) {
+        setAvailabilityPeriods(existingPeriods.map((period: any) => ({
+          startDate: new Date(period.startDate),
+          endDate: new Date(period.endDate)
+        })));
+      } else if (placement.startDate && placement.endDate) {
+        // Convert single placement date range to availability period
+        setAvailabilityPeriods([{
+          startDate: new Date(placement.startDate),
+          endDate: new Date(placement.endDate)
+        }]);
+      }
     }
   }, [placement]);
 
+  const addAvailabilityPeriod = () => {
+    const jobStart = jobStartDate ? new Date(jobStartDate) : new Date();
+    setAvailabilityPeriods([...availabilityPeriods, {
+      startDate: jobStart,
+      endDate: jobStart
+    }]);
+  };
+
+  const removeAvailabilityPeriod = (index: number) => {
+    setAvailabilityPeriods(availabilityPeriods.filter((_, i) => i !== index));
+  };
+
+  const updateAvailabilityPeriod = (index: number, field: 'startDate' | 'endDate', date: Date | undefined) => {
+    if (!date) return;
+    
+    const updated = [...availabilityPeriods];
+    updated[index] = { ...updated[index], [field]: date };
+    setAvailabilityPeriods(updated);
+  };
+
   const handleSave = async () => {
-    if (!placement) return;
+    if (!placement || !selectedSlotId || availabilityPeriods.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select a slot and at least one availability period",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate availability periods
+    for (const period of availabilityPeriods) {
+      if (period.startDate > period.endDate) {
+        toast({
+          title: "Error", 
+          description: "Start date must be before end date",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     setIsLoading(true);
     try {
+      // Update placement
       const response = await fetch(`${API_BASE_URL}/placement/${placement.id}`, {
         method: 'PUT',
         headers: {
@@ -67,9 +141,16 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         body: JSON.stringify({
           status,
           confirmed,
+          slotId: selectedSlotId,
+          startDate: availabilityPeriods[0].startDate.toISOString().split('T')[0],
+          endDate: availabilityPeriods[availabilityPeriods.length - 1].endDate.toISOString().split('T')[0],
           meta: {
             instructions,
-            notes
+            notes,
+            availabilityPeriods: availabilityPeriods.map(period => ({
+              startDate: period.startDate.toISOString().split('T')[0],
+              endDate: period.endDate.toISOString().split('T')[0]
+            }))
           }
         }),
       });
@@ -110,10 +191,123 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           <DialogTitle>Edit Placement</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
             <p className="text-sm text-gray-500">Candidate</p>
             <p className="font-medium">{candidateName}</p>
+          </div>
+
+          {/* Slot Selection */}
+          <div>
+            <label className="text-sm font-medium">Slot</label>
+            <Select value={selectedSlotId?.toString() || ''} onValueChange={(value) => setSelectedSlotId(parseInt(value))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a slot" />
+              </SelectTrigger>
+              <SelectContent>
+                {slots.map((slot) => (
+                  <SelectItem key={slot.id} value={slot.id.toString()}>
+                    {slot.name} ({slot.requiredWorkers} workers needed)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Availability Periods */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Availability Periods</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addAvailabilityPeriod}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Period
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
+              {availabilityPeriods.map((period, index) => (
+                <div key={index} className="flex items-center space-x-2 p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-500">Start Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !period.startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {period.startDate ? format(period.startDate, "PPP") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={period.startDate}
+                          onSelect={(date) => updateAvailabilityPeriod(index, 'startDate', date)}
+                          className="pointer-events-auto"
+                          disabled={(date) => {
+                            if (jobStartDate && date < new Date(jobStartDate)) return true;
+                            if (jobEndDate && date > new Date(jobEndDate)) return true;
+                            return false;
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-500">End Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !period.endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {period.endDate ? format(period.endDate, "PPP") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={period.endDate}
+                          onSelect={(date) => updateAvailabilityPeriod(index, 'endDate', date)}
+                          className="pointer-events-auto"
+                          disabled={(date) => {
+                            if (jobStartDate && date < new Date(jobStartDate)) return true;
+                            if (jobEndDate && date > new Date(jobEndDate)) return true;
+                            if (period.startDate && date < period.startDate) return true;
+                            return false;
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
+                  {availabilityPeriods.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeAvailabilityPeriod(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -165,7 +359,10 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
+          <Button 
+            onClick={handleSave} 
+            disabled={isLoading || !selectedSlotId || availabilityPeriods.length === 0}
+          >
             {isLoading ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogFooter>

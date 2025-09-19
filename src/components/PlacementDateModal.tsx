@@ -56,9 +56,25 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     const current = new Date(start);
     const endCheck = new Date(end);
     
+    // Create a copy of occupied dates, excluding current placement's dates if editing
+    const occupiedDates = new Set(slot.occupiedDates);
+    
+    if (editingPlacement) {
+      // Remove current placement's dates from occupied dates
+      const editingStart = new Date(editingPlacement.startDate);
+      const editingEnd = new Date(editingPlacement.endDate);
+      const editingCurrent = new Date(editingStart);
+      
+      while (editingCurrent <= editingEnd) {
+        const dateString = editingCurrent.toISOString().split('T')[0];
+        occupiedDates.delete(dateString);
+        editingCurrent.setDate(editingCurrent.getDate() + 1);
+      }
+    }
+    
     while (current <= endCheck) {
       const dateString = current.toISOString().split('T')[0];
-      if (slot.occupiedDates.has(dateString)) {
+      if (occupiedDates.has(dateString)) {
         return false;
       }
       current.setDate(current.getDate() + 1);
