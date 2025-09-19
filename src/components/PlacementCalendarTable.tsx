@@ -311,17 +311,24 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                     }}
                     onOpenChange={(open) => {
                       console.log('📋 Dropdown open state changed:', open);
-                      if (!open) setEditingCell(null);
+                      // Only close if explicitly set to false, not on initial mount
+                      if (open === false) {
+                        setTimeout(() => setEditingCell(null), 100);
+                      }
                     }}
                   >
-                    <SelectTrigger className="h-6 text-xs border-0 bg-transparent">
-                      <SelectValue placeholder="Select..." />
+                    <SelectTrigger className="h-6 text-xs border-0 bg-transparent" onClick={(e) => e.preventDefault()}>
+                      <SelectValue placeholder="Select candidate..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600">
                       {candidates.map((candidate) => {
                         console.log('📋 Rendering candidate option:', candidate.user.displayName);
                         return (
-                          <SelectItem key={candidate.userId} value={candidate.userId.toString()}>
+                          <SelectItem 
+                            key={candidate.userId} 
+                            value={candidate.userId.toString()}
+                            className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
                             <span className="text-xs">{candidate.user.displayName}</span>
                           </SelectItem>
                         );
