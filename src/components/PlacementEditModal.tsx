@@ -74,7 +74,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setNotes(placement.meta?.notes || '');
       setStatus(placement.status || 'awaiting_confirmation');
       setConfirmed(placement.confirmed || false);
-      setSelectedSlotId(placement.meta?.slotId || 1); // Default to slot 1 if not set
+      // Properly read slotId from placement.meta.slotId, default to 1 if not set
+      setSelectedSlotId(placement.meta?.slotId || 1);
       
       // Parse existing availability periods from meta.availability or meta.availabilityPeriods
       const existingPeriods = placement.meta?.availability || placement.meta?.availabilityPeriods || [];
@@ -406,11 +407,13 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {slots.map((slot) => (
+                    {slots && slots.length > 0 ? slots.map((slot) => (
                       <SelectItem key={slot.id} value={slot.id.toString()}>
                         Slot {slot.id}
                       </SelectItem>
-                    ))}
+                    )) : (
+                      <SelectItem value="1">Slot 1</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
