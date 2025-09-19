@@ -168,7 +168,15 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
 
   // Handle assignment of candidate to specific date
   const handleAssignCandidate = (slotId: number, candidateId: number, date: Date) => {
+    console.log('🎯 PlacementCalendarTable: handleAssignCandidate called', {
+      slotId,
+      candidateId,
+      date: date.toISOString(),
+      onAssignCandidate: !!onAssignCandidate
+    });
+
     if (checkForConflicts(candidateId, slotId, date)) {
+      console.log('❌ Assignment conflict detected for candidate', candidateId);
       toast({
         title: "Assignment Conflict",
         description: "This candidate is already assigned to another slot on this date.",
@@ -177,6 +185,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
       return;
     }
 
+    console.log('✅ No conflicts detected, calling onAssignCandidate');
     onAssignCandidate?.(slotId, candidateId, date);
     setEditingCell(null);
     
@@ -188,22 +197,34 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
 
   // Drag and drop handlers
   const handleDragStart = (event: DragStartEvent) => {
+    console.log('🔄 Drag started:', event.active.id);
     const { active } = event;
     const [slotId, candidateId] = active.id.toString().split('-');
     const slot = slots.find(s => s.id === parseInt(slotId));
     const candidate = slot?.placements.find(p => p.userId === parseInt(candidateId));
+    console.log('🔄 Dragged candidate:', { slotId, candidateId, candidate: candidate?.user.displayName });
     setDraggedCandidate(candidate || null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    console.log('🔄 Drag ended:', { active: event.active.id, over: event.over?.id });
     const { active, over } = event;
     setDraggedCandidate(null);
 
-    if (!over) return;
+    if (!over) {
+      console.log('❌ No drop target');
+      return;
+    }
 
     const [, candidateId] = active.id.toString().split('-');
     const [targetSlotId, dateString] = over.id.toString().split('-');
     const targetDate = new Date(dateString);
+
+    console.log('🔄 Processing drag assignment:', {
+      candidateId: parseInt(candidateId),
+      targetSlotId: parseInt(targetSlotId),
+      targetDate: targetDate.toISOString()
+    });
 
     handleAssignCandidate(parseInt(targetSlotId), parseInt(candidateId), targetDate);
   };
@@ -281,7 +302,10 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
             <div className="bg-amber-100 dark:bg-amber-900 rounded-md p-2 border border-amber-200 dark:border-amber-800">
               <Select 
                 open={true}
-                onValueChange={(value) => handleAssignCandidate(slotId, parseInt(value), date)}
+                onValueChange={(value) => {
+                  console.log('📋 Dropdown selection made:', { slotId, candidateId: value, date: date.toISOString() });
+                  handleAssignCandidate(slotId, parseInt(value), date);
+                }}
                 onOpenChange={(open) => !open && setEditingCell(null)}
               >
                 <SelectTrigger className="h-6 text-xs border-0 bg-transparent">
@@ -299,7 +323,10 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
           ) : (
             <div 
               className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
-              onClick={() => setEditingCell({ slotId, date })}
+              onClick={() => {
+                console.log('📱 Click to assign triggered:', { slotId, date: date.toISOString() });
+                setEditingCell({ slotId, date });
+              }}
             >
               <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
                 Click to assign
