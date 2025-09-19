@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -221,53 +221,84 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const updateAvailabilityPeriod = (index: number, field: 'startDate' | 'endDate', date: Date | undefined) => {
     if (!date) return;
     
+    // Create a new date to avoid timezone issues
+    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
     const updated = [...availabilityPeriods];
-    updated[index] = { ...updated[index], [field]: date };
+    updated[index] = { ...updated[index], [field]: localDate };
     
     // Auto-set end date to start date if not specified (for single date periods)
     if (field === 'startDate' && !updated[index].endDate) {
-      updated[index].endDate = date;
+      updated[index].endDate = localDate;
     }
     
     setAvailabilityPeriods(updated);
   };
 
-  // Get all available dates for highlighting in calendar
-  const getAvailableDates = () => {
-    const availableDates = new Set<string>();
+  // Get all available dates for highlighting in calendar (memoized)
+  const availableDates = useMemo(() => {
+    const availableDatesSet = new Set<string>();
     
-    console.log('=== GETTING AVAILABLE DATES ===');
+    console.log('=== CALCULATING AVAILABLE DATES ===');
     console.log('Current availability periods:', availabilityPeriods.length);
     
     // Add all dates from current availability periods
     availabilityPeriods.forEach((period, index) => {
       console.log(`Period ${index + 1}:`, {
-        start: period.startDate.toISOString().split('T')[0],
-        end: period.endDate.toISOString().split('T')[0]
+        start: period.startDate.getFullYear() + '-' + String(period.startDate.getMonth() + 1).padStart(2, '0') + '-' + String(period.startDate.getDate()).padStart(2, '0'),
+        end: period.endDate.getFullYear() + '-' + String(period.endDate.getMonth() + 1).padStart(2, '0') + '-' + String(period.endDate.getDate()).padStart(2, '0')
       });
       
       const currentDate = new Date(period.startDate);
-      const endDate = period.endDate;
+      const endDate = new Date(period.endDate);
       
       while (currentDate <= endDate) {
-        const dateStr = currentDate.toISOString().split('T')[0];
-        availableDates.add(dateStr);
+        const dateStr = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+        availableDatesSet.add(dateStr);
         console.log(`  Adding available date: ${dateStr}`);
         currentDate.setDate(currentDate.getDate() + 1);
       }
     });
     
-    console.log('Total available dates:', availableDates.size);
-    console.log('Available dates:', Array.from(availableDates));
-    return availableDates;
-  };
+    console.log('Total available dates:', availableDatesSet.size);
+    console.log('Available dates:', Array.from(availableDatesSet));
+    return availableDatesSet;
+  }, [availabilityPeriods]);
+
+  // Get all existing placement dates for highlighting in calendar (memoized)
+  const existingDates = useMemo(() => {
+    const existingDatesSet = new Set<string>();
+    
+    filteredExistingPlacements.forEach(placement => {
+      if (placement.meta?.availability) {
+        placement.meta.availability.forEach(period => {
+          const start = new Date(period.startDate + 'T00:00:00');
+          const end = new Date(period.endDate + 'T00:00:00');
+          
+          const currentDate = new Date(start);
+          while (currentDate <= end) {
+            const dateStr = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
+            existingDatesSet.add(dateStr);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        });
+      }
+    });
+    
+    return existingDatesSet;
+  }, [filteredExistingPlacements]);
 
   // Check if a date should be highlighted (available)
-  const isDateAvailable = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    const available = getAvailableDates().has(dateStr);
-    return available;
-  };
+  const isDateAvailable = useCallback((date: Date) => {
+    const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    return availableDates.has(dateStr);
+  }, [availableDates]);
+
+  // Check if a date has existing placements
+  const isDateExisting = useCallback((date: Date) => {
+    const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    return existingDates.has(dateStr);
+  }, [existingDates]);
 
   const handleSave = async () => {
     if (!placement || availabilityPeriods.length === 0) {
@@ -321,15 +352,15 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     const saveData = {
       status,
       confirmed,
-      startDate: availabilityPeriods[0].startDate.toISOString().split('T')[0],
-      endDate: availabilityPeriods[availabilityPeriods.length - 1].endDate.toISOString().split('T')[0],
+      startDate: availabilityPeriods[0].startDate.getFullYear() + '-' + String(availabilityPeriods[0].startDate.getMonth() + 1).padStart(2, '0') + '-' + String(availabilityPeriods[0].startDate.getDate()).padStart(2, '0'),
+      endDate: availabilityPeriods[availabilityPeriods.length - 1].endDate.getFullYear() + '-' + String(availabilityPeriods[availabilityPeriods.length - 1].endDate.getMonth() + 1).padStart(2, '0') + '-' + String(availabilityPeriods[availabilityPeriods.length - 1].endDate.getDate()).padStart(2, '0'),
       meta: {
         instructions,
         notes,
         slotId: selectedSlotId,
         availability: availabilityPeriods.map(period => ({
-          startDate: period.startDate.toISOString().split('T')[0],
-          endDate: period.endDate.toISOString().split('T')[0]
+          startDate: period.startDate.getFullYear() + '-' + String(period.startDate.getMonth() + 1).padStart(2, '0') + '-' + String(period.startDate.getDate()).padStart(2, '0'),
+          endDate: period.endDate.getFullYear() + '-' + String(period.endDate.getMonth() + 1).padStart(2, '0') + '-' + String(period.endDate.getDate()).padStart(2, '0')
         }))
       }
     };
@@ -446,16 +477,23 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                                  if (jobEndDate && date > new Date(jobEndDate)) return true;
                                  return false;
                                }}
-                               modifiers={{
-                                 available: (date) => isDateAvailable(date)
-                               }}
-                               modifiersStyles={{
-                                 available: { 
-                                   backgroundColor: 'hsl(var(--primary) / 0.1)',
-                                   color: 'hsl(var(--primary))',
-                                   fontWeight: 'bold'
-                                 }
-                               }}
+                                modifiers={{
+                                  available: (date) => isDateAvailable(date),
+                                  existing: (date) => isDateExisting(date)
+                                }}
+                                modifiersStyles={{
+                                  available: { 
+                                    backgroundColor: 'hsl(var(--primary) / 0.15)',
+                                    color: 'hsl(var(--primary))',
+                                    fontWeight: 'bold',
+                                    border: '2px solid hsl(var(--primary))'
+                                  },
+                                  existing: {
+                                    backgroundColor: 'hsl(var(--destructive) / 0.1)',
+                                    color: 'hsl(var(--destructive))',
+                                    fontWeight: 'bold'
+                                  }
+                                }}
                                className="pointer-events-auto"
                              />
                            </PopoverContent>
@@ -488,16 +526,23 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                                  if (period.startDate && date < period.startDate) return true;
                                  return false;
                                }}
-                               modifiers={{
-                                 available: (date) => isDateAvailable(date)
-                               }}
-                               modifiersStyles={{
-                                 available: { 
-                                   backgroundColor: 'hsl(var(--primary) / 0.1)',
-                                   color: 'hsl(var(--primary))',
-                                   fontWeight: 'bold'
-                                 }
-                               }}
+                                modifiers={{
+                                  available: (date) => isDateAvailable(date),
+                                  existing: (date) => isDateExisting(date)
+                                }}
+                                modifiersStyles={{
+                                  available: { 
+                                    backgroundColor: 'hsl(var(--primary) / 0.15)',
+                                    color: 'hsl(var(--primary))',
+                                    fontWeight: 'bold',
+                                    border: '2px solid hsl(var(--primary))'
+                                  },
+                                  existing: {
+                                    backgroundColor: 'hsl(var(--destructive) / 0.1)',
+                                    color: 'hsl(var(--destructive))',
+                                    fontWeight: 'bold'
+                                  }
+                                }}
                                className="pointer-events-auto"
                              />
                            </PopoverContent>
