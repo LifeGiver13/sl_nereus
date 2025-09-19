@@ -311,58 +311,101 @@ const JobFill = () => {
     }
   };
 
-  const addUserToSlot = (user: any, slotId: number, availability: AvailabilityWindow[]) => {
+  const updateJobRemainingAvailability = async (slotId: number, usedDates: string[]) => {
     if (!job) return;
     
-    let displayName: string;
-    
-    if (pendingSource === 'search') {
-      // For search results, use the name as provided
-      displayName = `${user.firstName} ${user.lastName}`;
-    } else {
-      // For suggested candidates, use profile data with email
-      const firstName = user.profile?.Forename || 'Unknown';
-      const lastName = user.profile?.Surname || 'User';
-      const email = user.username || '';
-      displayName = `${firstName} ${lastName} (${email})`;
+    // Update job meta with remaining availability
+    const updatedMeta = { ...job.meta };
+    if (!updatedMeta.slotAvailability) {
+      updatedMeta.slotAvailability = {};
     }
+    
+    // Calculate remaining availability for this slot
+    const jobStart = new Date(job.startDate);
+    const jobEnd = new Date(job.endDate);
+    const allDates = [];
+    
+    for (let d = new Date(jobStart); d <= jobEnd; d.setDate(d.getDate() + 1)) {
+      allDates.push(d.toISOString().split('T')[0]);
+    }
+    
+    const remainingDates = allDates.filter(date => !usedDates.includes(date));
+    updatedMeta.slotAvailability[slotId] = remainingDates;
+    
+    try {
+      await fetch(`${API_BASE_URL}/job/${job.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          meta: updatedMeta
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to update job availability:', error);
+    }
+  };
 
-    const newPlacement: PlacementRow = {
-      userId: user.id,
-      slotId: slotId,
-      user: {
-        id: user.id,
-        displayName: displayName
-      },
-      instructions: '',
-      notes: '',
-      status: 'accepted',
-      confirmed: true,
-      isPlaceholder: true,
-      meta: {
-        availability: availability,
-        instructions: '',
-        notes: ''
+  const handleAddCandidate = async (user: any, slotId: number, availability: Array<{ startDate: Date; endDate: Date }>) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/placement`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          jobId: job?.id,
+          departmentId: job?.departmentId,
+          shiftId: job?.shiftId,
+          confirmed: true,
+          status: 'accepted',
+          meta: {
+            slotId,
+            instructions: '',
+            notes: '',
+            availability
+          }
+        }),
+      });
+
+      if (response.ok) {
+        // Calculate used dates for this placement
+        const usedDates: string[] = [];
+        availability.forEach(period => {
+          const start = new Date(period.startDate);
+          const end = new Date(period.endDate);
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            usedDates.push(d.toISOString().split('T')[0]);
+          }
+        });
+        
+        // Update job availability
+        await updateJobRemainingAvailability(slotId, usedDates);
+        
+        toast({
+          title: "Success",
+          description: `${user.profile?.Forename || user.firstName} ${user.profile?.Surname || user.lastName} has been added to the job.`,
+        });
+        
+        // Refresh placements
+        await refetchPlacements();
+        
+        // Clear pending state
+        setPendingUser(null);
+        setPendingSource(null);
+        setShowDateModal(false);
+      } else {
+        throw new Error('Failed to add candidate');
       }
-    };
-
-    // Update the specific slot
-    setSlots(slots.map(slot => {
-      if (slot.id === slotId) {
-        const updatedPlacements = [...slot.placements, newPlacement];
-        return {
-          ...slot,
-          placements: updatedPlacements,
-          occupiedDates: calculateOccupiedDates(updatedPlacements)
-        };
-      }
-      return slot;
-    }));
-
-    // Clear pending state
-    setPendingUser(null);
-    setPendingSource(null);
-    setShowDateModal(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add candidate to the job.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleConfirmOverlap = () => {
@@ -555,16 +598,47 @@ const JobFill = () => {
             </CardHeader>
             <CardContent>
               {slot.placements.length > 0 ? (
-                <PlacementsTable 
-                  placements={slot.placements}
-                  onRemoveUser={handleRemoveUser}
-                  onUpdatePlacement={handleUpdatePlacement}
-                  onRefresh={refetchPlacements}
-                  jobStartDate={job.startDate}
-                  jobEndDate={job.endDate}
-                  showStatusControls={false}
-                  showConfirmedControls={false}
-                />
+                <div className="space-y-4">
+                  {slot.placements.map((placement, index) => (
+                    <div key={placement.id || index} className="border rounded-lg p-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {placement.user?.displayName}
+                          </span>
+                          <Badge variant="outline">{placement.status}</Badge>
+                        </div>
+                        {placement.meta?.availability && placement.meta.availability.length > 0 && (
+                          <div className="text-sm font-medium text-primary">
+                            {placement.meta.availability.map((period: any, idx: number) => {
+                              const start = new Date(period.startDate).toLocaleDateString();
+                              const end = new Date(period.endDate).toLocaleDateString();
+                              return (
+                                <span key={idx}>
+                                  {start === end ? start : `${start} - ${end}`}
+                                  {idx < placement.meta.availability.length - 1 && ", "}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <details className="text-sm">
+                          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                            Additional information
+                          </summary>
+                          <div className="mt-2 space-y-1">
+                            {placement.meta?.instructions && (
+                              <p className="text-muted-foreground"><strong>Instructions:</strong> {placement.meta.instructions}</p>
+                            )}
+                            {placement.meta?.notes && (
+                              <p className="text-muted-foreground"><strong>Notes:</strong> {placement.meta.notes}</p>
+                            )}
+                          </div>
+                        </details>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <p className="text-gray-500 text-center py-4">No candidates assigned to this slot</p>
               )}
@@ -647,7 +721,7 @@ const JobFill = () => {
           slots={slots}
           jobStartDate={job?.startDate || ''}
           jobEndDate={job?.endDate || ''}
-          onConfirm={addUserToSlot}
+          onConfirm={handleAddCandidate}
         />
 
         {/* Overlap Warning Dialog */}

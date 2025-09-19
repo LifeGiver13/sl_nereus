@@ -31,7 +31,8 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
 }) => {
   const [selectedSlotId, setSelectedSlotId] = useState<number>(1);
   const [startDate, setStartDate] = useState<string>(jobStartDate.split('T')[0]);
-  const [endDate, setEndDate] = useState<string>(jobEndDate.split('T')[0]);
+  const [endDate, setEndDate] = useState<string>(jobStartDate.split('T')[0]);
+  const [singleDate, setSingleDate] = useState<boolean>(true);
   const { toast } = useToast();
 
   const checkDateAvailability = (slotId: number, start: string, end: string): boolean => {
@@ -53,16 +54,27 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   };
 
   const handleConfirm = () => {
-    if (!startDate || !endDate) {
+    if (!startDate) {
       toast({
-        title: "Invalid dates",
-        description: "Please select both start and end dates.",
+        title: "Invalid date",
+        description: "Please select a date.",
         variant: "destructive",
       });
       return;
     }
 
-    if (new Date(startDate) > new Date(endDate)) {
+    const finalEndDate = singleDate ? startDate : endDate;
+    
+    if (!singleDate && !endDate) {
+      toast({
+        title: "Invalid dates",
+        description: "Please select an end date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!singleDate && new Date(startDate) > new Date(finalEndDate)) {
       toast({
         title: "Invalid date range",
         description: "Start date must be before end date.",
@@ -71,7 +83,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
       return;
     }
 
-    if (!checkDateAvailability(selectedSlotId, startDate, endDate)) {
+    if (!checkDateAvailability(selectedSlotId, startDate, finalEndDate)) {
       toast({
         title: "Date conflict",
         description: "The selected dates conflict with existing placements in this slot.",
@@ -82,7 +94,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
 
     const availability = [{
       startDate: new Date(startDate),
-      endDate: new Date(endDate)
+      endDate: new Date(finalEndDate)
     }];
 
     onConfirm(user, selectedSlotId, availability);
@@ -90,7 +102,8 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   };
 
   const selectedSlot = slots.find(s => s.id === selectedSlotId);
-  const isDateRangeAvailable = checkDateAvailability(selectedSlotId, startDate, endDate);
+  const finalEndDate = singleDate ? startDate : endDate;
+  const isDateRangeAvailable = checkDateAvailability(selectedSlotId, startDate, finalEndDate);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -119,28 +132,53 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="start-date">Start Date</Label>
-              <Input
-                id="start-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                min={jobStartDate.split('T')[0]}
-                max={jobEndDate.split('T')[0]}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="single-date"
+                checked={singleDate}
+                onChange={(e) => {
+                  setSingleDate(e.target.checked);
+                  if (e.target.checked) {
+                    setEndDate(startDate);
+                  }
+                }}
+                className="rounded border-gray-300"
               />
+              <Label htmlFor="single-date">Single date assignment</Label>
             </div>
-            <div>
-              <Label htmlFor="end-date">End Date</Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate}
-                max={jobEndDate.split('T')[0]}
-              />
+            
+            <div className={singleDate ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
+              <div>
+                <Label htmlFor="start-date">{singleDate ? "Date" : "Start Date"}</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    if (singleDate) {
+                      setEndDate(e.target.value);
+                    }
+                  }}
+                  min={jobStartDate.split('T')[0]}
+                  max={jobEndDate.split('T')[0]}
+                />
+              </div>
+              {!singleDate && (
+                <div>
+                  <Label htmlFor="end-date">End Date</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
+                    max={jobEndDate.split('T')[0]}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -153,10 +191,10 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
             </div>
           )}
 
-          {!isDateRangeAvailable && startDate && endDate && (
+          {!isDateRangeAvailable && startDate && (singleDate || endDate) && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-800">
-                The selected date range conflicts with existing placements in this slot.
+                The selected {singleDate ? "date" : "date range"} conflicts with existing placements in this slot.
               </p>
             </div>
           )}
@@ -168,7 +206,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
           </Button>
           <Button 
             onClick={handleConfirm}
-            disabled={!isDateRangeAvailable || !startDate || !endDate}
+            disabled={!isDateRangeAvailable || !startDate || (!singleDate && !endDate)}
           >
             Add to Slot {selectedSlotId}
           </Button>
