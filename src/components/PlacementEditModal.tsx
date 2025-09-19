@@ -70,7 +70,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setNotes(placement.meta?.notes || '');
       setStatus(placement.status || 'awaiting_confirmation');
       setConfirmed(placement.confirmed || false);
-      setSelectedSlotId(placement.slotId || placement.meta?.slotId || null);
+      setSelectedSlotId(placement.meta?.slotId || null);
       
       // Parse existing availability periods from meta.availability or meta.availabilityPeriods
       const existingPeriods = placement.meta?.availability || placement.meta?.availabilityPeriods || [];
@@ -220,6 +220,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           meta: {
             instructions,
             notes,
+            slotId: selectedSlotId,
             availability: availabilityPeriods.map(period => ({
               startDate: period.startDate.toISOString().split('T')[0],
               endDate: period.endDate.toISOString().split('T')[0]
