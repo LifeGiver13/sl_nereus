@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { JobAssignee } from '../types/job';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Job {
   id: number;
@@ -94,6 +95,7 @@ const JobFill = () => {
   const [showPlacementEdit, setShowPlacementEdit] = useState(false);
   const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
 
   const { data: job, isLoading, error } = useQuery({
     queryKey: ['job', id],
@@ -356,60 +358,34 @@ const JobFill = () => {
     }
   };
 
-  // Handle direct assignment from calendar - new JobAssignee approach
+  // Handle direct assignment from calendar - only create assignee entries
   const handleAssignCandidate = async (userId: number, slotIndex: number, date: Date) => {
-    console.log('🎯 New assignment request:', { userId, slotIndex, date });
+    console.log('🎯 Assignment request:', { userId, slotIndex, date });
     
     if (!job) return;
 
-    // Find or create placement for this user
-    let placement = job.placements?.find(p => p.userId === userId);
-    let placementId = placement?.id;
-
-    // If no placement exists, create one
+    // Check if placement exists for this user - it should already exist
+    const placement = job.placements?.find(p => p.userId === userId);
+    
     if (!placement) {
-      console.log('📝 Creating new placement for user:', userId);
-      try {
-        const placementResponse = await fetch(`${API_BASE_URL}/placement`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-service-user': localStorage.getItem('session_token') || '',
-          },
-          body: JSON.stringify({
-            userId,
-            jobId: job.id,
-            departmentId: job.departmentId,
-            shiftId: job.shiftId,
-            confirmed: true,
-            status: 'accepted',
-          }),
-        });
-
-        if (!placementResponse.ok) {
-          throw new Error('Failed to create placement');
-        }
-
-        const newPlacement = await placementResponse.json();
-        placementId = newPlacement.id;
-        console.log('✅ Created placement:', newPlacement);
-      } catch (error) {
-        console.error('❌ Error creating placement:', error);
-        toast({
-          title: "Error",
-          description: "Failed to create placement.",
-          variant: "destructive",
-        });
-        return;
-      }
+      console.error('❌ No placement found for user:', userId);
+      toast({
+        title: "Error",
+        description: "Placement not found. Please add candidate to job first.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Get current user ID for assignedBy field
+    const assignedByUserId = currentUser?.id ? parseInt(currentUser.id) : 1;
 
     // Create JobAssignee entry with correct field mapping
     const newAssignee: JobAssignee = {
       userId: userId,
-      assignedBy: 1, // TODO: Get from auth context
+      assignedBy: assignedByUserId,
       assignmentDate: date,
-      status: 'accepted', // Default status should be accepted
+      status: 'accepted',
       slot: Math.min(slotIndex + 1, job.vacancies), // Ensure slot doesn't exceed job vacancies
     };
 
