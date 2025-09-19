@@ -65,6 +65,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     
     // Generate all job dates
     const current = new Date(jobStart);
+    // Ensure we include the start date by using <= comparison
     while (current <= jobEnd) {
       const dateStr = current.toISOString().split('T')[0];
       
@@ -257,12 +258,14 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
                           setEndDate(date);
                         }
                       }}
-                      disabled={(date) => {
-                        const dateStr = date.toISOString().split('T')[0];
-                        return date < new Date(jobStartDate) || 
-                               date > new Date(jobEndDate) ||
-                               conflictingDates.has(dateStr);
-                      }}
+                       disabled={(date) => {
+                         const dateStr = date.toISOString().split('T')[0];
+                         const jobStart = new Date(jobStartDate);
+                         const jobEnd = new Date(jobEndDate);
+                         return date < jobStart || 
+                                date > jobEnd ||
+                                conflictingDates.has(dateStr);
+                       }}
                       modifiers={{
                         available: (date) => {
                           const dateStr = date.toISOString().split('T')[0];
@@ -304,12 +307,14 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
                         mode="single"
                         selected={endDate}
                         onSelect={setEndDate}
-                        disabled={(date) => {
-                          const dateStr = date.toISOString().split('T')[0];
-                          return date < (startDate || new Date(jobStartDate)) || 
-                                 date > new Date(jobEndDate) ||
-                                 conflictingDates.has(dateStr);
-                        }}
+                       disabled={(date) => {
+                         const dateStr = date.toISOString().split('T')[0];
+                         const jobStart = new Date(jobStartDate);
+                         const jobEnd = new Date(jobEndDate);
+                         return date < (startDate || jobStart) || 
+                                date > jobEnd ||
+                                conflictingDates.has(dateStr);
+                       }}
                         modifiers={{
                           available: (date) => {
                             const dateStr = date.toISOString().split('T')[0];
