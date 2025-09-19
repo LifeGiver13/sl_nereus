@@ -8,7 +8,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 import UserSearchForm from '../components/UserSearchForm';
-import PlacementsTable from '../components/PlacementsTable';
+import PlacementCalendarTable from '../components/PlacementCalendarTable';
 import SuggestedCandidates from '../components/SuggestedCandidates';
 import PlacementDateModal from '../components/PlacementDateModal';
 import PlacementDetailModal from '../components/PlacementDetailModal';
@@ -622,109 +622,8 @@ const JobFill = () => {
           </CardContent>
         </Card>
 
-        {/* Slot-based Placements */}
-        {slots.map((slot) => (
-          <Card key={slot.id} className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">
-                Slot {slot.id}
-                <Badge variant="secondary" className="ml-2">
-                  {slot.placements.length} candidates
-                </Badge>
-              </CardTitle>
-              <CardDescription>
-                Placements for vacancy slot {slot.id}
-                {slot.occupiedDates.size > 0 && (
-                  <span className="text-sm text-amber-600 ml-2">
-                    ({slot.occupiedDates.size} days occupied)
-                  </span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {slot.placements.length > 0 ? (
-                <div className="space-y-2">
-                  {slot.placements.map((placement, index) => (
-                    <div key={placement.id || index} className="border rounded-lg p-3 bg-card">
-                      {/* Compact header with name, buttons and toggle */}
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-3">
-                          <span className="font-medium">{placement.user?.displayName}</span>
-                          <Badge variant="outline" className="text-xs">{placement.status}</Badge>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedPlacement(placement);
-                              setShowPlacementDetail(true);
-                            }}
-                            className="h-6 px-2 text-xs"
-                          >
-                            View Details
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedPlacement(placement);
-                              setShowPlacementEdit(true);
-                            }}
-                            className="h-6 px-2 text-xs"
-                          >
-                            Edit
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {/* Availability periods on single line */}
-                      {placement.meta?.availability && placement.meta.availability.length > 0 && (
-                        <div className="mb-2">
-                          <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-                            {(placement.meta.availability as any).map((dateStr: string, idx: number) => {
-                              const date = new Date(dateStr);
-                              const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                              return (
-                                <span key={idx} className="bg-muted px-2 py-1 rounded text-xs">
-                                  {formattedDate}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Expanded details - simplified for now */}
-                      <details className="text-sm">
-                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground text-xs">
-                          Additional information
-                        </summary>
-                        <div className="mt-2 pt-2 border-t space-y-2">
-                          {placement.meta?.instructions && (
-                            <div>
-                              <div className="text-xs font-medium text-muted-foreground mb-1">Instructions</div>
-                              <div className="text-sm bg-muted/50 p-2 rounded">{placement.meta.instructions}</div>
-                            </div>
-                          )}
-                          {placement.meta?.notes && (
-                            <div>
-                              <div className="text-xs font-medium text-muted-foreground mb-1">Notes</div>
-                              <div className="text-sm bg-muted/50 p-2 rounded">{placement.meta.notes}</div>
-                            </div>
-                          )}
-                          {(!placement.meta?.instructions && !placement.meta?.notes) && (
-                            <div className="text-xs text-muted-foreground">No additional information available.</div>
-                          )}
-                        </div>
-                      </details>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-4">No candidates assigned to this slot</p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+        {/* Calendar Table View */}
+        <PlacementCalendarTable job={job} slots={slots} />
 
         {/* Confirm Placements Button */}
         {placeholderPlacements.length > 0 && (
