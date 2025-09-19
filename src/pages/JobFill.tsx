@@ -355,74 +355,99 @@ const JobFill = () => {
     }
   };
 
-  // Handle direct assignment from calendar
-  const handleAssignCandidate = async (slotId: number, candidateId: number, date: Date) => {
-    console.log('Assignment request:', { slotId, candidateId, date });
+  // Handle direct assignment from calendar - new JobAssignee approach
+  const handleAssignCandidate = async (userId: number, slotIndex: number, date: Date) => {
+    console.log('🎯 New assignment request:', { userId, slotIndex, date });
     
-    // Find the candidate in the slot
-    const slot = slots.find(s => s.id === slotId);
-    const candidate = slot?.placements.find(p => p.userId === candidateId);
-    
-    if (!candidate) {
-      toast({
-        title: "Error",
-        description: "Candidate not found in slot.",
-        variant: "destructive",
-      });
-      return;
+    if (!job) return;
+
+    // Find or create placement for this user
+    let placement = job.placements?.find(p => p.userId === userId);
+    let placementId = placement?.id;
+
+    // If no placement exists, create one
+    if (!placement) {
+      console.log('📝 Creating new placement for user:', userId);
+      try {
+        const placementResponse = await fetch(`${API_BASE_URL}/placement`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-service-user': localStorage.getItem('session_token') || '',
+          },
+          body: JSON.stringify({
+            userId,
+            jobId: job.id,
+            departmentId: job.departmentId,
+            shiftId: job.shiftId,
+            confirmed: true,
+            status: 'accepted',
+          }),
+        });
+
+        if (!placementResponse.ok) {
+          throw new Error('Failed to create placement');
+        }
+
+        const newPlacement = await placementResponse.json();
+        placementId = newPlacement.id;
+        console.log('✅ Created placement:', newPlacement);
+      } catch (error) {
+        console.error('❌ Error creating placement:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create placement.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
-    // Add this date to the candidate's availability
-    const currentAvailability = candidate.meta?.availability || [];
-    const newAvailability = [...currentAvailability, date.toISOString()];
-
-    const requestBody = {
-      meta: {
-        ...candidate.meta,
-        availability: newAvailability
-      }
+    // Create JobAssignee entry
+    const newAssignee = {
+      userId,
+      assignedBy: 1, // TODO: Get from auth context
+      assignmentDate: date,
+      status: 'selected',
+      slot: slotIndex + 1, // Convert 0-based index to 1-based slot number
     };
-    
-    console.log('Sending PUT request to:', `${API_BASE_URL}/placement/${candidate.id}`);
-    console.log('Request body:', requestBody);
+
+    // Update job.assignees array
+    const currentAssignees = job.assignees || [];
+    const updatedAssignees = [...currentAssignees, newAssignee];
+
+    console.log('📊 Updating job with new assignee:', newAssignee);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/placement/${candidate.id}`, {
+      const jobResponse = await fetch(`${API_BASE_URL}/job/${job.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'x-service-user': localStorage.getItem('session_token') || '',
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          assignees: updatedAssignees,
+        }),
       });
 
-      console.log('Response status:', response.status);
-      
-      if (response.ok) {
-        const responseData = await response.json();
-        console.log('Response data:', responseData);
-        
-        toast({
-          title: "Success",
-          description: "Candidate assigned to date successfully.",
-        });
-        
-        // Refresh placements
-        await refetchPlacements();
-      } else {
-        const errorText = await response.text();
-        console.error('API Error:', errorText);
-        toast({
-          title: "Error",
-          description: "Failed to assign candidate to date.",
-          variant: "destructive",
-        });
+      if (!jobResponse.ok) {
+        throw new Error('Failed to update job assignees');
       }
+
+      console.log('✅ Job updated successfully');
+      toast({
+        title: "Success",
+        description: "Candidate assigned successfully.",
+      });
+
+      // Refresh placements data
+      await refetchPlacements();
+
     } catch (error) {
-      console.error('Error assigning candidate:', error);
+      console.error('❌ Error updating job:', error);
       toast({
         title: "Error",
-        description: "Failed to assign candidate to date.",
+        description: "Failed to assign candidate.",
         variant: "destructive",
       });
     }

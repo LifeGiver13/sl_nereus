@@ -1,3 +1,11 @@
+export type JobAssignee = {
+  userId: number;
+  assignedBy: number;
+  assignmentDate: Date;
+  status: string;
+  slot: number;
+}
+
 export interface Job {
   id: number;
   title: string;
@@ -11,6 +19,7 @@ export interface Job {
   departmentName?: string;
   shiftId: number;
   shiftName?: string;
+  assignees?: JobAssignee[];
   owner?: {
     id: number;
     username: string;
@@ -19,6 +28,11 @@ export interface Job {
   placements?: Array<{
     id: number;
     status: string;
+    userId: number;
+    user?: {
+      displayName: string;
+      id: number;
+    };
   }>;
   body?: {
     includeWeekends?: boolean;

@@ -45,12 +45,19 @@ interface PlacementCalendarTableProps {
   job: {
     startDate: string;
     endDate: string;
+    assignees?: Array<{
+      userId: number;
+      assignedBy: number;
+      assignmentDate: Date;
+      status: string;
+      slot: number;
+    }>;
     body?: {
       includeWeekends?: boolean;
     };
   };
   slots: Slot[];
-  onAssignCandidate?: (slotId: number, candidateId: number, date: Date) => void;
+  onAssignCandidate?: (userId: number, slotIndex: number, date: Date) => void;
 }
 
 const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots, onAssignCandidate }) => {
@@ -62,6 +69,9 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
   const [editingCell, setEditingCell] = useState<{ slotId: number; date: Date } | null>(null);
   const [draggedCandidate, setDraggedCandidate] = useState<PlacementRow | null>(null);
   const { toast } = useToast();
+
+  // Get all candidates from all slots
+  const candidates = slots.flatMap(slot => slot.placements);
 
   const jobStart = parseDate(job.startDate);
   const jobEnd = parseDate(job.endDate);
@@ -175,18 +185,9 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
       onAssignCandidate: !!onAssignCandidate
     });
 
-    if (checkForConflicts(candidateId, slotId, date)) {
-      console.log('❌ Assignment conflict detected for candidate', candidateId);
-      toast({
-        title: "Assignment Conflict",
-        description: "This candidate is already assigned to another slot on this date.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log('✅ No conflicts detected, calling onAssignCandidate');
-    onAssignCandidate?.(slotId, candidateId, date);
+    // Remove conflict checking - candidates can now work different slots on different days
+    console.log('✅ Calling onAssignCandidate with slot index');
+    onAssignCandidate?.(candidateId, slotId, date); // Pass candidateId first, then slotId
     setEditingCell(null);
     
     toast({
@@ -307,7 +308,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                     open={true}
                     onValueChange={(value) => {
                       console.log('📋 Dropdown selection made:', { slotId, candidateId: value, date: date.toISOString() });
-                      handleAssignCandidate(slotId, parseInt(value), date);
+                      handleAssignCandidate(parseInt(value), slotId, date);
                     }}
                     onOpenChange={(open) => {
                       console.log('📋 Dropdown open state changed:', open);
