@@ -12,6 +12,7 @@ interface MultiDaySelectorProps {
   conflictingDates: Set<string>;
   jobStartDate: string;
   jobEndDate: string;
+  includeWeekends?: boolean;
   className?: string;
 }
 
@@ -22,6 +23,7 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
   conflictingDates,
   jobStartDate,
   jobEndDate,
+  includeWeekends = true,
   className
 }) => {
   const handleDateSelect = (date: Date | undefined) => {
@@ -74,9 +76,18 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
             const dateStr = `${year}-${month}-${day}`;
             const jobStart = new Date(jobStartDate + 'T00:00:00');
             const jobEnd = new Date(jobEndDate + 'T00:00:00');
-            return date < jobStart || 
-                   date > jobEnd ||
-                   conflictingDates.has(dateStr);
+            
+            // Check if date is outside job range
+            if (date < jobStart || date > jobEnd) return true;
+            
+            // Check if weekends are excluded
+            if (!includeWeekends) {
+              const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+              if (dayOfWeek === 0 || dayOfWeek === 6) return true;
+            }
+            
+            // Check for conflicting dates
+            return conflictingDates.has(dateStr);
           }}
           modifiers={{
             available: (date) => {

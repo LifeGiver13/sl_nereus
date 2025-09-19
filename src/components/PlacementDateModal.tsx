@@ -17,6 +17,7 @@ interface PlacementDateModalProps {
   }>;
   jobStartDate: string;
   jobEndDate: string;
+  includeWeekends?: boolean;
   onConfirm: (user: any, slotId: number, availability: Date[]) => void;
   editingPlacement?: any;
 }
@@ -28,6 +29,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   slots,
   jobStartDate,
   jobEndDate,
+  includeWeekends = true,
   onConfirm,
   editingPlacement
 }) => {
@@ -179,6 +181,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
               conflictingDates={conflictingDates}
               jobStartDate={jobStartDate}
               jobEndDate={jobEndDate}
+              includeWeekends={includeWeekends}
             />
           </div>
 

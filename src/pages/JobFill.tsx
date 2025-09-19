@@ -794,6 +794,7 @@ const JobFill = () => {
             slots={slots}
             jobStartDate={job.startDate}
             jobEndDate={job.endDate}
+            includeWeekends={job.body?.includeWeekends !== false}
             onConfirm={editingPlacement ? handleEditPlacement : handleAddCandidate}
             editingPlacement={editingPlacement}
           />
