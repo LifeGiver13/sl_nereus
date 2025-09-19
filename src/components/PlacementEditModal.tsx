@@ -141,24 +141,50 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   // Check for date conflicts with existing placements in the same slot
   const checkDateConflicts = (newPeriods: AvailabilityPeriod[]) => {
+    if (!selectedSlotId || existingPlacements.length === 0) {
+      console.log('No conflicts to check - slot:', selectedSlotId, 'existing placements:', existingPlacements.length);
+      return [];
+    }
+
     const conflicts: string[] = [];
     
-    console.log('Checking conflicts for slot', selectedSlotId, 'with', existingPlacements.length, 'existing placements');
-    console.log('New periods to check:', newPeriods);
+    console.log('=== CONFLICT DETECTION START ===');
+    console.log('Checking conflicts for slot', selectedSlotId);
+    console.log('Existing placements count:', existingPlacements.length);
+    console.log('New periods to check:', newPeriods.map(p => ({
+      start: p.startDate.toISOString().split('T')[0],
+      end: p.endDate.toISOString().split('T')[0]
+    })));
     
-    for (const newPeriod of newPeriods) {
-      for (const existingPlacement of existingPlacements) {
+    for (let i = 0; i < newPeriods.length; i++) {
+      const newPeriod = newPeriods[i];
+      console.log(`\nChecking new period ${i + 1}:`, {
+        start: newPeriod.startDate.toISOString().split('T')[0],
+        end: newPeriod.endDate.toISOString().split('T')[0]
+      });
+
+      for (let j = 0; j < existingPlacements.length; j++) {
+        const existingPlacement = existingPlacements[j];
         const existingPeriods = existingPlacement.meta?.availability || [];
         
-        console.log('Checking against placement', existingPlacement.id, 'with periods:', existingPeriods);
+        console.log(`  Against placement ${existingPlacement.id} (${existingPeriods.length} periods)`);
         
-        for (const existingPeriod of existingPeriods) {
-          const existingStart = new Date(existingPeriod.startDate);
-          const existingEnd = new Date(existingPeriod.endDate);
+        for (let k = 0; k < existingPeriods.length; k++) {
+          const existingPeriod = existingPeriods[k];
+          const existingStart = new Date(existingPeriod.startDate + 'T00:00:00');
+          const existingEnd = new Date(existingPeriod.endDate + 'T23:59:59');
+          const newStart = new Date(newPeriod.startDate.toISOString().split('T')[0] + 'T00:00:00');
+          const newEnd = new Date(newPeriod.endDate.toISOString().split('T')[0] + 'T23:59:59');
           
-          // Check if periods overlap: two periods overlap if one starts before the other ends
-          // and the other starts before the first one ends
-          const periodsOverlap = newPeriod.startDate <= existingEnd && newPeriod.endDate >= existingStart;
+          console.log(`    Period ${k + 1}:`, {
+            existing: `${existingPeriod.startDate} to ${existingPeriod.endDate}`,
+            new: `${newStart.toISOString().split('T')[0]} to ${newEnd.toISOString().split('T')[0]}`
+          });
+          
+          // Two periods overlap if: newStart <= existingEnd AND newEnd >= existingStart
+          const periodsOverlap = newStart <= existingEnd && newEnd >= existingStart;
+          
+          console.log(`    Overlap check: ${newStart.toISOString()} <= ${existingEnd.toISOString()} (${newStart <= existingEnd}) AND ${newEnd.toISOString()} >= ${existingStart.toISOString()} (${newEnd >= existingStart}) = ${periodsOverlap}`);
           
           if (periodsOverlap) {
             const candidateName = existingPlacement.user?.profile?.Forename && existingPlacement.user?.profile?.Surname
@@ -169,13 +195,15 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
             const conflictMessage = `${format(newPeriod.startDate, "MMM d")} - ${format(newPeriod.endDate, "MMM d")} conflicts with ${candidateName} (${format(existingStart, "MMM d")} - ${format(existingEnd, "MMM d")})`;
             conflicts.push(conflictMessage);
             
-            console.log('Conflict detected:', conflictMessage);
+            console.log(`    *** CONFLICT DETECTED: ${conflictMessage}`);
           }
         }
       }
     }
     
+    console.log('=== CONFLICT DETECTION END ===');
     console.log('Total conflicts found:', conflicts.length);
+    console.log('Conflicts:', conflicts);
     return conflicts;
   };
 
