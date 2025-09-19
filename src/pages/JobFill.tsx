@@ -79,6 +79,8 @@ interface Slot {
 
 const JobFill = () => {
   const { id } = useParams<{ id: string }>();
+  console.log('JobFill component: URL param id =', id);
+  console.log('JobFill component: Current pathname =', window.location.pathname);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<number>(1);
   const [showOverlapDialog, setShowOverlapDialog] = useState(false);
@@ -95,18 +97,22 @@ const JobFill = () => {
   const { data: job, isLoading, error } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
+      console.log('JobFill: Fetching job with ID:', id);
+      console.log('JobFill: Current URL params:', window.location.pathname);
       const response = await fetch(`${API_BASE_URL}/job/${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch job details');
       }
       return response.json();
-    }
+    },
+    enabled: !!id
   });
 
   // Fetch existing placements for this job
   const { data: existingPlacements, refetch: refetchPlacements } = useQuery({
     queryKey: ['placements', id],
     queryFn: async () => {
+      console.log('JobFill: Fetching placements for job ID:', id);
       const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
       if (!response.ok) {
         return { results: [] };
