@@ -11,6 +11,8 @@ import UserSearchForm from '../components/UserSearchForm';
 import PlacementsTable from '../components/PlacementsTable';
 import SuggestedCandidates from '../components/SuggestedCandidates';
 import PlacementDateModal from '../components/PlacementDateModal';
+import PlacementDetailModal from '../components/PlacementDetailModal';
+import PlacementEditModal from '../components/PlacementEditModal';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -85,6 +87,9 @@ const JobFill = () => {
   const [pendingSource, setPendingSource] = useState<'search' | 'suggested' | null>(null);
   const [overlapDetails, setOverlapDetails] = useState<string>('');
   const [editingPlacement, setEditingPlacement] = useState<any>(null);
+  const [showPlacementDetail, setShowPlacementDetail] = useState(false);
+  const [showPlacementEdit, setShowPlacementEdit] = useState(false);
+  const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
   const { toast } = useToast();
 
   const { data: job, isLoading, error } = useQuery({
@@ -786,6 +791,39 @@ const JobFill = () => {
             jobEndDate={job.endDate}
             onConfirm={editingPlacement ? handleEditPlacement : handleAddCandidate}
             editingPlacement={editingPlacement}
+          />
+        )}
+
+        {/* Placement Detail Modal */}
+        {selectedPlacement && (
+          <PlacementDetailModal
+            isOpen={showPlacementDetail}
+            onClose={() => {
+              setShowPlacementDetail(false);
+              setSelectedPlacement(null);
+            }}
+            onEdit={() => {
+              setShowPlacementDetail(false);
+              setShowPlacementEdit(true);
+            }}
+            placement={selectedPlacement}
+          />
+        )}
+
+        {/* Placement Edit Modal */}
+        {selectedPlacement && (
+          <PlacementEditModal
+            isOpen={showPlacementEdit}
+            onClose={() => {
+              setShowPlacementEdit(false);
+              setSelectedPlacement(null);
+            }}
+            onSave={() => {
+              setShowPlacementEdit(false);
+              setSelectedPlacement(null);
+              refetchPlacements();
+            }}
+            placement={selectedPlacement}
           />
         )}
 
