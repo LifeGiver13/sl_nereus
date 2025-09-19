@@ -192,13 +192,9 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   if (!placement) return null;
 
-  // Debug logging to understand placement object structure
-  console.log('Placement object:', placement);
-  console.log('Placement.user:', placement.user);
-  console.log('Placement.user.profile:', placement.user?.profile);
-
-  const candidateName = placement.user?.profile?.Forename && placement.user?.profile?.Surname 
-    ? `${placement.user.profile.Forename} ${placement.user.profile.Surname}`
+  // Extract candidate name from displayName (format: "Forename Surname (email)")
+  const candidateName = placement.user?.displayName
+    ? placement.user.displayName.split(' (')[0] // Get the name part before the email
     : placement.user?.username || 'N/A';
 
   return (
