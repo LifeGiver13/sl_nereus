@@ -71,8 +71,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setConfirmed(placement.confirmed || false);
       setSelectedSlotId(placement.slotId || null);
       
-      // Parse existing availability periods
-      const existingPeriods = placement.meta?.availabilityPeriods || [];
+      // Parse existing availability periods from meta.availability or meta.availabilityPeriods
+      const existingPeriods = placement.meta?.availability || placement.meta?.availabilityPeriods || [];
       if (existingPeriods.length > 0) {
         setAvailabilityPeriods(existingPeriods.map((period: any) => ({
           startDate: new Date(period.startDate),
@@ -86,7 +86,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         }]);
       }
     }
-  }, [placement]);
+  }, [placement, slots]);
 
   const addAvailabilityPeriod = () => {
     const jobStart = jobStartDate ? new Date(jobStartDate) : new Date();
@@ -147,7 +147,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           meta: {
             instructions,
             notes,
-            availabilityPeriods: availabilityPeriods.map(period => ({
+            availability: availabilityPeriods.map(period => ({
               startDate: period.startDate.toISOString().split('T')[0],
               endDate: period.endDate.toISOString().split('T')[0]
             }))

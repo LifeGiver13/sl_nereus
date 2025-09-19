@@ -191,43 +191,19 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
       {placements.map((placement) => (
         <Card key={placement.userId} className="border">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-4">
+            {/* Compact header with name, buttons and toggle */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-3">
                 <p className="font-medium">{placement.user.displayName}</p>
-                
-                {/* Status Dropdown */}
-                <Select
-                  value={placement.status}
-                  onValueChange={(value) => handleFieldChange(placement.userId, 'status', value)}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {hasChanges(placement.userId) && (
-                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    Unsaved changes
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
                 {!placement.isPlaceholder && onViewPlacement && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onViewPlacement((placement as any).placement)}
                     title="View Details"
+                    className="h-7 px-2 text-xs"
                   >
-                    View
+                    View Details
                   </Button>
                 )}
                 {!placement.isPlaceholder && onEditPlacement && (
@@ -236,72 +212,132 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
                     size="sm"
                     onClick={() => onEditPlacement((placement as any).placement)}
                     title="Edit Placement"
+                    className="h-7 px-2 text-xs"
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-3 w-3 mr-1" />
+                    Edit
                   </Button>
                 )}
-                {hasChanges(placement.userId) && !placement.isPlaceholder && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => savePlacementChanges(placement)}
-                    disabled={savingPlacements.has(placement.userId)}
-                  >
-                    <Save className="h-4 w-4 mr-1" />
-                    {savingPlacements.has(placement.userId) ? 'Saving...' : 'Save'}
-                  </Button>
-                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleRowExpansion(placement.userId)}
+                  className="h-7 w-7 p-0"
+                >
+                  {expandedRows.has(placement.userId) ? '−' : '+'}
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => onRemoveUser(placement.userId)}
+                  className="h-7 w-7 p-0"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </Button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Instructions</label>
-                <Textarea
-                  placeholder="Instructions for worker..."
-                  value={placement.instructions}
-                  onChange={(e) => handleFieldChange(placement.userId, 'instructions', e.target.value)}
-                  className="min-h-[80px]"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Notes</label>
-                <Textarea
-                  placeholder="Internal notes..."
-                  value={placement.notes}
-                  onChange={(e) => handleFieldChange(placement.userId, 'notes', e.target.value)}
-                  className="min-h-[80px]"
-                />
-              </div>
-            </div>
-
-            {showConfirmedControls && (
-              <div className="mt-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={placement.confirmed}
-                    onCheckedChange={(checked) => handleFieldChange(placement.userId, 'confirmed', checked as boolean)}
-                  />
-                  <span className="text-sm font-medium">Confirmed</span>
+            {/* Availability periods on single line */}
+            {placement.meta?.availability && placement.meta.availability.length > 0 && (
+              <div className="mb-3">
+                <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
+                  {placement.meta.availability.map((window: any, index: number) => (
+                    <span key={index} className="bg-muted px-2 py-1 rounded">
+                      {format(new Date(window.startDate), 'MMM dd')} - {format(new Date(window.endDate), 'MMM dd')}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
 
-            {(expandedRows.has(placement.userId) || placement.isPlaceholder) && jobStartDate && jobEndDate && (
-              <AvailabilitySection
-                placement={placement}
-                changes={placementChanges.get(placement.userId)}
-                jobStartDate={jobStartDate}
-                jobEndDate={jobEndDate}
-                onMetaChange={handleMetaChange}
-              />
+            {/* Expanded content */}
+            {(expandedRows.has(placement.userId) || placement.isPlaceholder) && (
+              <div className="space-y-4">
+                {/* Status and confirmation controls */}
+                <div className="flex items-center space-x-4">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium mb-1 block">Status</label>
+                    <Select
+                      value={placement.status}
+                      onValueChange={(value) => handleFieldChange(placement.userId, 'status', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statusOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {showConfirmedControls && (
+                    <div className="flex items-center space-x-2 pt-6">
+                      <Checkbox
+                        checked={placement.confirmed}
+                        onCheckedChange={(checked) => handleFieldChange(placement.userId, 'confirmed', checked as boolean)}
+                      />
+                      <span className="text-sm font-medium">Confirmed</span>
+                    </div>
+                  )}
+                  {hasChanges(placement.userId) && (
+                    <div className="pt-6">
+                      <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Unsaved
+                      </Badge>
+                    </div>
+                  )}
+                  {hasChanges(placement.userId) && !placement.isPlaceholder && (
+                    <div className="pt-6">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => savePlacementChanges(placement)}
+                        disabled={savingPlacements.has(placement.userId)}
+                      >
+                        <Save className="h-4 w-4 mr-1" />
+                        {savingPlacements.has(placement.userId) ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Instructions</label>
+                    <Textarea
+                      placeholder="Instructions for worker..."
+                      value={placement.instructions}
+                      onChange={(e) => handleFieldChange(placement.userId, 'instructions', e.target.value)}
+                      className="min-h-[60px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Notes</label>
+                    <Textarea
+                      placeholder="Internal notes..."
+                      value={placement.notes}
+                      onChange={(e) => handleFieldChange(placement.userId, 'notes', e.target.value)}
+                      className="min-h-[60px]"
+                    />
+                  </div>
+                </div>
+
+                {jobStartDate && jobEndDate && (
+                  <AvailabilitySection
+                    placement={placement}
+                    changes={placementChanges.get(placement.userId)}
+                    jobStartDate={jobStartDate}
+                    jobEndDate={jobEndDate}
+                    onMetaChange={handleMetaChange}
+                  />
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
