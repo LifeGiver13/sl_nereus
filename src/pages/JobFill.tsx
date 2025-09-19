@@ -359,7 +359,7 @@ const JobFill = () => {
     }
   };
 
-  const handleAddCandidate = async (user: any, slotId: number, availability: Array<{ startDate: Date; endDate: Date }>) => {
+  const handleAddCandidate = async (user: any, slotId: number, availability: Date[]) => {
     try {
       const response = await fetch(`${API_BASE_URL}/placement`, {
         method: 'POST',
@@ -383,15 +383,8 @@ const JobFill = () => {
       });
 
       if (response.ok) {
-        // Calculate used dates for this placement
-        const usedDates: string[] = [];
-        availability.forEach(period => {
-          const start = new Date(period.startDate);
-          const end = new Date(period.endDate);
-          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            usedDates.push(d.toISOString().split('T')[0]);
-          }
-        });
+        // Calculate used dates for this placement - availability is now array of individual dates
+        const usedDates: string[] = availability.map(date => date.toISOString().split('T')[0]);
         
         // Update job availability
         await updateJobRemainingAvailability(slotId, usedDates);
@@ -420,7 +413,7 @@ const JobFill = () => {
     }
   };
 
-  const handleEditPlacement = async (user: any, slotId: number, availability: Array<{ startDate: Date; endDate: Date }>) => {
+  const handleEditPlacement = async (user: any, slotId: number, availability: Date[]) => {
     if (!editingPlacement) return;
     
     try {
