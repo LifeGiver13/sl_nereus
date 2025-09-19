@@ -105,6 +105,11 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   // Filter existing placements for the same slot when slot changes
   useEffect(() => {
+    console.log('=== FILTERING EXISTING PLACEMENTS ===');
+    console.log('Current placement being edited:', placement?.id);
+    console.log('Selected slot ID:', selectedSlotId);
+    console.log('Total existing placements:', existingPlacements.length);
+    
     if (!selectedSlotId) {
       setFilteredExistingPlacements([]);
       return;
@@ -112,12 +117,14 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
     const slotPlacements = existingPlacements.filter((p: any) => {
       const placementSlotId = p.meta?.slotId || 1; // Default to slot 1 if not set
-      return placementSlotId === selectedSlotId && p.id !== placement?.id;
+      const isCurrentPlacement = p.id === placement?.id;
+      const isSameSlot = placementSlotId === selectedSlotId;
+      
+      console.log(`Placement ${p.id}: slotId=${placementSlotId}, isSameSlot=${isSameSlot}, isCurrentPlacement=${isCurrentPlacement}`);
+      
+      return isSameSlot && !isCurrentPlacement;
     });
 
-    console.log('=== FILTERING EXISTING PLACEMENTS ===');
-    console.log('Selected slot ID:', selectedSlotId);
-    console.log('Total existing placements:', existingPlacements.length);
     console.log('Filtered placements for slot:', slotPlacements.length);
     console.log('Filtered placements:', slotPlacements.map(p => ({
       id: p.id,
