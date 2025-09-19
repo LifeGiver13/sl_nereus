@@ -25,7 +25,11 @@ interface PlacementEditModalProps {
   onClose: () => void;
   onSave: () => void;
   placement: any;
-  slots?: any[];
+  slots?: Array<{
+    id: number;
+    placements: any[];
+    occupiedDates: Set<string>;
+  }>;
   jobStartDate?: string;
   jobEndDate?: string;
 }
@@ -70,7 +74,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setNotes(placement.meta?.notes || '');
       setStatus(placement.status || 'awaiting_confirmation');
       setConfirmed(placement.confirmed || false);
-      setSelectedSlotId(placement.meta?.slotId || null);
+      setSelectedSlotId(placement.meta?.slotId || 1); // Default to slot 1 if not set
       
       // Parse existing availability periods from meta.availability or meta.availabilityPeriods
       const existingPeriods = placement.meta?.availability || placement.meta?.availabilityPeriods || [];
@@ -199,6 +203,16 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       toast({
         title: "Date Conflicts Detected",
         description: conflicts.join('; '),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Ensure slotId is set
+    if (!selectedSlotId) {
+      toast({
+        title: "Error",
+        description: "Please select a slot",
         variant: "destructive",
       });
       return;
@@ -379,6 +393,22 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                     {statusOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Slot Assignment</label>
+                <Select value={selectedSlotId?.toString() || "1"} onValueChange={(value) => setSelectedSlotId(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {slots.map((slot) => (
+                      <SelectItem key={slot.id} value={slot.id.toString()}>
+                        Slot {slot.id}
                       </SelectItem>
                     ))}
                   </SelectContent>

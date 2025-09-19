@@ -428,6 +428,7 @@ const JobDetail = () => {
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSavePlacement}
         placement={selectedPlacement}
+        slots={[{id: 1, placements: [], occupiedDates: new Set()}]}
       />
     </AdminLayout>
   );
