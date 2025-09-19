@@ -15,9 +15,7 @@ interface PlacementDateModalProps {
     placements: any[];
     occupiedDates: Set<string>;
   }>;
-  jobStartDate: string;
-  jobEndDate: string;
-  includeWeekends?: boolean;
+  job: any;
   onConfirm: (user: any, slotId: number, availability: Date[]) => void;
   editingPlacement?: any;
 }
@@ -27,9 +25,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   onOpenChange,
   user,
   slots,
-  jobStartDate,
-  jobEndDate,
-  includeWeekends = true,
+  job,
   onConfirm,
   editingPlacement
 }) => {
@@ -48,8 +44,8 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     if (!selectedSlot) return { availableDates: available, conflictingDates: conflicts };
     
     // Parse dates more reliably by creating Date objects in local timezone
-    const jobStart = new Date(jobStartDate + 'T00:00:00');
-    const jobEnd = new Date(jobEndDate + 'T00:00:00');
+    const jobStart = new Date(job.startDate + 'T00:00:00');
+    const jobEnd = new Date(job.endDate + 'T00:00:00');
     
     // Generate all job dates using local date strings to avoid timezone issues
     const current = new Date(jobStart);
@@ -88,7 +84,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     }
     
     return { availableDates: available, conflictingDates: conflicts };
-  }, [slots, selectedSlotId, jobStartDate, jobEndDate, editingPlacement]);
+  }, [slots, selectedSlotId, job.startDate, job.endDate, editingPlacement]);
 
   const checkDatesAvailability = (slotId: number, dates: Date[]): boolean => {
     const slot = slots.find(s => s.id === slotId);
@@ -179,9 +175,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
               onDatesChange={setSelectedDates}
               availableDates={availableDates}
               conflictingDates={conflictingDates}
-              jobStartDate={jobStartDate}
-              jobEndDate={jobEndDate}
-              includeWeekends={includeWeekends}
+              job={job}
             />
           </div>
 

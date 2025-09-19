@@ -10,9 +10,7 @@ interface MultiDaySelectorProps {
   onDatesChange: (dates: Date[]) => void;
   availableDates: Set<string>;
   conflictingDates: Set<string>;
-  jobStartDate: string;
-  jobEndDate: string;
-  includeWeekends?: boolean;
+  job: any;
   className?: string;
 }
 
@@ -21,9 +19,7 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
   onDatesChange,
   availableDates,
   conflictingDates,
-  jobStartDate,
-  jobEndDate,
-  includeWeekends = true,
+  job,
   className
 }) => {
   const handleDateSelect = (date: Date | undefined) => {
@@ -74,14 +70,21 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             const dateStr = `${year}-${month}-${day}`;
-            const jobStart = new Date(jobStartDate + 'T00:00:00');
-            const jobEnd = new Date(jobEndDate + 'T00:00:00');
+            
+            // Parse job dates correctly to avoid timezone issues
+            const jobStart = new Date(job.startDate);
+            const jobEnd = new Date(job.endDate);
+            
+            // Reset time to compare dates only
+            const dateToCheck = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const startDate = new Date(jobStart.getFullYear(), jobStart.getMonth(), jobStart.getDate());
+            const endDate = new Date(jobEnd.getFullYear(), jobEnd.getMonth(), jobEnd.getDate());
             
             // Check if date is outside job range
-            if (date < jobStart || date > jobEnd) return true;
+            if (dateToCheck < startDate || dateToCheck > endDate) return true;
             
             // Check if weekends are excluded
-            if (!includeWeekends) {
+            if (job.body?.includeWeekends === false) {
               const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
               if (dayOfWeek === 0 || dayOfWeek === 6) return true;
             }
