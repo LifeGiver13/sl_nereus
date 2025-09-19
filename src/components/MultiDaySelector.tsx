@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { format, isSameDay } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
+import { formatDateString } from '@/config/timezone';
 
 interface MultiDaySelectorProps {
   selectedDates: Date[];
@@ -27,12 +28,7 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
   };
 
   const selectedDateStrings = useMemo(() => {
-    return new Set(selectedDates.map(date => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }));
+    return new Set(selectedDates.map(date => formatDateString(date)));
   }, [selectedDates]);
 
   return (
@@ -46,10 +42,7 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
               // Filter out any conflicting dates from selection and set time to 12pm
               const validDates = (Array.isArray(dates) ? dates : [dates])
                 .filter(date => {
-                  const year = date.getFullYear();
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const day = String(date.getDate()).padStart(2, '0');
-                  const dateStr = `${year}-${month}-${day}`;
+                  const dateStr = formatDateString(date);
                   return !conflictingDates.has(dateStr);
                 })
                 .map(date => {
@@ -65,10 +58,7 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
           }}
           defaultMonth={new Date(job.startDate)}
           disabled={(date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`;
+            const dateStr = formatDateString(date);
             
             // Parse job dates correctly to avoid timezone issues
             const jobStart = new Date(job.startDate);
@@ -93,24 +83,15 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
           }}
           modifiers={{
             available: (date) => {
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, '0');
-              const day = String(date.getDate()).padStart(2, '0');
-              const dateStr = `${year}-${month}-${day}`;
+              const dateStr = formatDateString(date);
               return availableDates.has(dateStr) && !conflictingDates.has(dateStr) && !selectedDateStrings.has(dateStr);
             },
             occupied: (date) => {
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, '0');
-              const day = String(date.getDate()).padStart(2, '0');
-              const dateStr = `${year}-${month}-${day}`;
+              const dateStr = formatDateString(date);
               return conflictingDates.has(dateStr);
             },
             selected: (date) => {
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, '0');
-              const day = String(date.getDate()).padStart(2, '0');
-              const dateStr = `${year}-${month}-${day}`;
+              const dateStr = formatDateString(date);
               return selectedDateStrings.has(dateStr);
             }
           }}

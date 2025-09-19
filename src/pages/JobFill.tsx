@@ -680,14 +680,12 @@ const JobFill = () => {
                       {placement.meta?.availability && placement.meta.availability.length > 0 && (
                         <div className="mb-2">
                           <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-                            {placement.meta.availability.map((period: any, idx: number) => {
-                              const start = new Date(period.startDate);
-                              const end = new Date(period.endDate);
-                              const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                              const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            {(placement.meta.availability as any).map((dateStr: string, idx: number) => {
+                              const date = new Date(dateStr);
+                              const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                               return (
                                 <span key={idx} className="bg-muted px-2 py-1 rounded text-xs">
-                                  {startStr === endStr ? startStr : `${startStr} - ${endStr}`}
+                                  {formattedDate}
                                 </span>
                               );
                             })}

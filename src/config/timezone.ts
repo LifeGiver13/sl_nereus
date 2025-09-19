@@ -20,3 +20,18 @@ export const formatDateString = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+// Utility to safely parse date from ISO string or Date object
+export const parseDate = (dateInput: string | Date): Date => {
+  if (dateInput instanceof Date) {
+    return dateInput;
+  }
+  
+  // Parse ISO string and ensure it's a valid date
+  const parsed = new Date(dateInput);
+  if (isNaN(parsed.getTime())) {
+    console.error('Invalid date string:', dateInput);
+    return new Date(); // fallback to current date
+  }
+  return parsed;
+};
