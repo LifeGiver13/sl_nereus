@@ -25,6 +25,7 @@ interface PlacementEditModalProps {
   onClose: () => void;
   onSave: () => void;
   placement: any;
+  existingPlacements?: any[]; // All placements for the job
   slots?: Array<{
     id: number;
     placements: any[];
@@ -54,6 +55,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   onClose,
   onSave,
   placement,
+  existingPlacements = [],
   slots = [],
   jobStartDate,
   jobEndDate
@@ -65,7 +67,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [availabilityPeriods, setAvailabilityPeriods] = useState<AvailabilityPeriod[]>([]);
-  const [existingPlacements, setExistingPlacements] = useState<any[]>([]);
+  const [filteredExistingPlacements, setFilteredExistingPlacements] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,66 +103,30 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     }
   }, [placement, slots, jobStartDate]);
 
-  // Fetch existing placements for the same slot to check for conflicts
+  // Filter existing placements for the same slot when slot changes
   useEffect(() => {
-    const fetchExistingPlacements = async () => {
-      if (!placement?.jobId || !selectedSlotId) {
-        console.log('Skipping fetch - missing data:', { jobId: placement?.jobId, selectedSlotId });
-        return;
-      }
-      
-      console.log('=== FETCHING EXISTING PLACEMENTS ===');
-      console.log('Job ID:', placement.jobId);
-      console.log('Current placement ID:', placement.id);
-      console.log('Selected slot ID:', selectedSlotId);
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/job/${placement.jobId}/placement`);
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Raw API response:', data);
-          console.log('All placements count:', data.results?.length || 0);
-          
-          // Log each placement with its slot info
-          data.results?.forEach((p: any, index: number) => {
-            console.log(`Placement ${index + 1} (ID: ${p.id}):`, {
-              slotId: p.meta?.slotId,
-              isCurrentPlacement: p.id === placement.id,
-              hasAvailability: p.meta?.availability?.length > 0,
-              meta: p.meta
-            });
-          });
-          
-          // Filter placements for the same slot, excluding current placement
-          const slotPlacements = data.results?.filter((p: any) => {
-            const placementSlotId = p.meta?.slotId || 1; // Default to slot 1 if not set
-            const isSameSlot = placementSlotId === selectedSlotId;
-            const isNotCurrentPlacement = p.id !== placement.id;
-            
-            console.log(`Filtering placement ${p.id}:`, {
-              placementSlotId,
-              selectedSlotId,
-              isSameSlot,
-              isNotCurrentPlacement,
-              included: isSameSlot && isNotCurrentPlacement
-            });
-            
-            return isSameSlot && isNotCurrentPlacement;
-          }) || [];
-          
-          console.log('Filtered placements for slot', selectedSlotId, ':', slotPlacements);
-          console.log('Final existing placements count:', slotPlacements.length);
-          setExistingPlacements(slotPlacements);
-        } else {
-          console.error('Failed to fetch placements:', response.status, response.statusText);
-        }
-      } catch (error) {
-        console.error('Error fetching existing placements:', error);
-      }
-    };
+    if (!selectedSlotId) {
+      setFilteredExistingPlacements([]);
+      return;
+    }
 
-    fetchExistingPlacements();
-  }, [placement?.jobId, selectedSlotId, placement?.id]);
+    const slotPlacements = existingPlacements.filter((p: any) => {
+      const placementSlotId = p.meta?.slotId || 1; // Default to slot 1 if not set
+      return placementSlotId === selectedSlotId && p.id !== placement?.id;
+    });
+
+    console.log('=== FILTERING EXISTING PLACEMENTS ===');
+    console.log('Selected slot ID:', selectedSlotId);
+    console.log('Total existing placements:', existingPlacements.length);
+    console.log('Filtered placements for slot:', slotPlacements.length);
+    console.log('Filtered placements:', slotPlacements.map(p => ({
+      id: p.id,
+      slotId: p.meta?.slotId,
+      availability: p.meta?.availability
+    })));
+
+    setFilteredExistingPlacements(slotPlacements);
+  }, [selectedSlotId, existingPlacements, placement?.id]);
 
   const addAvailabilityPeriod = () => {
     const jobStart = jobStartDate ? new Date(jobStartDate) : new Date();
@@ -176,8 +142,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   // Check for date conflicts with existing placements in the same slot
   const checkDateConflicts = (newPeriods: AvailabilityPeriod[]) => {
-    if (!selectedSlotId || existingPlacements.length === 0) {
-      console.log('No conflicts to check - slot:', selectedSlotId, 'existing placements:', existingPlacements.length);
+    if (!selectedSlotId || filteredExistingPlacements.length === 0) {
+      console.log('No conflicts to check - slot:', selectedSlotId, 'existing placements:', filteredExistingPlacements.length);
       return [];
     }
 
@@ -185,7 +151,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     
     console.log('=== CONFLICT DETECTION START ===');
     console.log('Checking conflicts for slot', selectedSlotId);
-    console.log('Existing placements count:', existingPlacements.length);
+    console.log('Existing placements count:', filteredExistingPlacements.length);
     console.log('New periods to check:', newPeriods.map(p => ({
       start: p.startDate.toISOString().split('T')[0],
       end: p.endDate.toISOString().split('T')[0]
@@ -198,8 +164,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         end: newPeriod.endDate.toISOString().split('T')[0]
       });
 
-      for (let j = 0; j < existingPlacements.length; j++) {
-        const existingPlacement = existingPlacements[j];
+      for (let j = 0; j < filteredExistingPlacements.length; j++) {
+        const existingPlacement = filteredExistingPlacements[j];
         const existingPeriods = existingPlacement.meta?.availability || [];
         
         console.log(`  Against placement ${existingPlacement.id} (${existingPeriods.length} periods)`);

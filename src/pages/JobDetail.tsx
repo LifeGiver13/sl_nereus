@@ -428,6 +428,7 @@ const JobDetail = () => {
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSavePlacement}
         placement={selectedPlacement}
+        existingPlacements={job?.placements || []}
         slots={job?.vacancies ? Array.from({length: job.vacancies}, (_, i) => ({
           id: i + 1,
           placements: [],
