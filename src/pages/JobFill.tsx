@@ -84,6 +84,7 @@ const JobFill = () => {
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [pendingSource, setPendingSource] = useState<'search' | 'suggested' | null>(null);
   const [overlapDetails, setOverlapDetails] = useState<string>('');
+  const [editingPlacement, setEditingPlacement] = useState<any>(null);
   const { toast } = useToast();
 
   const { data: job, isLoading, error } = useQuery({
@@ -408,6 +409,50 @@ const JobFill = () => {
     }
   };
 
+  const handleEditPlacement = async (user: any, slotId: number, availability: Array<{ startDate: Date; endDate: Date }>) => {
+    if (!editingPlacement) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/placement/${editingPlacement.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          meta: {
+            ...editingPlacement.meta,
+            slotId,
+            availability
+          }
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Placement dates updated successfully.",
+        });
+        
+        // Refresh placements
+        await refetchPlacements();
+        
+        // Clear editing state
+        setEditingPlacement(null);
+        setPendingUser(null);
+        setShowDateModal(false);
+      } else {
+        throw new Error('Failed to update placement');
+      }
+    } catch (error) {
+      console.error('Error updating placement:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update placement dates.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleConfirmOverlap = () => {
     if (pendingUser && pendingSource) {
       setShowOverlapDialog(false);
@@ -633,6 +678,22 @@ const JobFill = () => {
                             {placement.meta?.notes && (
                               <p className="text-muted-foreground"><strong>Notes:</strong> {placement.meta.notes}</p>
                             )}
+                            {placement.meta?.availability && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground"><strong>Availability:</strong></span>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => {
+                                    setPendingUser(placement.user);
+                                    setEditingPlacement(placement);
+                                    setShowDateModal(true);
+                                  }}
+                                >
+                                  Edit Dates
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </details>
                       </div>
@@ -700,29 +761,33 @@ const JobFill = () => {
               <CardDescription>Candidates that might be a good fit</CardDescription>
             </CardHeader>
             <CardContent>
-              <SuggestedCandidates 
+                <SuggestedCandidates 
                 skillIds={jobSkills}
                 onCandidateSelect={(user) => handleAddUser(user, 'suggested')}
                 disabled={false}
-                showSlotSelection={true}
-                selectedSlotId={selectedSlotId}
-                onSlotChange={setSelectedSlotId}
-                slots={slots}
               />
             </CardContent>
           </Card>
         </div>
 
         {/* Date Selection Modal */}
-        <PlacementDateModal
-          open={showDateModal}
-          onOpenChange={setShowDateModal}
-          user={pendingUser}
-          slots={slots}
-          jobStartDate={job?.startDate || ''}
-          jobEndDate={job?.endDate || ''}
-          onConfirm={handleAddCandidate}
-        />
+        {showDateModal && pendingUser && job && (
+          <PlacementDateModal
+            open={showDateModal}
+            onOpenChange={(open) => {
+              setShowDateModal(open);
+              if (!open) {
+                setEditingPlacement(null);
+              }
+            }}
+            user={pendingUser}
+            slots={slots}
+            jobStartDate={job.startDate}
+            jobEndDate={job.endDate}
+            onConfirm={editingPlacement ? handleEditPlacement : handleAddCandidate}
+            editingPlacement={editingPlacement}
+          />
+        )}
 
         {/* Overlap Warning Dialog */}
         <AlertDialog open={showOverlapDialog} onOpenChange={setShowOverlapDialog}>

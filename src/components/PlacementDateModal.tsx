@@ -18,6 +18,7 @@ interface PlacementDateModalProps {
   jobStartDate: string;
   jobEndDate: string;
   onConfirm: (user: any, slotId: number, availability: Array<{ startDate: Date; endDate: Date }>) => void;
+  editingPlacement?: any;
 }
 
 const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
@@ -27,12 +28,25 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   slots,
   jobStartDate,
   jobEndDate,
-  onConfirm
+  onConfirm,
+  editingPlacement
 }) => {
-  const [selectedSlotId, setSelectedSlotId] = useState<number>(1);
-  const [startDate, setStartDate] = useState<string>(jobStartDate.split('T')[0]);
-  const [endDate, setEndDate] = useState<string>(jobStartDate.split('T')[0]);
-  const [singleDate, setSingleDate] = useState<boolean>(true);
+  const [selectedSlotId, setSelectedSlotId] = useState<number>(editingPlacement?.meta?.slotId || 1);
+  const [startDate, setStartDate] = useState<string>(
+    editingPlacement?.meta?.availability?.[0]?.startDate 
+      ? new Date(editingPlacement.meta.availability[0].startDate).toISOString().split('T')[0]
+      : jobStartDate.split('T')[0]
+  );
+  const [endDate, setEndDate] = useState<string>(
+    editingPlacement?.meta?.availability?.[0]?.endDate 
+      ? new Date(editingPlacement.meta.availability[0].endDate).toISOString().split('T')[0]
+      : jobStartDate.split('T')[0]
+  );
+  const [singleDate, setSingleDate] = useState<boolean>(
+    editingPlacement?.meta?.availability?.[0]
+      ? new Date(editingPlacement.meta.availability[0].startDate).toDateString() === new Date(editingPlacement.meta.availability[0].endDate).toDateString()
+      : true
+  );
   const { toast } = useToast();
 
   const checkDateAvailability = (slotId: number, start: string, end: string): boolean => {
@@ -109,7 +123,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Candidate to Job</DialogTitle>
+          <DialogTitle>{editingPlacement ? 'Edit Assignment Dates' : 'Add Candidate to Job'}</DialogTitle>
           <DialogDescription>
             Select the slot and date range for {user?.profile?.Forename || user?.firstName} {user?.profile?.Surname || user?.lastName}
           </DialogDescription>

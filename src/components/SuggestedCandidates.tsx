@@ -109,24 +109,6 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
 
   return (
     <div className="space-y-4">
-      {showSlotSelection && (
-        <div>
-          <label className="text-sm font-medium mb-2 block">Select Slot</label>
-          <Select value={selectedSlotId?.toString()} onValueChange={(value) => onSlotChange?.(parseInt(value))}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {slots.map((slot) => (
-                <SelectItem key={slot.id} value={slot.id.toString()}>
-                  Slot {slot.id} ({slot.placements.length} candidates, {slot.occupiedDates.size} days occupied)
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      
       <Tabs defaultValue="skill-match" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="skill-match">Good Fit</TabsTrigger>
