@@ -222,6 +222,30 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     setAvailabilityPeriods(updated);
   };
 
+  // Get all available dates for highlighting in calendar
+  const getAvailableDates = () => {
+    const availableDates = new Set<string>();
+    
+    // Add all dates from existing availability periods
+    availabilityPeriods.forEach(period => {
+      const currentDate = new Date(period.startDate);
+      const endDate = period.endDate || period.startDate;
+      
+      while (currentDate <= endDate) {
+        availableDates.add(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    });
+    
+    return availableDates;
+  };
+
+  // Check if a date should be highlighted (available)
+  const isDateAvailable = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return getAvailableDates().has(dateStr);
+  };
+
   const handleSave = async () => {
     if (!placement || availabilityPeriods.length === 0) {
       toast({
@@ -369,18 +393,29 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                               {period.startDate ? format(period.startDate, "MMM d") : "Pick date"}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={period.startDate}
-                              onSelect={(date) => updateAvailabilityPeriod(index, 'startDate', date)}
-                              disabled={(date) => {
-                                if (jobStartDate && date < new Date(jobStartDate)) return true;
-                                if (jobEndDate && date > new Date(jobEndDate)) return true;
-                                return false;
-                              }}
-                            />
-                          </PopoverContent>
+                           <PopoverContent className="w-auto p-0">
+                             <Calendar
+                               mode="single"
+                               selected={period.startDate}
+                               onSelect={(date) => updateAvailabilityPeriod(index, 'startDate', date)}
+                               disabled={(date) => {
+                                 if (jobStartDate && date < new Date(jobStartDate)) return true;
+                                 if (jobEndDate && date > new Date(jobEndDate)) return true;
+                                 return false;
+                               }}
+                               modifiers={{
+                                 available: (date) => isDateAvailable(date)
+                               }}
+                               modifiersStyles={{
+                                 available: { 
+                                   backgroundColor: 'hsl(var(--primary) / 0.1)',
+                                   color: 'hsl(var(--primary))',
+                                   fontWeight: 'bold'
+                                 }
+                               }}
+                               className="pointer-events-auto"
+                             />
+                           </PopoverContent>
                         </Popover>
                       </div>
                       
@@ -399,19 +434,30 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                               {period.endDate ? format(period.endDate, "MMM d") : "Same day"}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={period.endDate}
-                              onSelect={(date) => updateAvailabilityPeriod(index, 'endDate', date)}
-                              disabled={(date) => {
-                                if (jobStartDate && date < new Date(jobStartDate)) return true;
-                                if (jobEndDate && date > new Date(jobEndDate)) return true;
-                                if (period.startDate && date < period.startDate) return true;
-                                return false;
-                              }}
-                            />
-                          </PopoverContent>
+                           <PopoverContent className="w-auto p-0">
+                             <Calendar
+                               mode="single"
+                               selected={period.endDate}
+                               onSelect={(date) => updateAvailabilityPeriod(index, 'endDate', date)}
+                               disabled={(date) => {
+                                 if (jobStartDate && date < new Date(jobStartDate)) return true;
+                                 if (jobEndDate && date > new Date(jobEndDate)) return true;
+                                 if (period.startDate && date < period.startDate) return true;
+                                 return false;
+                               }}
+                               modifiers={{
+                                 available: (date) => isDateAvailable(date)
+                               }}
+                               modifiersStyles={{
+                                 available: { 
+                                   backgroundColor: 'hsl(var(--primary) / 0.1)',
+                                   color: 'hsl(var(--primary))',
+                                   fontWeight: 'bold'
+                                 }
+                               }}
+                               className="pointer-events-auto"
+                             />
+                           </PopoverContent>
                         </Popover>
                       </div>
                       
