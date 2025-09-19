@@ -56,24 +56,30 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   // Get available and conflicting dates for highlighting
   const { availableDates, conflictingDates } = useMemo(() => {
     const selectedSlot = slots.find(s => s.id === selectedSlotId);
-    const jobStart = new Date(jobStartDate);
-    const jobEnd = new Date(jobEndDate);
     const available = new Set<string>();
     const conflicts = new Set<string>();
     
     if (!selectedSlot) return { availableDates: available, conflictingDates: conflicts };
     
-    // Generate all job dates
+    // Parse dates more reliably by creating Date objects in local timezone
+    const jobStart = new Date(jobStartDate + 'T00:00:00');
+    const jobEnd = new Date(jobEndDate + 'T00:00:00');
+    
+    // Generate all job dates using local date strings to avoid timezone issues
     const current = new Date(jobStart);
-    // Ensure we include the start date by using <= comparison
+    
     while (current <= jobEnd) {
-      const dateStr = current.toISOString().split('T')[0];
+      // Use local date formatting instead of UTC to avoid timezone shifts
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      const day = String(current.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       
       // If editing, include dates from current placement as available
       if (editingPlacement?.meta?.availability) {
         const isCurrentPlacementDate = editingPlacement.meta.availability.some((window: any) => {
-          const start = new Date(window.startDate);
-          const end = new Date(window.endDate);
+          const start = new Date(window.startDate + 'T00:00:00');
+          const end = new Date(window.endDate + 'T00:00:00');
           const checkDate = new Date(current);
           return checkDate >= start && checkDate <= end;
         });
@@ -259,23 +265,32 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
                         }
                       }}
                        disabled={(date) => {
-                         const dateStr = date.toISOString().split('T')[0];
-                         const jobStart = new Date(jobStartDate);
-                         const jobEnd = new Date(jobEndDate);
+                         const year = date.getFullYear();
+                         const month = String(date.getMonth() + 1).padStart(2, '0');
+                         const day = String(date.getDate()).padStart(2, '0');
+                         const dateStr = `${year}-${month}-${day}`;
+                         const jobStart = new Date(jobStartDate + 'T00:00:00');
+                         const jobEnd = new Date(jobEndDate + 'T00:00:00');
                          return date < jobStart || 
                                 date > jobEnd ||
                                 conflictingDates.has(dateStr);
                        }}
-                      modifiers={{
-                        available: (date) => {
-                          const dateStr = date.toISOString().split('T')[0];
-                          return availableDates.has(dateStr);
-                        },
-                        conflicting: (date) => {
-                          const dateStr = date.toISOString().split('T')[0];
-                          return conflictingDates.has(dateStr);
-                        }
-                      }}
+                       modifiers={{
+                         available: (date) => {
+                           const year = date.getFullYear();
+                           const month = String(date.getMonth() + 1).padStart(2, '0');
+                           const day = String(date.getDate()).padStart(2, '0');
+                           const dateStr = `${year}-${month}-${day}`;
+                           return availableDates.has(dateStr);
+                         },
+                         conflicting: (date) => {
+                           const year = date.getFullYear();
+                           const month = String(date.getMonth() + 1).padStart(2, '0');
+                           const day = String(date.getDate()).padStart(2, '0');
+                           const dateStr = `${year}-${month}-${day}`;
+                           return conflictingDates.has(dateStr);
+                         }
+                       }}
                       modifiersStyles={{
                         available: { backgroundColor: 'hsl(var(--primary) / 0.2)', color: 'hsl(var(--primary))' },
                         conflicting: { backgroundColor: 'hsl(var(--destructive) / 0.2)', color: 'hsl(var(--destructive))' }
@@ -308,23 +323,32 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
                         selected={endDate}
                         onSelect={setEndDate}
                        disabled={(date) => {
-                         const dateStr = date.toISOString().split('T')[0];
-                         const jobStart = new Date(jobStartDate);
-                         const jobEnd = new Date(jobEndDate);
+                         const year = date.getFullYear();
+                         const month = String(date.getMonth() + 1).padStart(2, '0');
+                         const day = String(date.getDate()).padStart(2, '0');
+                         const dateStr = `${year}-${month}-${day}`;
+                         const jobStart = new Date(jobStartDate + 'T00:00:00');
+                         const jobEnd = new Date(jobEndDate + 'T00:00:00');
                          return date < (startDate || jobStart) || 
                                 date > jobEnd ||
                                 conflictingDates.has(dateStr);
                        }}
-                        modifiers={{
-                          available: (date) => {
-                            const dateStr = date.toISOString().split('T')[0];
-                            return availableDates.has(dateStr);
-                          },
-                          conflicting: (date) => {
-                            const dateStr = date.toISOString().split('T')[0];
-                            return conflictingDates.has(dateStr);
-                          }
-                        }}
+                         modifiers={{
+                           available: (date) => {
+                             const year = date.getFullYear();
+                             const month = String(date.getMonth() + 1).padStart(2, '0');
+                             const day = String(date.getDate()).padStart(2, '0');
+                             const dateStr = `${year}-${month}-${day}`;
+                             return availableDates.has(dateStr);
+                           },
+                           conflicting: (date) => {
+                             const year = date.getFullYear();
+                             const month = String(date.getMonth() + 1).padStart(2, '0');
+                             const day = String(date.getDate()).padStart(2, '0');
+                             const dateStr = `${year}-${month}-${day}`;
+                             return conflictingDates.has(dateStr);
+                           }
+                         }}
                         modifiersStyles={{
                           available: { backgroundColor: 'hsl(var(--primary) / 0.2)', color: 'hsl(var(--primary))' },
                           conflicting: { backgroundColor: 'hsl(var(--destructive) / 0.2)', color: 'hsl(var(--destructive))' }
