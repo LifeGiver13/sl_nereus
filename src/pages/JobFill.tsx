@@ -648,66 +648,93 @@ const JobFill = () => {
             </CardHeader>
             <CardContent>
               {slot.placements.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {slot.placements.map((placement, index) => (
-                    <div key={placement.id || index} className="border rounded-lg p-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {placement.user?.displayName}
-                          </span>
-                          <Badge variant="outline">{placement.status}</Badge>
+                    <div key={placement.id || index} className="border rounded-lg p-3 bg-card">
+                      {/* Compact header with name, buttons and toggle */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-medium">{placement.user?.displayName}</span>
+                          <Badge variant="outline" className="text-xs">{placement.status}</Badge>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedPlacement(placement);
+                              setShowPlacementDetail(true);
+                            }}
+                            className="h-6 px-2 text-xs"
+                          >
+                            View Details
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedPlacement(placement);
+                              setShowPlacementEdit(true);
+                            }}
+                            className="h-6 px-2 text-xs"
+                          >
+                            Edit
+                          </Button>
                         </div>
-                        {placement.meta?.availability && placement.meta.availability.length > 0 && (
-                          <div className="text-sm font-medium text-primary">
+                        <div className="flex items-center space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              // Toggle expanded state logic would go here
+                            }}
+                            className="h-6 w-6 p-0 text-xs"
+                          >
+                            +
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* Availability periods on single line */}
+                      {placement.meta?.availability && placement.meta.availability.length > 0 && (
+                        <div className="mb-2">
+                          <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
                             {placement.meta.availability.map((period: any, idx: number) => {
-                              const start = new Date(period.startDate).toLocaleDateString();
-                              const end = new Date(period.endDate).toLocaleDateString();
+                              const start = new Date(period.startDate);
+                              const end = new Date(period.endDate);
+                              const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                              const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                               return (
-                                <span key={idx}>
-                                  {start === end ? start : `${start} - ${end}`}
-                                  {idx < placement.meta.availability.length - 1 && ", "}
+                                <span key={idx} className="bg-muted px-2 py-1 rounded text-xs">
+                                  {startStr === endStr ? startStr : `${startStr} - ${endStr}`}
                                 </span>
                               );
                             })}
                           </div>
-                        )}
-                         <div className="flex items-center gap-2 mt-2">
-                           <Button
-                             size="sm"
-                             variant="outline"
-                             onClick={() => {
-                               setSelectedPlacement(placement);
-                               setShowPlacementDetail(true);
-                             }}
-                           >
-                             View Details
-                           </Button>
-                           <Button
-                             size="sm"
-                             variant="outline"
-                             onClick={() => {
-                               setSelectedPlacement(placement);
-                               setShowPlacementEdit(true);
-                             }}
-                           >
-                             Edit
-                           </Button>
-                         </div>
-                         <details className="text-sm">
-                           <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                             Additional information
-                           </summary>
-                           <div className="mt-2 space-y-1">
-                             {placement.meta?.instructions && (
-                               <p className="text-muted-foreground"><strong>Instructions:</strong> {placement.meta.instructions}</p>
-                             )}
-                             {placement.meta?.notes && (
-                               <p className="text-muted-foreground"><strong>Notes:</strong> {placement.meta.notes}</p>
-                             )}
-                           </div>
-                         </details>
-                      </div>
+                        </div>
+                      )}
+                      
+                      {/* Expanded details - simplified for now */}
+                      <details className="text-sm">
+                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground text-xs">
+                          Additional information
+                        </summary>
+                        <div className="mt-2 pt-2 border-t space-y-2">
+                          {placement.meta?.instructions && (
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Instructions</div>
+                              <div className="text-sm bg-muted/50 p-2 rounded">{placement.meta.instructions}</div>
+                            </div>
+                          )}
+                          {placement.meta?.notes && (
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">Notes</div>
+                              <div className="text-sm bg-muted/50 p-2 rounded">{placement.meta.notes}</div>
+                            </div>
+                          )}
+                          {(!placement.meta?.instructions && !placement.meta?.notes) && (
+                            <div className="text-xs text-muted-foreground">No additional information available.</div>
+                          )}
+                        </div>
+                      </details>
                     </div>
                   ))}
                 </div>

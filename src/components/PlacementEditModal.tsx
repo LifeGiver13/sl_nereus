@@ -69,7 +69,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setNotes(placement.meta?.notes || '');
       setStatus(placement.status || 'awaiting_confirmation');
       setConfirmed(placement.confirmed || false);
-      setSelectedSlotId(placement.slotId || null);
+      setSelectedSlotId(placement.slotId || placement.meta?.slotId || null);
       
       // Parse existing availability periods from meta.availability or meta.availabilityPeriods
       const existingPeriods = placement.meta?.availability || placement.meta?.availabilityPeriods || [];
@@ -84,9 +84,16 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           startDate: new Date(placement.startDate),
           endDate: new Date(placement.endDate)
         }]);
+      } else {
+        // Initialize with one empty period if none exist
+        const jobStart = jobStartDate ? new Date(jobStartDate) : new Date();
+        setAvailabilityPeriods([{
+          startDate: jobStart,
+          endDate: jobStart
+        }]);
       }
     }
-  }, [placement, slots]);
+  }, [placement, slots, jobStartDate]);
 
   const addAvailabilityPeriod = () => {
     const jobStart = jobStartDate ? new Date(jobStartDate) : new Date();
