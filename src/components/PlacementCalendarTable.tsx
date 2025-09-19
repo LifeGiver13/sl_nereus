@@ -1,8 +1,10 @@
-import React from 'react';
-import { format, eachDayOfInterval, isWeekend } from 'date-fns';
+import React, { useState } from 'react';
+import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameWeek } from 'date-fns';
 import { parseDate } from '@/config/timezone';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 interface AvailabilityWindow {
@@ -48,17 +50,48 @@ interface PlacementCalendarTableProps {
 }
 
 const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots }) => {
-  // Generate all working days for the job duration
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    // Start with the first week of the job
+    const jobStart = parseDate(job.startDate);
+    return startOfWeek(jobStart, { weekStartsOn: 1 }); // Monday start
+  });
+
   const jobStart = parseDate(job.startDate);
   const jobEnd = parseDate(job.endDate);
   const includeWeekends = job.body?.includeWeekends !== false;
-  
-  const allDays = eachDayOfInterval({ start: jobStart, end: jobEnd }).filter(day => {
+
+  // Calculate the current week's end
+  const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+
+  // Get working days for the current week within job range
+  const weekDays = eachDayOfInterval({ 
+    start: currentWeekStart > jobStart ? currentWeekStart : jobStart,
+    end: currentWeekEnd < jobEnd ? currentWeekEnd : jobEnd
+  }).filter(day => {
     if (!includeWeekends && isWeekend(day)) {
       return false;
     }
-    return true;
+    return day >= jobStart && day <= jobEnd;
   });
+
+  // Navigation functions
+  const goToPreviousWeek = () => {
+    const newWeekStart = subWeeks(currentWeekStart, 1);
+    if (newWeekStart >= startOfWeek(jobStart, { weekStartsOn: 1 })) {
+      setCurrentWeekStart(newWeekStart);
+    }
+  };
+
+  const goToNextWeek = () => {
+    const newWeekStart = addWeeks(currentWeekStart, 1);
+    if (newWeekStart <= startOfWeek(jobEnd, { weekStartsOn: 1 })) {
+      setCurrentWeekStart(newWeekStart);
+    }
+  };
+
+  // Check if navigation buttons should be disabled
+  const canGoToPrevious = startOfWeek(subWeeks(currentWeekStart, 1), { weekStartsOn: 1 }) >= startOfWeek(jobStart, { weekStartsOn: 1 });
+  const canGoToNext = startOfWeek(addWeeks(currentWeekStart, 1), { weekStartsOn: 1 }) <= startOfWeek(jobEnd, { weekStartsOn: 1 });
 
   // Create a mapping of slot + date -> candidate
   const getAssignmentForSlotAndDate = (slotId: number, date: Date): PlacementRow | null => {
@@ -96,34 +129,65 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'accepted': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'declined': return 'bg-red-100 text-red-800';
-      default: return 'bg-blue-100 text-blue-800';
+      case 'accepted': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'declined': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
     }
   };
 
   return (
-    <Card>
+    <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle>Placement Calendar</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Placement Calendar</CardTitle>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToPreviousWeek}
+              disabled={!canGoToPrevious}
+              className="h-8"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous Week
+            </Button>
+            <div className="text-sm font-medium text-muted-foreground px-3">
+              {format(currentWeekStart, 'MMM dd')} - {format(currentWeekEnd, 'MMM dd, yyyy')}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToNextWeek}
+              disabled={!canGoToNext}
+              className="h-8"
+            >
+              Next Week
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="w-48 sticky left-0 bg-background">Slot / Candidates</TableHead>
-                {allDays.map((day, index) => (
-                  <TableHead key={index} className="text-center min-w-24">
-                    <div className="text-xs">
-                      {format(day, 'EEE')}
-                    </div>
-                    <div className="text-sm font-medium">
-                      {format(day, 'dd')}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(day, 'MMM')}
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-48 sticky left-0 bg-muted/50 border-r font-semibold">
+                  Slot / Candidates
+                </TableHead>
+                {weekDays.map((day, index) => (
+                  <TableHead key={index} className="text-center min-w-28 border-r last:border-r-0">
+                    <div className="space-y-1 py-2">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {format(day, 'EEE')}
+                      </div>
+                      <div className="text-lg font-bold">
+                        {format(day, 'dd')}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(day, 'MMM')}
+                      </div>
                     </div>
                   </TableHead>
                 ))}
@@ -133,15 +197,15 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
               {slots.map((slot) => {
                 const candidates = getCandidatesForSlot(slot.id);
                 return (
-                  <TableRow key={slot.id}>
+                  <TableRow key={slot.id} className="hover:bg-muted/30">
                     <TableCell className="sticky left-0 bg-background border-r">
-                      <div className="space-y-1">
-                        <div className="font-medium text-sm">Slot {slot.id}</div>
-                        <div className="space-y-1">
+                      <div className="space-y-3 py-2">
+                        <div className="font-semibold text-sm text-primary">Slot {slot.id}</div>
+                        <div className="space-y-2">
                           {candidates.length > 0 ? (
                             candidates.map((candidate) => (
-                              <div key={candidate.userId} className="text-xs">
-                                <div className="truncate max-w-36" title={candidate.user.displayName}>
+                              <div key={candidate.userId} className="space-y-1">
+                                <div className="text-xs font-medium truncate max-w-40" title={candidate.user.displayName}>
                                   {candidate.user.displayName.split(' ').slice(0, 2).join(' ')}
                                 </div>
                                 <Badge 
@@ -153,26 +217,26 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                               </div>
                             ))
                           ) : (
-                            <div className="text-xs text-muted-foreground">No candidates</div>
+                            <div className="text-xs text-muted-foreground italic">No candidates</div>
                           )}
                         </div>
                       </div>
                     </TableCell>
-                    {allDays.map((day, dayIndex) => {
+                    {weekDays.map((day, dayIndex) => {
                       const assignment = getAssignmentForSlotAndDate(slot.id, day);
                       return (
-                        <TableCell key={dayIndex} className="text-center p-1">
+                        <TableCell key={dayIndex} className="text-center p-2 border-r last:border-r-0">
                           {assignment ? (
-                            <div className="space-y-1">
-                              <div className="text-xs font-medium truncate" title={assignment.user.displayName}>
+                            <div className="bg-primary/10 rounded-md p-2 space-y-1 border border-primary/20">
+                              <div className="text-xs font-semibold truncate" title={assignment.user.displayName}>
                                 {assignment.user.displayName.split(' ')[0]}
                               </div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-xs text-muted-foreground font-medium">
                                 {assignment.user.displayName.split(' ')[1]?.charAt(0)}.
                               </div>
                             </div>
                           ) : (
-                            <div className="text-xs text-muted-foreground">-</div>
+                            <div className="text-xs text-muted-foreground py-4">-</div>
                           )}
                         </TableCell>
                       );

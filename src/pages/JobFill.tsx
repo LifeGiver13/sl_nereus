@@ -610,6 +610,12 @@ const JobFill = () => {
                 </p>
               </div>
               <div>
+                <p className="text-sm text-gray-500">Job Duration</p>
+                <p className="font-medium">
+                  {new Date(job.startDate).toLocaleDateString()} - {new Date(job.endDate).toLocaleDateString()}
+                </p>
+              </div>
+              <div>
                 <p className="text-sm text-gray-500">Vacancies</p>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">{job.vacancies} slots</Badge>
