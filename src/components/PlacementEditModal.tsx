@@ -111,10 +111,12 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         if (response.ok) {
           const data = await response.json();
           // Filter placements for the same slot, excluding current placement
-          const slotPlacements = data.results?.filter((p: any) => 
-            (p.meta?.slotId === selectedSlotId || p.slotId === selectedSlotId) && 
-            p.id !== placement.id
-          ) || [];
+          const slotPlacements = data.results?.filter((p: any) => {
+            const placementSlotId = p.meta?.slotId || 1; // Default to slot 1 if not set
+            return placementSlotId === selectedSlotId && p.id !== placement.id;
+          }) || [];
+          
+          console.log('Existing placements for slot', selectedSlotId, ':', slotPlacements);
           setExistingPlacements(slotPlacements);
         }
       } catch (error) {
@@ -141,24 +143,39 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const checkDateConflicts = (newPeriods: AvailabilityPeriod[]) => {
     const conflicts: string[] = [];
     
+    console.log('Checking conflicts for slot', selectedSlotId, 'with', existingPlacements.length, 'existing placements');
+    console.log('New periods to check:', newPeriods);
+    
     for (const newPeriod of newPeriods) {
       for (const existingPlacement of existingPlacements) {
         const existingPeriods = existingPlacement.meta?.availability || [];
+        
+        console.log('Checking against placement', existingPlacement.id, 'with periods:', existingPeriods);
         
         for (const existingPeriod of existingPeriods) {
           const existingStart = new Date(existingPeriod.startDate);
           const existingEnd = new Date(existingPeriod.endDate);
           
-          // Check if periods overlap
-          if (newPeriod.startDate <= existingEnd && newPeriod.endDate >= existingStart) {
-            const candidateName = existingPlacement.user?.displayName?.split(' (')[0] || 
-                                 existingPlacement.user?.username || 'Unknown';
-            conflicts.push(`${format(newPeriod.startDate, "MMM d")} - ${format(newPeriod.endDate, "MMM d")} conflicts with ${candidateName}`);
+          // Check if periods overlap: two periods overlap if one starts before the other ends
+          // and the other starts before the first one ends
+          const periodsOverlap = newPeriod.startDate <= existingEnd && newPeriod.endDate >= existingStart;
+          
+          if (periodsOverlap) {
+            const candidateName = existingPlacement.user?.profile?.Forename && existingPlacement.user?.profile?.Surname
+              ? `${existingPlacement.user.profile.Forename} ${existingPlacement.user.profile.Surname}`
+              : existingPlacement.user?.displayName?.split(' (')[0] || 
+                existingPlacement.user?.username || 'Unknown';
+            
+            const conflictMessage = `${format(newPeriod.startDate, "MMM d")} - ${format(newPeriod.endDate, "MMM d")} conflicts with ${candidateName} (${format(existingStart, "MMM d")} - ${format(existingEnd, "MMM d")})`;
+            conflicts.push(conflictMessage);
+            
+            console.log('Conflict detected:', conflictMessage);
           }
         }
       }
     }
     
+    console.log('Total conflicts found:', conflicts.length);
     return conflicts;
   };
 
