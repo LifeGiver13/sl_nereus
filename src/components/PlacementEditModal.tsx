@@ -188,6 +188,12 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           console.log(`    Overlap check: ${newStart.toISOString()} <= ${existingEnd.toISOString()} (${newStart <= existingEnd}) AND ${newEnd.toISOString()} >= ${existingStart.toISOString()} (${newEnd >= existingStart}) = ${periodsOverlap}`);
           
           if (periodsOverlap) {
+            // Check if we're editing the same placement - if so, don't count it as a conflict
+            if (existingPlacement.id === placement?.id) {
+              console.log(`    Skipping conflict for same placement (ID: ${existingPlacement.id})`);
+              continue;
+            }
+            
             const candidateName = existingPlacement.user?.profile?.Forename && existingPlacement.user?.profile?.Surname
               ? `${existingPlacement.user.profile.Forename} ${existingPlacement.user.profile.Surname}`
               : existingPlacement.user?.displayName?.split(' (')[0] || 
