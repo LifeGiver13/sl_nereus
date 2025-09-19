@@ -97,7 +97,7 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
               const month = String(date.getMonth() + 1).padStart(2, '0');
               const day = String(date.getDate()).padStart(2, '0');
               const dateStr = `${year}-${month}-${day}`;
-              return availableDates.has(dateStr) && !conflictingDates.has(dateStr);
+              return availableDates.has(dateStr) && !conflictingDates.has(dateStr) && !selectedDateStrings.has(dateStr);
             },
             occupied: (date) => {
               const year = date.getFullYear();
@@ -105,6 +105,13 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
               const day = String(date.getDate()).padStart(2, '0');
               const dateStr = `${year}-${month}-${day}`;
               return conflictingDates.has(dateStr);
+            },
+            selected: (date) => {
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const dateStr = `${year}-${month}-${day}`;
+              return selectedDateStrings.has(dateStr);
             }
           }}
           modifiersStyles={{
@@ -118,6 +125,11 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
               color: 'hsl(var(--destructive))',
               border: '1px solid hsl(var(--destructive) / 0.3)',
               textDecoration: 'line-through'
+            },
+            selected: {
+              backgroundColor: 'hsl(var(--primary))',
+              color: 'hsl(var(--primary-foreground))',
+              fontWeight: 'bold'
             }
           }}
           className={cn("p-3 pointer-events-auto")}

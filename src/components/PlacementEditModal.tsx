@@ -92,6 +92,19 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     
     if (!selectedSlot || !job) return { availableDates: available, conflictingDates: conflicts };
     
+    // Get current placement's dates to exclude from conflicts
+    const currentPlacementDates = new Set<string>();
+    if (placement?.meta?.availability) {
+      placement.meta.availability.forEach((placementDate: string | Date) => {
+        try {
+          const dateStr = new Date(placementDate).toISOString().split('T')[0];
+          currentPlacementDates.add(dateStr);
+        } catch (e) {
+          console.warn('Invalid date in placement availability:', placementDate);
+        }
+      });
+    }
+    
     // Generate all job dates
     const jobStart = new Date(job.startDate + 'T00:00:00');
     const jobEnd = new Date(job.endDate + 'T00:00:00');
@@ -103,27 +116,13 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       const day = String(current.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-      // If editing, include dates from current placement as available
-      if (placement?.meta?.availability) {
-        const isCurrentPlacementDate = placement.meta.availability.some((placementDate: string | Date) => {
-          const placementDateStr = new Date(placementDate).toISOString().split('T')[0];
-          return placementDateStr === dateStr;
-        });
-        
-        if (isCurrentPlacementDate) {
-          available.add(dateStr);
-        } else if (selectedSlot.occupiedDates.has(dateStr)) {
-          conflicts.add(dateStr);
-        } else {
-          available.add(dateStr);
-        }
+      // Check if this date is occupied by OTHER placements (exclude current placement)
+      const isOccupiedByOthers = selectedSlot.occupiedDates.has(dateStr) && !currentPlacementDates.has(dateStr);
+      
+      if (isOccupiedByOthers) {
+        conflicts.add(dateStr);
       } else {
-        // For new placements, exclude occupied dates
-        if (selectedSlot.occupiedDates.has(dateStr)) {
-          conflicts.add(dateStr);
-        } else {
-          available.add(dateStr);
-        }
+        available.add(dateStr);
       }
       
       current.setDate(current.getDate() + 1);
