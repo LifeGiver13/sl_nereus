@@ -82,10 +82,36 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       // Parse existing availability periods from meta.availability or meta.availabilityPeriods
       const existingPeriods = placement.meta?.availability || placement.meta?.availabilityPeriods || [];
       if (existingPeriods.length > 0) {
-        setAvailabilityPeriods(existingPeriods.map((period: any) => ({
-          startDate: new Date(period.startDate),
-          endDate: new Date(period.endDate)
-        })));
+        // Handle both old format (date ranges) and new format (individual dates)
+        const periods = existingPeriods.map((period: any) => {
+          if (typeof period === 'string' || period instanceof Date) {
+            // Individual date - create same-day period
+            const date = new Date(period);
+            if (isNaN(date.getTime())) {
+              console.warn('Invalid date detected:', period);
+              return null;
+            }
+            return {
+              startDate: date,
+              endDate: date
+            };
+          } else if (period && period.startDate && period.endDate) {
+            // Date range period
+            const startDate = new Date(period.startDate);
+            const endDate = new Date(period.endDate);
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+              console.warn('Invalid date range detected:', period);
+              return null;
+            }
+            return {
+              startDate,
+              endDate
+            };
+          }
+          return null;
+        }).filter(Boolean); // Remove null entries
+        
+        setAvailabilityPeriods(periods);
       } else if (placement.startDate && placement.endDate) {
         // Convert single placement date range to availability period
         setAvailabilityPeriods([{
@@ -464,7 +490,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                               )}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
-                              {period.startDate ? format(period.startDate, "MMM d") : "Pick date"}
+                              {period.startDate && !isNaN(period.startDate.getTime()) ? format(period.startDate, "MMM d") : "Pick date"}
                             </Button>
                           </PopoverTrigger>
                            <PopoverContent className="w-auto p-0">
@@ -512,7 +538,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                               )}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
-                              {period.endDate ? format(period.endDate, "MMM d") : "Same day"}
+                              {period.endDate && !isNaN(period.endDate.getTime()) ? format(period.endDate, "MMM d") : "Same day"}
                             </Button>
                           </PopoverTrigger>
                            <PopoverContent className="w-auto p-0">
