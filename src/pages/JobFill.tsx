@@ -148,14 +148,31 @@ const JobFill = () => {
     const dates = new Set<string>();
     placements.forEach(placement => {
       if (placement.meta?.availability) {
-        placement.meta.availability.forEach(window => {
-          const current = new Date(window.startDate);
-          const end = new Date(window.endDate);
-          while (current <= end) {
-            dates.add(current.toISOString().split('T')[0]);
-            current.setDate(current.getDate() + 1);
-          }
-        });
+        // Handle both old format (windows with startDate/endDate) and new format (array of dates)
+        if (Array.isArray(placement.meta.availability)) {
+          // New format: array of individual dates
+          placement.meta.availability.forEach((dateItem: any) => {
+            if (typeof dateItem === 'string' || dateItem instanceof Date) {
+              // Individual date
+              const date = new Date(dateItem);
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              dates.add(`${year}-${month}-${day}`);
+            } else if (dateItem && dateItem.startDate && dateItem.endDate) {
+              // Old format: availability window
+              const current = new Date(dateItem.startDate);
+              const end = new Date(dateItem.endDate);
+              while (current <= end) {
+                const year = current.getFullYear();
+                const month = String(current.getMonth() + 1).padStart(2, '0');
+                const day = String(current.getDate()).padStart(2, '0');
+                dates.add(`${year}-${month}-${day}`);
+                current.setDate(current.getDate() + 1);
+              }
+            }
+          });
+        }
       }
     });
     return dates;
@@ -193,16 +210,7 @@ const JobFill = () => {
           confirmed: placement.confirmed || false,
           isPlaceholder: false,
           meta: {
-            availability: placement.meta?.availability ? 
-              placement.meta.availability
-                .filter((window: any) => window && window.startDate && window.endDate)
-                .map((window: any) => ({
-                  startDate: new Date(window.startDate),
-                  endDate: new Date(window.endDate)
-                })) : [{
-                  startDate: new Date(job.startDate),
-                  endDate: new Date(job.endDate)
-                }],
+            availability: placement.meta?.availability || [],
             instructions: placement.meta?.instructions || '',
             notes: placement.meta?.notes || ''
           }

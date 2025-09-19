@@ -43,14 +43,21 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
           selected={selectedDates}
           onSelect={(dates) => {
             if (dates) {
-              // Filter out any conflicting dates from selection
-              const validDates = (Array.isArray(dates) ? dates : [dates]).filter(date => {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const dateStr = `${year}-${month}-${day}`;
-                return !conflictingDates.has(dateStr);
-              });
+              // Filter out any conflicting dates from selection and set time to 12pm
+              const validDates = (Array.isArray(dates) ? dates : [dates])
+                .filter(date => {
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  const dateStr = `${year}-${month}-${day}`;
+                  return !conflictingDates.has(dateStr);
+                })
+                .map(date => {
+                  // Set time to 12pm to avoid timezone confusion
+                  const adjustedDate = new Date(date);
+                  adjustedDate.setHours(12, 0, 0, 0);
+                  return adjustedDate;
+                });
               onDatesChange(validDates);
             } else {
               onDatesChange([]);
