@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 interface AvailabilityWindow {
   startDate: Date;
@@ -47,14 +49,17 @@ interface PlacementCalendarTableProps {
     };
   };
   slots: Slot[];
+  onAssignCandidate?: (slotId: number, candidateId: number, date: Date) => void;
 }
 
-const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots }) => {
+const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots, onAssignCandidate }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // Start with the first week of the job
     const jobStart = parseDate(job.startDate);
     return startOfWeek(jobStart, { weekStartsOn: 1 }); // Monday start
   });
+  const [editingCell, setEditingCell] = useState<{ slotId: number; date: Date } | null>(null);
+  const { toast } = useToast();
 
   const jobStart = parseDate(job.startDate);
   const jobEnd = parseDate(job.endDate);
@@ -127,6 +132,56 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
   const getCandidatesForSlot = (slotId: number): PlacementRow[] => {
     const slot = slots.find(s => s.id === slotId);
     return slot?.placements || [];
+  };
+
+  // Check for conflicts when assigning a candidate to a date
+  const checkForConflicts = (candidateId: number, slotId: number, date: Date): boolean => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    
+    // Check if this candidate is already assigned to another slot on this date
+    for (const slot of slots) {
+      if (slot.id === slotId) continue; // Skip the target slot
+      
+      for (const placement of slot.placements) {
+        if (placement.userId === candidateId && placement.meta?.availability) {
+          const hasConflict = placement.meta.availability.some(availItem => {
+            if (typeof availItem === 'string' || availItem instanceof Date) {
+              const availDateParsed = parseDate(availItem);
+              return format(availDateParsed, 'yyyy-MM-dd') === dateString;
+            } else if (availItem && typeof availItem === 'object' && 'startDate' in availItem) {
+              const startDate = new Date(availItem.startDate);
+              const endDate = new Date(availItem.endDate);
+              return date >= startDate && date <= endDate;
+            }
+            return false;
+          });
+          
+          if (hasConflict) return true;
+        }
+      }
+    }
+    
+    return false;
+  };
+
+  // Handle assignment of candidate to specific date
+  const handleAssignCandidate = (slotId: number, candidateId: number, date: Date) => {
+    if (checkForConflicts(candidateId, slotId, date)) {
+      toast({
+        title: "Assignment Conflict",
+        description: "This candidate is already assigned to another slot on this date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    onAssignCandidate?.(slotId, candidateId, date);
+    setEditingCell(null);
+    
+    toast({
+      title: "Assignment Successful",
+      description: "Candidate has been assigned to this date.",
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -222,19 +277,55 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                     {weekDays.map((day, dayIndex) => {
                       const assignment = getAssignmentForSlotAndDate(slot.id, day);
                       const isApplicable = isDayApplicable(day);
+                      const candidates = getCandidatesForSlot(slot.id);
+                      const isFilled = assignment && isApplicable;
+                      const canBeAssigned = !assignment && isApplicable && candidates.length > 0;
+                      const isEditing = editingCell?.slotId === slot.id && editingCell?.date.getTime() === day.getTime();
+
                       return (
                         <TableCell key={dayIndex} className={`text-center p-2 border-r last:border-r-0 ${!isApplicable ? 'bg-muted/30' : ''}`}>
-                          {assignment && isApplicable ? (
-                            <div className="bg-primary/10 rounded-md p-2 space-y-1 border border-primary/20">
-                              <div className="text-xs font-semibold truncate" title={assignment.user.displayName}>
+                          {isFilled ? (
+                            // Filled day - green background
+                            <div className="bg-green-100 dark:bg-green-900 rounded-md p-2 space-y-1 border border-green-200 dark:border-green-800">
+                              <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={assignment.user.displayName}>
                                 {assignment.user.displayName.split(' ')[0]}
                               </div>
-                              <div className="text-xs text-muted-foreground font-medium">
+                              <div className="text-xs text-green-600 dark:text-green-400 font-medium">
                                 {assignment.user.displayName.split(' ')[1]?.charAt(0)}.
                               </div>
                             </div>
+                          ) : canBeAssigned ? (
+                            // Unfilled but assignable day - amber background, clickable
+                            isEditing ? (
+                              <div className="bg-amber-100 dark:bg-amber-900 rounded-md p-2 border border-amber-200 dark:border-amber-800">
+                                <Select onValueChange={(value) => handleAssignCandidate(slot.id, parseInt(value), day)}>
+                                  <SelectTrigger className="h-6 text-xs border-0 bg-transparent">
+                                    <SelectValue placeholder="Select..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {candidates.map((candidate) => (
+                                      <SelectItem key={candidate.userId} value={candidate.userId.toString()}>
+                                        <span className="text-xs">{candidate.user.displayName}</span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ) : (
+                              <div 
+                                className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
+                                onClick={() => setEditingCell({ slotId: slot.id, date: day })}
+                              >
+                                <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+                                  Click to assign
+                                </div>
+                              </div>
+                            )
                           ) : (
-                            <div className={`text-xs text-muted-foreground py-4 ${!isApplicable ? 'opacity-40' : ''}`}>-</div>
+                            // Not applicable or no candidates
+                            <div className={`text-xs text-muted-foreground py-4 ${!isApplicable ? 'opacity-40' : ''}`}>
+                              {!isApplicable ? '-' : candidates.length === 0 ? 'No candidates' : '-'}
+                            </div>
                           )}
                         </TableCell>
                       );

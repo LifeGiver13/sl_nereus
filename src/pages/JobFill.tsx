@@ -355,6 +355,64 @@ const JobFill = () => {
     }
   };
 
+  // Handle direct assignment from calendar
+  const handleAssignCandidate = async (slotId: number, candidateId: number, date: Date) => {
+    // Find the candidate in the slot
+    const slot = slots.find(s => s.id === slotId);
+    const candidate = slot?.placements.find(p => p.userId === candidateId);
+    
+    if (!candidate) {
+      toast({
+        title: "Error",
+        description: "Candidate not found in slot.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Add this date to the candidate's availability
+    const currentAvailability = candidate.meta?.availability || [];
+    const newAvailability = [...currentAvailability, date];
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/placement/${candidate.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          meta: {
+            ...candidate.meta,
+            availability: newAvailability
+          }
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Candidate assigned to date successfully.",
+        });
+        
+        // Refresh placements
+        await refetchPlacements();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to assign candidate to date.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error assigning candidate:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign candidate to date.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAddCandidate = async (user: any, slotId: number, availability: Date[]) => {
     try {
       const response = await fetch(`${API_BASE_URL}/placement`, {
@@ -629,7 +687,11 @@ const JobFill = () => {
         </Card>
 
         {/* Calendar Table View */}
-        <PlacementCalendarTable job={job} slots={slots} />
+        <PlacementCalendarTable 
+          job={job} 
+          slots={slots}
+          onAssignCandidate={handleAssignCandidate}
+        />
 
         {/* Confirm Placements Button */}
         {placeholderPlacements.length > 0 && (
