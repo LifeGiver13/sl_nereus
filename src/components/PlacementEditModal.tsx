@@ -192,9 +192,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   if (!placement) return null;
 
-  const candidateName = placement.candidate?.profile?.Forename && placement.candidate?.profile?.Surname 
-    ? `${placement.candidate.profile.Forename} ${placement.candidate.profile.Surname}`
-    : placement.candidate?.username || placement.user?.profile?.Forename && placement.user?.profile?.Surname 
+  const candidateName = placement.user?.profile?.Forename && placement.user?.profile?.Surname 
     ? `${placement.user.profile.Forename} ${placement.user.profile.Surname}`
     : placement.user?.username || 'N/A';
 
