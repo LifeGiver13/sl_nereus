@@ -61,6 +61,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [availabilityPeriods, setAvailabilityPeriods] = useState<AvailabilityPeriod[]>([]);
+  const [existingPlacements, setExistingPlacements] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -95,6 +96,30 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     }
   }, [placement, slots, jobStartDate]);
 
+  // Fetch existing placements for the same slot to check for conflicts
+  useEffect(() => {
+    const fetchExistingPlacements = async () => {
+      if (!placement?.jobId || !selectedSlotId) return;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/job/${placement.jobId}/placement`);
+        if (response.ok) {
+          const data = await response.json();
+          // Filter placements for the same slot, excluding current placement
+          const slotPlacements = data.results?.filter((p: any) => 
+            (p.meta?.slotId === selectedSlotId || p.slotId === selectedSlotId) && 
+            p.id !== placement.id
+          ) || [];
+          setExistingPlacements(slotPlacements);
+        }
+      } catch (error) {
+        console.error('Error fetching existing placements:', error);
+      }
+    };
+
+    fetchExistingPlacements();
+  }, [placement?.jobId, selectedSlotId, placement?.id]);
+
   const addAvailabilityPeriod = () => {
     const jobStart = jobStartDate ? new Date(jobStartDate) : new Date();
     setAvailabilityPeriods([...availabilityPeriods, {
@@ -105,6 +130,31 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   const removeAvailabilityPeriod = (index: number) => {
     setAvailabilityPeriods(availabilityPeriods.filter((_, i) => i !== index));
+  };
+
+  // Check for date conflicts with existing placements in the same slot
+  const checkDateConflicts = (newPeriods: AvailabilityPeriod[]) => {
+    const conflicts: string[] = [];
+    
+    for (const newPeriod of newPeriods) {
+      for (const existingPlacement of existingPlacements) {
+        const existingPeriods = existingPlacement.meta?.availability || [];
+        
+        for (const existingPeriod of existingPeriods) {
+          const existingStart = new Date(existingPeriod.startDate);
+          const existingEnd = new Date(existingPeriod.endDate);
+          
+          // Check if periods overlap
+          if (newPeriod.startDate <= existingEnd && newPeriod.endDate >= existingStart) {
+            const candidateName = existingPlacement.user?.displayName?.split(' (')[0] || 
+                                 existingPlacement.user?.username || 'Unknown';
+            conflicts.push(`${format(newPeriod.startDate, "MMM d")} - ${format(newPeriod.endDate, "MMM d")} conflicts with ${candidateName}`);
+          }
+        }
+      }
+    }
+    
+    return conflicts;
   };
 
   const updateAvailabilityPeriod = (index: number, field: 'startDate' | 'endDate', date: Date | undefined) => {
@@ -141,6 +191,17 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         });
         return;
       }
+    }
+
+    // Check for date conflicts
+    const conflicts = checkDateConflicts(availabilityPeriods);
+    if (conflicts.length > 0) {
+      toast({
+        title: "Date Conflicts Detected",
+        description: conflicts.join('; '),
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsLoading(true);
