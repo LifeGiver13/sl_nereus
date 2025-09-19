@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,32 +11,22 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Plus, X } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { MultiDaySelector } from './MultiDaySelector';
 
 interface PlacementEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
   placement: any;
+  job: any;
   existingPlacements?: any[]; // All placements for the job
   slots?: Array<{
     id: number;
     placements: any[];
     occupiedDates: Set<string>;
   }>;
-  jobStartDate?: string;
-  jobEndDate?: string;
-}
-
-interface AvailabilityPeriod {
-  startDate: Date;
-  endDate: Date;
 }
 
 const statusOptions = [
@@ -55,10 +44,9 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   onClose,
   onSave,
   placement,
+  job,
   existingPlacements = [],
-  slots = [],
-  jobStartDate,
-  jobEndDate
+  slots = []
 }) => {
   const [instructions, setInstructions] = useState('');
   const [notes, setNotes] = useState('');
@@ -66,8 +54,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const [confirmed, setConfirmed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
-  const [availabilityPeriods, setAvailabilityPeriods] = useState<AvailabilityPeriod[]>([]);
-  const [filteredExistingPlacements, setFilteredExistingPlacements] = useState<any[]>([]);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -76,296 +63,85 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setNotes(placement.meta?.notes || '');
       setStatus(placement.status || 'awaiting_confirmation');
       setConfirmed(placement.confirmed || false);
-      // Properly read slotId from placement.meta.slotId, default to 1 if not set
       setSelectedSlotId(placement.meta?.slotId || 1);
       
-      // Parse existing availability periods from meta.availability or meta.availabilityPeriods
-      const existingPeriods = placement.meta?.availability || placement.meta?.availabilityPeriods || [];
-      if (existingPeriods.length > 0) {
-        // Handle both old format (date ranges) and new format (individual dates)
-        const periods = existingPeriods.map((period: any) => {
-          if (typeof period === 'string' || period instanceof Date) {
-            // Individual date - create same-day period
-            const date = new Date(period);
-            if (isNaN(date.getTime())) {
-              console.warn('Invalid date detected:', period);
-              return null;
+      // Parse existing availability as individual dates
+      const existingAvailability = placement.meta?.availability || [];
+      if (Array.isArray(existingAvailability) && existingAvailability.length > 0) {
+        const dates = existingAvailability
+          .map((dateItem: any) => {
+            if (typeof dateItem === 'string' || dateItem instanceof Date) {
+              const date = new Date(dateItem);
+              return !isNaN(date.getTime()) ? date : null;
             }
-            return {
-              startDate: date,
-              endDate: date
-            };
-          } else if (period && period.startDate && period.endDate) {
-            // Date range period
-            const startDate = new Date(period.startDate);
-            const endDate = new Date(period.endDate);
-            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-              console.warn('Invalid date range detected:', period);
-              return null;
-            }
-            return {
-              startDate,
-              endDate
-            };
-          }
-          return null;
-        }).filter(Boolean); // Remove null entries
-        
-        setAvailabilityPeriods(periods);
-      } else if (placement.startDate && placement.endDate) {
-        // Convert single placement date range to availability period
-        setAvailabilityPeriods([{
-          startDate: new Date(placement.startDate),
-          endDate: new Date(placement.endDate)
-        }]);
+            return null;
+          })
+          .filter(Boolean);
+        setSelectedDates(dates);
       } else {
-        // Initialize with one empty period if none exist
-        const jobStart = jobStartDate ? new Date(jobStartDate) : new Date();
-        setAvailabilityPeriods([{
-          startDate: jobStart,
-          endDate: jobStart
-        }]);
+        setSelectedDates([]);
       }
     }
-  }, [placement, slots, jobStartDate]);
+  }, [placement]);
 
-  // Filter existing placements for the same slot when slot changes
-  useEffect(() => {
-    console.log('=== FILTERING EXISTING PLACEMENTS ===');
-    console.log('Current placement being edited:', placement?.id);
-    console.log('Selected slot ID:', selectedSlotId);
-    console.log('Total existing placements:', existingPlacements?.length || 0);
+  // Get available and conflicting dates for the MultiDaySelector
+  const { availableDates, conflictingDates } = useMemo(() => {
+    const selectedSlot = slots.find(s => s.id === selectedSlotId);
+    const available = new Set<string>();
+    const conflicts = new Set<string>();
     
-    if (!selectedSlotId || !existingPlacements) {
-      console.log('Early return: no slot or placements');
-      setFilteredExistingPlacements([]);
-      return;
-    }
-
-    const slotPlacements = existingPlacements.filter((p: any) => {
-      const placementSlotId = p.meta?.slotId || 1; // Default to slot 1 if not set
-      const isCurrentPlacement = p.id === placement?.id;
-      const isSameSlot = placementSlotId === selectedSlotId;
+    if (!selectedSlot || !job) return { availableDates: available, conflictingDates: conflicts };
+    
+    // Generate all job dates
+    const jobStart = new Date(job.startDate + 'T00:00:00');
+    const jobEnd = new Date(job.endDate + 'T00:00:00');
+    const current = new Date(jobStart);
+    
+    while (current <= jobEnd) {
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      const day = String(current.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       
-      console.log(`Placement ${p.id}: slotId=${placementSlotId}, isSameSlot=${isSameSlot}, isCurrentPlacement=${isCurrentPlacement}, willInclude=${isSameSlot && !isCurrentPlacement}`);
-      
-      return isSameSlot && !isCurrentPlacement;
-    });
-
-    console.log('Filtered placements for slot (after excluding current):', slotPlacements.length);
-    console.log('Filtered placements:', slotPlacements.map(p => ({
-      id: p.id,
-      slotId: p.meta?.slotId,
-      availability: p.meta?.availability
-    })));
-
-    setFilteredExistingPlacements(slotPlacements);
-  }, [selectedSlotId, existingPlacements, placement?.id]);
-
-  const addAvailabilityPeriod = () => {
-    const jobStart = jobStartDate ? new Date(jobStartDate) : new Date();
-    setAvailabilityPeriods([...availabilityPeriods, {
-      startDate: jobStart,
-      endDate: jobStart
-    }]);
-  };
-
-  const removeAvailabilityPeriod = (index: number) => {
-    setAvailabilityPeriods(availabilityPeriods.filter((_, i) => i !== index));
-  };
-
-  // Check for date conflicts with existing placements in the same slot
-  const checkDateConflicts = (newPeriods: AvailabilityPeriod[]) => {
-    console.log('=== CONFLICT DETECTION START ===');
-    console.log('Current placement ID being edited:', placement?.id);
-    console.log('Checking conflicts for slot', selectedSlotId);
-    console.log('Existing placements count:', filteredExistingPlacements.length);
-    console.log('New periods to check:', newPeriods.map(p => ({
-      start: p.startDate.toISOString().split('T')[0],
-      end: p.endDate.toISOString().split('T')[0]
-    })));
-    
-    if (!selectedSlotId || filteredExistingPlacements.length === 0) {
-      console.log('No conflicts to check - slot:', selectedSlotId, 'existing placements:', filteredExistingPlacements.length);
-      return [];
-    }
-
-    const conflicts: string[] = [];
-    
-    for (let i = 0; i < newPeriods.length; i++) {
-      const newPeriod = newPeriods[i];
-      console.log(`\nChecking new period ${i + 1}:`, {
-        start: newPeriod.startDate.toISOString().split('T')[0],
-        end: newPeriod.endDate.toISOString().split('T')[0]
-      });
-
-      for (let j = 0; j < filteredExistingPlacements.length; j++) {
-        const existingPlacement = filteredExistingPlacements[j];
-        const existingPeriods = existingPlacement.meta?.availability || [];
+      // If editing, include dates from current placement as available
+      if (placement?.meta?.availability) {
+        const isCurrentPlacementDate = placement.meta.availability.some((placementDate: string | Date) => {
+          const placementDateStr = new Date(placementDate).toISOString().split('T')[0];
+          return placementDateStr === dateStr;
+        });
         
-        console.log(`  Against placement ${existingPlacement.id} (${existingPeriods.length} periods)`);
-        
-        for (let k = 0; k < existingPeriods.length; k++) {
-          const existingPeriod = existingPeriods[k];
-          const existingStart = new Date(existingPeriod.startDate + 'T00:00:00');
-          const existingEnd = new Date(existingPeriod.endDate + 'T23:59:59');
-          const newStart = new Date(newPeriod.startDate.toISOString().split('T')[0] + 'T00:00:00');
-          const newEnd = new Date(newPeriod.endDate.toISOString().split('T')[0] + 'T23:59:59');
-          
-          console.log(`    Period ${k + 1}:`, {
-            existing: `${existingPeriod.startDate} to ${existingPeriod.endDate}`,
-            new: `${newStart.toISOString().split('T')[0]} to ${newEnd.toISOString().split('T')[0]}`
-          });
-          
-          // Two periods overlap if: newStart <= existingEnd AND newEnd >= existingStart
-          const periodsOverlap = newStart <= existingEnd && newEnd >= existingStart;
-          
-          console.log(`    Overlap check: ${newStart.toISOString()} <= ${existingEnd.toISOString()} (${newStart <= existingEnd}) AND ${newEnd.toISOString()} >= ${existingStart.toISOString()} (${newEnd >= existingStart}) = ${periodsOverlap}`);
-          
-          if (periodsOverlap) {
-            const candidateName = existingPlacement.user?.profile?.Forename && existingPlacement.user?.profile?.Surname
-              ? `${existingPlacement.user.profile.Forename} ${existingPlacement.user.profile.Surname}`
-              : existingPlacement.user?.displayName?.split(' (')[0] || 
-                existingPlacement.user?.username || 'Unknown';
-            
-            // Use the actual new period dates, not the incorrectly calculated ones
-            const conflictMessage = `${newPeriod.startDate.toISOString().split('T')[0]} - ${newPeriod.endDate.toISOString().split('T')[0]} conflicts with ${candidateName} (${existingPeriod.startDate} - ${existingPeriod.endDate})`;
-            conflicts.push(conflictMessage);
-            
-            console.log(`    *** CONFLICT DETECTED: ${conflictMessage}`);
-          }
+        if (isCurrentPlacementDate) {
+          available.add(dateStr);
+        } else if (selectedSlot.occupiedDates.has(dateStr)) {
+          conflicts.add(dateStr);
+        } else {
+          available.add(dateStr);
+        }
+      } else {
+        // For new placements, exclude occupied dates
+        if (selectedSlot.occupiedDates.has(dateStr)) {
+          conflicts.add(dateStr);
+        } else {
+          available.add(dateStr);
         }
       }
+      
+      current.setDate(current.getDate() + 1);
     }
     
-    console.log('=== CONFLICT DETECTION END ===');
-    console.log('Total conflicts found:', conflicts.length);
-    console.log('Conflicts:', conflicts);
-    return conflicts;
-  };
-
-  const updateAvailabilityPeriod = (index: number, field: 'startDate' | 'endDate', date: Date | undefined) => {
-    if (!date) return;
-    
-    // Create a new date to avoid timezone issues
-    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    
-    const updated = [...availabilityPeriods];
-    updated[index] = { ...updated[index], [field]: localDate };
-    
-    // Auto-set end date to start date if not specified (for single date periods)
-    if (field === 'startDate' && !updated[index].endDate) {
-      updated[index].endDate = localDate;
-    }
-    
-    setAvailabilityPeriods(updated);
-  };
-
-  // Get all available dates for highlighting in calendar (memoized)
-  const availableDates = useMemo(() => {
-    const availableDatesSet = new Set<string>();
-    
-    console.log('=== CALCULATING AVAILABLE DATES ===');
-    console.log('Current availability periods:', availabilityPeriods.length);
-    
-    // Add all dates from current availability periods
-    availabilityPeriods.forEach((period, index) => {
-      console.log(`Period ${index + 1}:`, {
-        start: period.startDate.getFullYear() + '-' + String(period.startDate.getMonth() + 1).padStart(2, '0') + '-' + String(period.startDate.getDate()).padStart(2, '0'),
-        end: period.endDate.getFullYear() + '-' + String(period.endDate.getMonth() + 1).padStart(2, '0') + '-' + String(period.endDate.getDate()).padStart(2, '0')
-      });
-      
-      const currentDate = new Date(period.startDate);
-      const endDate = new Date(period.endDate);
-      
-      while (currentDate <= endDate) {
-        const dateStr = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-        availableDatesSet.add(dateStr);
-        console.log(`  Adding available date: ${dateStr}`);
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    });
-    
-    console.log('Total available dates:', availableDatesSet.size);
-    console.log('Available dates:', Array.from(availableDatesSet));
-    return availableDatesSet;
-  }, [availabilityPeriods]);
-
-  // Get all existing placement dates for highlighting in calendar (memoized)
-  const existingDates = useMemo(() => {
-    const existingDatesSet = new Set<string>();
-    
-    filteredExistingPlacements.forEach(placement => {
-      if (placement.meta?.availability) {
-        placement.meta.availability.forEach(period => {
-          const start = new Date(period.startDate + 'T00:00:00');
-          const end = new Date(period.endDate + 'T00:00:00');
-          
-          const currentDate = new Date(start);
-          while (currentDate <= end) {
-            const dateStr = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentDate.getDate()).padStart(2, '0');
-            existingDatesSet.add(dateStr);
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-        });
-      }
-    });
-    
-    return existingDatesSet;
-  }, [filteredExistingPlacements]);
-
-  // Check if a date should be highlighted (available)
-  const isDateAvailable = useCallback((date: Date) => {
-    const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-    return availableDates.has(dateStr);
-  }, [availableDates]);
-
-  // Check if a date has existing placements
-  const isDateExisting = useCallback((date: Date) => {
-    const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-    return existingDates.has(dateStr);
-  }, [existingDates]);
+    return { availableDates: available, conflictingDates: conflicts };
+  }, [slots, selectedSlotId, job, placement]);
 
   const handleSave = async () => {
-    if (!placement || availabilityPeriods.length === 0) {
+    if (!placement || selectedDates.length === 0) {
       toast({
         title: "Error",
-        description: "Please add at least one availability period",
+        description: "Please select at least one date",
         variant: "destructive",
       });
       return;
     }
 
-    console.log('=== SAVE HANDLER START ===');
-    console.log('Current availability periods:', availabilityPeriods.map(p => ({
-      start: p.startDate.toISOString().split('T')[0],
-      end: p.endDate.toISOString().split('T')[0]
-    })));
-
-    // Validate availability periods
-    for (const period of availabilityPeriods) {
-      if (period.startDate > period.endDate) {
-        toast({
-          title: "Error", 
-          description: "Start date must be before end date",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    // Check for date conflicts
-    const conflicts = checkDateConflicts(availabilityPeriods);
-    if (conflicts.length > 0) {
-      toast({
-        title: "Date Conflicts Detected",
-        description: conflicts.join('; '),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Ensure slotId is set
     if (!selectedSlotId) {
       toast({
         title: "Error",
@@ -378,25 +154,21 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     const saveData = {
       status,
       confirmed,
-      startDate: availabilityPeriods[0].startDate.getFullYear() + '-' + String(availabilityPeriods[0].startDate.getMonth() + 1).padStart(2, '0') + '-' + String(availabilityPeriods[0].startDate.getDate()).padStart(2, '0'),
-      endDate: availabilityPeriods[availabilityPeriods.length - 1].endDate.getFullYear() + '-' + String(availabilityPeriods[availabilityPeriods.length - 1].endDate.getMonth() + 1).padStart(2, '0') + '-' + String(availabilityPeriods[availabilityPeriods.length - 1].endDate.getDate()).padStart(2, '0'),
       meta: {
         instructions,
         notes,
         slotId: selectedSlotId,
-        availability: availabilityPeriods.map(period => ({
-          startDate: period.startDate.getFullYear() + '-' + String(period.startDate.getMonth() + 1).padStart(2, '0') + '-' + String(period.startDate.getDate()).padStart(2, '0'),
-          endDate: period.endDate.getFullYear() + '-' + String(period.endDate.getMonth() + 1).padStart(2, '0') + '-' + String(period.endDate.getDate()).padStart(2, '0')
-        }))
+        availability: selectedDates.map(date => {
+          // Set time to 12pm to avoid timezone confusion
+          const adjustedDate = new Date(date);
+          adjustedDate.setHours(12, 0, 0, 0);
+          return adjustedDate.toISOString();
+        })
       }
     };
 
-    console.log('=== SAVE DATA ===');
-    console.log('Save data being sent:', saveData);
-
     setIsLoading(true);
     try {
-      // Update placement
       const response = await fetch(`${API_BASE_URL}/placement/${placement.id}`, {
         method: 'PUT',
         headers: {
@@ -405,18 +177,10 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         body: JSON.stringify(saveData),
       });
 
-      console.log('=== API RESPONSE ===');
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error response:', errorText);
         throw new Error(`Failed to update placement: ${response.status} ${errorText}`);
       }
-
-      const responseData = await response.json();
-      console.log('Response data:', responseData);
 
       toast({
         title: "Success",
@@ -460,134 +224,24 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                 <p className="font-medium">{candidateName}</p>
               </div>
 
-              {/* Availability Periods */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-medium">Availability Periods</label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addAvailabilityPeriod}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Period
-                  </Button>
-                </div>
-                
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {availabilityPeriods.map((period, index) => (
-                    <div key={index} className="flex items-end space-x-2 p-3 border rounded-lg">
-                      <div className="flex-1">
-                        <label className="text-xs text-muted-foreground">Start Date</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !period.startDate && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {period.startDate && !isNaN(period.startDate.getTime()) ? format(period.startDate, "MMM d") : "Pick date"}
-                            </Button>
-                          </PopoverTrigger>
-                           <PopoverContent className="w-auto p-0">
-                             <Calendar
-                               mode="single"
-                               selected={period.startDate}
-                               onSelect={(date) => updateAvailabilityPeriod(index, 'startDate', date)}
-                               disabled={(date) => {
-                                 if (jobStartDate && date < new Date(jobStartDate)) return true;
-                                 if (jobEndDate && date > new Date(jobEndDate)) return true;
-                                 return false;
-                               }}
-                                modifiers={{
-                                  available: (date) => isDateAvailable(date),
-                                  existing: (date) => isDateExisting(date)
-                                }}
-                                modifiersStyles={{
-                                  available: { 
-                                    backgroundColor: 'hsl(var(--primary) / 0.15)',
-                                    color: 'hsl(var(--primary))',
-                                    fontWeight: 'bold',
-                                    border: '2px solid hsl(var(--primary))'
-                                  },
-                                  existing: {
-                                    backgroundColor: 'hsl(var(--destructive) / 0.1)',
-                                    color: 'hsl(var(--destructive))',
-                                    fontWeight: 'bold'
-                                  }
-                                }}
-                               className="pointer-events-auto"
-                             />
-                           </PopoverContent>
-                        </Popover>
-                      </div>
-                      
-                      <div className="flex-1">
-                        <label className="text-xs text-muted-foreground">End Date (optional)</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !period.endDate && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {period.endDate && !isNaN(period.endDate.getTime()) ? format(period.endDate, "MMM d") : "Same day"}
-                            </Button>
-                          </PopoverTrigger>
-                           <PopoverContent className="w-auto p-0">
-                             <Calendar
-                               mode="single"
-                               selected={period.endDate}
-                               onSelect={(date) => updateAvailabilityPeriod(index, 'endDate', date)}
-                               disabled={(date) => {
-                                 if (jobStartDate && date < new Date(jobStartDate)) return true;
-                                 if (jobEndDate && date > new Date(jobEndDate)) return true;
-                                 if (period.startDate && date < period.startDate) return true;
-                                 return false;
-                               }}
-                                modifiers={{
-                                  available: (date) => isDateAvailable(date),
-                                  existing: (date) => isDateExisting(date)
-                                }}
-                                modifiersStyles={{
-                                  available: { 
-                                    backgroundColor: 'hsl(var(--primary) / 0.15)',
-                                    color: 'hsl(var(--primary))',
-                                    fontWeight: 'bold',
-                                    border: '2px solid hsl(var(--primary))'
-                                  },
-                                  existing: {
-                                    backgroundColor: 'hsl(var(--destructive) / 0.1)',
-                                    color: 'hsl(var(--destructive))',
-                                    fontWeight: 'bold'
-                                  }
-                                }}
-                               className="pointer-events-auto"
-                             />
-                           </PopoverContent>
-                        </Popover>
-                      </div>
-                      
-                      {availabilityPeriods.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAvailabilityPeriod(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <label className="text-sm font-medium">Instructions</label>
+                <Textarea
+                  placeholder="Special instructions for this placement..."
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Notes</label>
+                <Textarea
+                  placeholder="Internal notes about this placement..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="min-h-[80px]"
+                />
               </div>
 
               <div>
@@ -624,40 +278,46 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                 </Select>
               </div>
 
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="confirmed"
+                  checked={confirmed}
+                  onCheckedChange={(checked) => setConfirmed(checked === true)}
+                />
+                <label htmlFor="confirmed" className="text-sm font-medium">
+                  Confirmed
+                </label>
+              </div>
             </div>
 
-            {/* Right Column */}
+            {/* Right Column - Date Selection */}
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Instructions</label>
-                <Textarea
-                  placeholder="Instructions for worker..."
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  className="min-h-32 resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Notes</label>
-                <Textarea
-                  placeholder="Internal notes..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="min-h-32 resize-none"
-                />
+                <label className="text-sm font-medium">Working Days</label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select the specific days when this candidate will work.
+                </p>
+                {job && (
+                  <MultiDaySelector
+                    selectedDates={selectedDates}
+                    onDatesChange={setSelectedDates}
+                    availableDates={availableDates}
+                    conflictingDates={conflictingDates}
+                    job={job}
+                  />
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button 
             onClick={handleSave} 
-            disabled={isLoading || availabilityPeriods.length === 0}
+            disabled={isLoading || selectedDates.length === 0}
           >
             {isLoading ? 'Saving...' : 'Save Changes'}
           </Button>

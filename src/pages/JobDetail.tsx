@@ -428,14 +428,13 @@ const JobDetail = () => {
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSavePlacement}
         placement={selectedPlacement}
+        job={job}
         existingPlacements={job?.placements || []}
         slots={job?.vacancies ? Array.from({length: job.vacancies}, (_, i) => ({
           id: i + 1,
           placements: [],
           occupiedDates: new Set<string>()
         })) : [{id: 1, placements: [], occupiedDates: new Set<string>()}]}
-        jobStartDate={job?.startDate}
-        jobEndDate={job?.endDate}
       />
     </AdminLayout>
   );

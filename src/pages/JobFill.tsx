@@ -824,10 +824,9 @@ const JobFill = () => {
               refetchPlacements();
             }}
             placement={selectedPlacement}
-            existingPlacements={job?.placements || []}
-            slots={job?.slots || []}
-            jobStartDate={job?.startDate}
-            jobEndDate={job?.endDate}
+            job={job}
+            existingPlacements={existingPlacements?.results || []}
+            slots={slots}
           />
         )}
 
