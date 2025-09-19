@@ -679,18 +679,6 @@ const JobFill = () => {
                             Edit
                           </Button>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // Toggle expanded state logic would go here
-                            }}
-                            className="h-6 w-6 p-0 text-xs"
-                          >
-                            +
-                          </Button>
-                        </div>
                       </div>
                       
                       {/* Availability periods on single line */}

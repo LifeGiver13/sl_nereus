@@ -192,7 +192,9 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   if (!placement) return null;
 
-  const candidateName = placement.user?.profile?.Forename && placement.user?.profile?.Surname 
+  const candidateName = placement.candidate?.profile?.Forename && placement.candidate?.profile?.Surname 
+    ? `${placement.candidate.profile.Forename} ${placement.candidate.profile.Surname}`
+    : placement.candidate?.username || placement.user?.profile?.Forename && placement.user?.profile?.Surname 
     ? `${placement.user.profile.Forename} ${placement.user.profile.Surname}`
     : placement.user?.username || 'N/A';
 
@@ -322,13 +324,6 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                 </Select>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  checked={confirmed}
-                  onCheckedChange={(checked) => setConfirmed(checked as boolean)}
-                />
-                <label className="text-sm font-medium">Confirmed</label>
-              </div>
             </div>
 
             {/* Right Column */}
