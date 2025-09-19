@@ -108,9 +108,10 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     console.log('=== FILTERING EXISTING PLACEMENTS ===');
     console.log('Current placement being edited:', placement?.id);
     console.log('Selected slot ID:', selectedSlotId);
-    console.log('Total existing placements:', existingPlacements.length);
+    console.log('Total existing placements:', existingPlacements?.length || 0);
     
-    if (!selectedSlotId) {
+    if (!selectedSlotId || !existingPlacements) {
+      console.log('Early return: no slot or placements');
       setFilteredExistingPlacements([]);
       return;
     }
@@ -120,12 +121,12 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       const isCurrentPlacement = p.id === placement?.id;
       const isSameSlot = placementSlotId === selectedSlotId;
       
-      console.log(`Placement ${p.id}: slotId=${placementSlotId}, isSameSlot=${isSameSlot}, isCurrentPlacement=${isCurrentPlacement}`);
+      console.log(`Placement ${p.id}: slotId=${placementSlotId}, isSameSlot=${isSameSlot}, isCurrentPlacement=${isCurrentPlacement}, willInclude=${isSameSlot && !isCurrentPlacement}`);
       
       return isSameSlot && !isCurrentPlacement;
     });
 
-    console.log('Filtered placements for slot:', slotPlacements.length);
+    console.log('Filtered placements for slot (after excluding current):', slotPlacements.length);
     console.log('Filtered placements:', slotPlacements.map(p => ({
       id: p.id,
       slotId: p.meta?.slotId,
