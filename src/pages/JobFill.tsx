@@ -758,21 +758,6 @@ const JobFill = () => {
               <CardDescription>Find and add users to fill this job</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select Slot</label>
-                <Select value={selectedSlotId.toString()} onValueChange={(value) => setSelectedSlotId(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {slots.map((slot) => (
-                      <SelectItem key={slot.id} value={slot.id.toString()}>
-                        Slot {slot.id} ({slot.placements.length} candidates, {slot.occupiedDates.size} days occupied)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <UserSearchForm 
                 onUserSelect={(user) => handleAddUser(user, 'search')}
                 disabled={false}
