@@ -16,6 +16,7 @@ import PlacementEditModal from '../components/PlacementEditModal';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { JobAssignee } from '../types/job';
 
 interface Job {
   id: number;
@@ -403,13 +404,13 @@ const JobFill = () => {
       }
     }
 
-    // Create JobAssignee entry
-    const newAssignee = {
-      userId,
+    // Create JobAssignee entry with correct field mapping
+    const newAssignee: JobAssignee = {
+      userId: userId,
       assignedBy: 1, // TODO: Get from auth context
       assignmentDate: date,
-      status: 'selected',
-      slot: slotIndex + 1, // Convert 0-based index to 1-based slot number
+      status: 'accepted', // Default status should be accepted
+      slot: Math.min(slotIndex + 1, job.vacancies), // Ensure slot doesn't exceed job vacancies
     };
 
     // Update job.assignees array
@@ -419,15 +420,19 @@ const JobFill = () => {
     console.log('📊 Updating job with new assignee:', newAssignee);
 
     try {
+      // Send full job object (PUT request)
+      const updatedJob = {
+        ...job,
+        assignees: updatedAssignees,
+      };
+
       const jobResponse = await fetch(`${API_BASE_URL}/job/${job.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'x-service-user': localStorage.getItem('session_token') || '',
         },
-        body: JSON.stringify({
-          assignees: updatedAssignees,
-        }),
+        body: JSON.stringify(updatedJob),
       });
 
       if (!jobResponse.ok) {
