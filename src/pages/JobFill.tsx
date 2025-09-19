@@ -357,6 +357,8 @@ const JobFill = () => {
 
   // Handle direct assignment from calendar
   const handleAssignCandidate = async (slotId: number, candidateId: number, date: Date) => {
+    console.log('Assignment request:', { slotId, candidateId, date });
+    
     // Find the candidate in the slot
     const slot = slots.find(s => s.id === slotId);
     const candidate = slot?.placements.find(p => p.userId === candidateId);
@@ -372,23 +374,34 @@ const JobFill = () => {
 
     // Add this date to the candidate's availability
     const currentAvailability = candidate.meta?.availability || [];
-    const newAvailability = [...currentAvailability, date];
+    const newAvailability = [...currentAvailability, date.toISOString()];
+
+    const requestBody = {
+      meta: {
+        ...candidate.meta,
+        availability: newAvailability
+      }
+    };
+    
+    console.log('Sending PUT request to:', `${API_BASE_URL}/placement/${candidate.id}`);
+    console.log('Request body:', requestBody);
 
     try {
       const response = await fetch(`${API_BASE_URL}/placement/${candidate.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'x-service-user': localStorage.getItem('session_token') || '',
         },
-        body: JSON.stringify({
-          meta: {
-            ...candidate.meta,
-            availability: newAvailability
-          }
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('Response status:', response.status);
+      
       if (response.ok) {
+        const responseData = await response.json();
+        console.log('Response data:', responseData);
+        
         toast({
           title: "Success",
           description: "Candidate assigned to date successfully.",
@@ -397,6 +410,8 @@ const JobFill = () => {
         // Refresh placements
         await refetchPlacements();
       } else {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
         toast({
           title: "Error",
           description: "Failed to assign candidate to date.",
