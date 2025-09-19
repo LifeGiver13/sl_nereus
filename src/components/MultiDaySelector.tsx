@@ -114,23 +114,10 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
               return selectedDateStrings.has(dateStr);
             }
           }}
-          modifiersStyles={{
-            available: { 
-              backgroundColor: 'hsl(var(--primary) / 0.1)', 
-              color: 'hsl(var(--primary))',
-              border: '1px solid hsl(var(--primary) / 0.3)'
-            },
-            occupied: { 
-              backgroundColor: 'hsl(var(--destructive) / 0.1)', 
-              color: 'hsl(var(--destructive))',
-              border: '1px solid hsl(var(--destructive) / 0.3)',
-              textDecoration: 'line-through'
-            },
-            selected: {
-              backgroundColor: 'hsl(var(--primary))',
-              color: 'hsl(var(--primary-foreground))',
-              fontWeight: 'bold'
-            }
+          modifiersClassNames={{
+            available: 'rdp-day_available',
+            occupied: 'rdp-day_occupied',
+            selected: 'rdp-day_selected'
           }}
           className={cn("p-3 pointer-events-auto")}
         />
