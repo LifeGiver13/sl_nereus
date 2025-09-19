@@ -40,12 +40,12 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   const [endDate, setEndDate] = useState<string>(
     editingPlacement?.meta?.availability?.[0]?.endDate 
       ? new Date(editingPlacement.meta.availability[0].endDate).toISOString().split('T')[0]
-      : jobStartDate.split('T')[0]
+      : jobEndDate.split('T')[0] // Default to job end date for range mode
   );
   const [singleDate, setSingleDate] = useState<boolean>(
     editingPlacement?.meta?.availability?.[0]
       ? new Date(editingPlacement.meta.availability[0].startDate).toDateString() === new Date(editingPlacement.meta.availability[0].endDate).toDateString()
-      : true
+      : false // Default to date range mode for new placements
   );
   const { toast } = useToast();
 
