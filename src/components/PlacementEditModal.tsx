@@ -256,6 +256,12 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       return;
     }
 
+    console.log('=== SAVE HANDLER START ===');
+    console.log('Current availability periods:', availabilityPeriods.map(p => ({
+      start: p.startDate.toISOString().split('T')[0],
+      end: p.endDate.toISOString().split('T')[0]
+    })));
+
     // Validate availability periods
     for (const period of availabilityPeriods) {
       if (period.startDate > period.endDate) {
@@ -289,6 +295,25 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       return;
     }
 
+    const saveData = {
+      status,
+      confirmed,
+      startDate: availabilityPeriods[0].startDate.toISOString().split('T')[0],
+      endDate: availabilityPeriods[availabilityPeriods.length - 1].endDate.toISOString().split('T')[0],
+      meta: {
+        instructions,
+        notes,
+        slotId: selectedSlotId,
+        availability: availabilityPeriods.map(period => ({
+          startDate: period.startDate.toISOString().split('T')[0],
+          endDate: period.endDate.toISOString().split('T')[0]
+        }))
+      }
+    };
+
+    console.log('=== SAVE DATA ===');
+    console.log('Save data being sent:', saveData);
+
     setIsLoading(true);
     try {
       // Update placement
@@ -297,26 +322,21 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          status,
-          confirmed,
-          startDate: availabilityPeriods[0].startDate.toISOString().split('T')[0],
-          endDate: availabilityPeriods[availabilityPeriods.length - 1].endDate.toISOString().split('T')[0],
-          meta: {
-            instructions,
-            notes,
-            slotId: selectedSlotId,
-            availability: availabilityPeriods.map(period => ({
-              startDate: period.startDate.toISOString().split('T')[0],
-              endDate: period.endDate.toISOString().split('T')[0]
-            }))
-          }
-        }),
+        body: JSON.stringify(saveData),
       });
 
+      console.log('=== API RESPONSE ===');
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Failed to update placement');
+        const errorText = await response.text();
+        console.error('API Error response:', errorText);
+        throw new Error(`Failed to update placement: ${response.status} ${errorText}`);
       }
+
+      const responseData = await response.json();
+      console.log('Response data:', responseData);
 
       toast({
         title: "Success",
