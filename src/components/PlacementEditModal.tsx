@@ -149,20 +149,21 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   // Check for date conflicts with existing placements in the same slot
   const checkDateConflicts = (newPeriods: AvailabilityPeriod[]) => {
-    if (!selectedSlotId || filteredExistingPlacements.length === 0) {
-      console.log('No conflicts to check - slot:', selectedSlotId, 'existing placements:', filteredExistingPlacements.length);
-      return [];
-    }
-
-    const conflicts: string[] = [];
-    
     console.log('=== CONFLICT DETECTION START ===');
+    console.log('Current placement ID being edited:', placement?.id);
     console.log('Checking conflicts for slot', selectedSlotId);
     console.log('Existing placements count:', filteredExistingPlacements.length);
     console.log('New periods to check:', newPeriods.map(p => ({
       start: p.startDate.toISOString().split('T')[0],
       end: p.endDate.toISOString().split('T')[0]
     })));
+    
+    if (!selectedSlotId || filteredExistingPlacements.length === 0) {
+      console.log('No conflicts to check - slot:', selectedSlotId, 'existing placements:', filteredExistingPlacements.length);
+      return [];
+    }
+
+    const conflicts: string[] = [];
     
     for (let i = 0; i < newPeriods.length; i++) {
       const newPeriod = newPeriods[i];
@@ -195,18 +196,13 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           console.log(`    Overlap check: ${newStart.toISOString()} <= ${existingEnd.toISOString()} (${newStart <= existingEnd}) AND ${newEnd.toISOString()} >= ${existingStart.toISOString()} (${newEnd >= existingStart}) = ${periodsOverlap}`);
           
           if (periodsOverlap) {
-            // Check if we're editing the same placement - if so, don't count it as a conflict
-            if (existingPlacement.id === placement?.id) {
-              console.log(`    Skipping conflict for same placement (ID: ${existingPlacement.id})`);
-              continue;
-            }
-            
             const candidateName = existingPlacement.user?.profile?.Forename && existingPlacement.user?.profile?.Surname
               ? `${existingPlacement.user.profile.Forename} ${existingPlacement.user.profile.Surname}`
               : existingPlacement.user?.displayName?.split(' (')[0] || 
                 existingPlacement.user?.username || 'Unknown';
             
-            const conflictMessage = `${format(newPeriod.startDate, "MMM d")} - ${format(newPeriod.endDate, "MMM d")} conflicts with ${candidateName} (${format(existingStart, "MMM d")} - ${format(existingEnd, "MMM d")})`;
+            // Use the actual new period dates, not the incorrectly calculated ones
+            const conflictMessage = `${newPeriod.startDate.toISOString().split('T')[0]} - ${newPeriod.endDate.toISOString().split('T')[0]} conflicts with ${candidateName} (${existingPeriod.startDate} - ${existingPeriod.endDate})`;
             conflicts.push(conflictMessage);
             
             console.log(`    *** CONFLICT DETECTED: ${conflictMessage}`);
@@ -239,24 +235,37 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const getAvailableDates = () => {
     const availableDates = new Set<string>();
     
-    // Add all dates from existing availability periods
-    availabilityPeriods.forEach(period => {
+    console.log('=== GETTING AVAILABLE DATES ===');
+    console.log('Current availability periods:', availabilityPeriods.length);
+    
+    // Add all dates from current availability periods
+    availabilityPeriods.forEach((period, index) => {
+      console.log(`Period ${index + 1}:`, {
+        start: period.startDate.toISOString().split('T')[0],
+        end: period.endDate.toISOString().split('T')[0]
+      });
+      
       const currentDate = new Date(period.startDate);
-      const endDate = period.endDate || period.startDate;
+      const endDate = period.endDate;
       
       while (currentDate <= endDate) {
-        availableDates.add(currentDate.toISOString().split('T')[0]);
+        const dateStr = currentDate.toISOString().split('T')[0];
+        availableDates.add(dateStr);
+        console.log(`  Adding available date: ${dateStr}`);
         currentDate.setDate(currentDate.getDate() + 1);
       }
     });
     
+    console.log('Total available dates:', availableDates.size);
+    console.log('Available dates:', Array.from(availableDates));
     return availableDates;
   };
 
   // Check if a date should be highlighted (available)
   const isDateAvailable = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return getAvailableDates().has(dateStr);
+    const available = getAvailableDates().has(dateStr);
+    return available;
   };
 
   const handleSave = async () => {
