@@ -63,16 +63,18 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
   // Calculate the current week's end
   const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
 
-  // Get working days for the current week within job range
+  // Get all days for the current week (always show full week)
   const weekDays = eachDayOfInterval({ 
-    start: currentWeekStart > jobStart ? currentWeekStart : jobStart,
-    end: currentWeekEnd < jobEnd ? currentWeekEnd : jobEnd
-  }).filter(day => {
-    if (!includeWeekends && isWeekend(day)) {
-      return false;
-    }
-    return day >= jobStart && day <= jobEnd;
+    start: currentWeekStart,
+    end: currentWeekEnd
   });
+
+  // Helper function to check if a day is applicable (within job range and not excluded weekend)
+  const isDayApplicable = (day: Date) => {
+    if (day < jobStart || day > jobEnd) return false;
+    if (!includeWeekends && isWeekend(day)) return false;
+    return true;
+  };
 
   // Navigation functions
   const goToPreviousWeek = () => {
@@ -176,21 +178,24 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                 <TableHead className="w-48 sticky left-0 bg-muted/50 border-r font-semibold">
                   Slot / Candidates
                 </TableHead>
-                {weekDays.map((day, index) => (
-                  <TableHead key={index} className="text-center min-w-28 border-r last:border-r-0">
-                    <div className="space-y-1 py-2">
-                      <div className="text-xs font-medium text-muted-foreground">
-                        {format(day, 'EEE')}
+                {weekDays.map((day, index) => {
+                  const isApplicable = isDayApplicable(day);
+                  return (
+                    <TableHead key={index} className="text-center min-w-28 border-r last:border-r-0">
+                      <div className={`space-y-1 py-2 ${!isApplicable ? 'opacity-40' : ''}`}>
+                        <div className="text-xs font-medium text-muted-foreground">
+                          {format(day, 'EEE')}
+                        </div>
+                        <div className="text-lg font-bold">
+                          {format(day, 'dd')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(day, 'MMM')}
+                        </div>
                       </div>
-                      <div className="text-lg font-bold">
-                        {format(day, 'dd')}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(day, 'MMM')}
-                      </div>
-                    </div>
-                  </TableHead>
-                ))}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -201,19 +206,11 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                     <TableCell className="sticky left-0 bg-background border-r">
                       <div className="space-y-3 py-2">
                         <div className="font-semibold text-sm text-primary">Slot {slot.id}</div>
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                           {candidates.length > 0 ? (
                             candidates.map((candidate) => (
-                              <div key={candidate.userId} className="space-y-1">
-                                <div className="text-xs font-medium truncate max-w-40" title={candidate.user.displayName}>
-                                  {candidate.user.displayName.split(' ').slice(0, 2).join(' ')}
-                                </div>
-                                <Badge 
-                                  variant="secondary" 
-                                  className={`text-xs ${getStatusColor(candidate.status)}`}
-                                >
-                                  {candidate.status}
-                                </Badge>
+                              <div key={candidate.userId} className="text-xs font-medium truncate max-w-40" title={candidate.user.displayName}>
+                                {candidate.user.displayName.split(' ').slice(0, 2).join(' ')}
                               </div>
                             ))
                           ) : (
@@ -224,9 +221,10 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                     </TableCell>
                     {weekDays.map((day, dayIndex) => {
                       const assignment = getAssignmentForSlotAndDate(slot.id, day);
+                      const isApplicable = isDayApplicable(day);
                       return (
-                        <TableCell key={dayIndex} className="text-center p-2 border-r last:border-r-0">
-                          {assignment ? (
+                        <TableCell key={dayIndex} className={`text-center p-2 border-r last:border-r-0 ${!isApplicable ? 'bg-muted/30' : ''}`}>
+                          {assignment && isApplicable ? (
                             <div className="bg-primary/10 rounded-md p-2 space-y-1 border border-primary/20">
                               <div className="text-xs font-semibold truncate" title={assignment.user.displayName}>
                                 {assignment.user.displayName.split(' ')[0]}
@@ -236,7 +234,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                               </div>
                             </div>
                           ) : (
-                            <div className="text-xs text-muted-foreground py-4">-</div>
+                            <div className={`text-xs text-muted-foreground py-4 ${!isApplicable ? 'opacity-40' : ''}`}>-</div>
                           )}
                         </TableCell>
                       );
