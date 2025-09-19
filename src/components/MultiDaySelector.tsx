@@ -22,29 +22,6 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
   job,
   className
 }) => {
-  const handleDateSelect = (date: Date | undefined) => {
-    if (!date) return;
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-
-    // Don't allow selection of conflicting dates
-    if (conflictingDates.has(dateStr)) return;
-
-    // Check if date is already selected
-    const isSelected = selectedDates.some(selectedDate => isSameDay(selectedDate, date));
-    
-    if (isSelected) {
-      // Remove the date
-      onDatesChange(selectedDates.filter(selectedDate => !isSameDay(selectedDate, date)));
-    } else {
-      // Add the date
-      onDatesChange([...selectedDates, date]);
-    }
-  };
-
   const removeDate = (dateToRemove: Date) => {
     onDatesChange(selectedDates.filter(date => !isSameDay(date, dateToRemove)));
   };
@@ -62,9 +39,16 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
     <div className={cn("space-y-4", className)}>
       <div>
         <Calendar
-          mode="single"
-          selected={undefined}
-          onSelect={handleDateSelect}
+          mode="multiple"
+          selected={selectedDates}
+          onSelect={(dates) => {
+            if (dates) {
+              onDatesChange(Array.isArray(dates) ? dates : [dates]);
+            } else {
+              onDatesChange([]);
+            }
+          }}
+          defaultMonth={new Date(job.startDate)}
           disabled={(date) => {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -106,19 +90,11 @@ export const MultiDaySelector: React.FC<MultiDaySelectorProps> = ({
               const day = String(date.getDate()).padStart(2, '0');
               const dateStr = `${year}-${month}-${day}`;
               return conflictingDates.has(dateStr);
-            },
-            selected: (date) => {
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, '0');
-              const day = String(date.getDate()).padStart(2, '0');
-              const dateStr = `${year}-${month}-${day}`;
-              return selectedDateStrings.has(dateStr);
             }
           }}
           modifiersStyles={{
             available: { backgroundColor: 'hsl(var(--primary) / 0.2)', color: 'hsl(var(--primary))' },
-            conflicting: { backgroundColor: 'hsl(var(--destructive) / 0.2)', color: 'hsl(var(--destructive))' },
-            selected: { backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }
+            conflicting: { backgroundColor: 'hsl(var(--destructive) / 0.2)', color: 'hsl(var(--destructive))' }
           }}
           className={cn("p-3 pointer-events-auto")}
         />
