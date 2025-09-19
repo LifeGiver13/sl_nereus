@@ -299,32 +299,48 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
         ) : canBeAssigned ? (
           // Unfilled but assignable day - amber background, clickable
           isEditing ? (
-            <div className="bg-amber-100 dark:bg-amber-900 rounded-md p-2 border border-amber-200 dark:border-amber-800">
-              <Select 
-                open={true}
-                onValueChange={(value) => {
-                  console.log('📋 Dropdown selection made:', { slotId, candidateId: value, date: date.toISOString() });
-                  handleAssignCandidate(slotId, parseInt(value), date);
-                }}
-                onOpenChange={(open) => !open && setEditingCell(null)}
-              >
-                <SelectTrigger className="h-6 text-xs border-0 bg-transparent">
-                  <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {candidates.map((candidate) => (
-                    <SelectItem key={candidate.userId} value={candidate.userId.toString()}>
-                      <span className="text-xs">{candidate.user.displayName}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            (() => {
+              console.log('💡 Dropdown should be open:', { isEditing, candidates: candidates.length });
+              return (
+                <div className="bg-amber-100 dark:bg-amber-900 rounded-md p-2 border border-amber-200 dark:border-amber-800">
+                  <Select 
+                    open={true}
+                    onValueChange={(value) => {
+                      console.log('📋 Dropdown selection made:', { slotId, candidateId: value, date: date.toISOString() });
+                      handleAssignCandidate(slotId, parseInt(value), date);
+                    }}
+                    onOpenChange={(open) => {
+                      console.log('📋 Dropdown open state changed:', open);
+                      if (!open) setEditingCell(null);
+                    }}
+                  >
+                    <SelectTrigger className="h-6 text-xs border-0 bg-transparent">
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {candidates.map((candidate) => {
+                        console.log('📋 Rendering candidate option:', candidate.user.displayName);
+                        return (
+                          <SelectItem key={candidate.userId} value={candidate.userId.toString()}>
+                            <span className="text-xs">{candidate.user.displayName}</span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })()
           ) : (
             <div 
               className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
               onClick={() => {
-                console.log('📱 Click to assign triggered:', { slotId, date: date.toISOString() });
+                console.log('📱 Click to assign triggered:', { 
+                  slotId, 
+                  date: date.toISOString(),
+                  candidates: candidates.length,
+                  candidateNames: candidates.map(c => c.user.displayName)
+                });
                 setEditingCell({ slotId, date });
               }}
             >
