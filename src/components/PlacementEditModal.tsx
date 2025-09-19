@@ -112,14 +112,20 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     
     const updated = [...availabilityPeriods];
     updated[index] = { ...updated[index], [field]: date };
+    
+    // Auto-set end date to start date if not specified (for single date periods)
+    if (field === 'startDate' && !updated[index].endDate) {
+      updated[index].endDate = date;
+    }
+    
     setAvailabilityPeriods(updated);
   };
 
   const handleSave = async () => {
-    if (!placement || !selectedSlotId || availabilityPeriods.length === 0) {
+    if (!placement || availabilityPeriods.length === 0) {
       toast({
         title: "Error",
-        description: "Please select a slot and at least one availability period",
+        description: "Please add at least one availability period",
         variant: "destructive",
       });
       return;
@@ -148,7 +154,6 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         body: JSON.stringify({
           status,
           confirmed,
-          slotId: selectedSlotId,
           startDate: availabilityPeriods[0].startDate.toISOString().split('T')[0],
           endDate: availabilityPeriods[availabilityPeriods.length - 1].endDate.toISOString().split('T')[0],
           meta: {
@@ -193,172 +198,161 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Placement</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-          <div>
-            <p className="text-sm text-gray-500">Candidate</p>
-            <p className="font-medium">{candidateName}</p>
-          </div>
+        <div className="flex-1 overflow-hidden">
+          <div className="grid grid-cols-2 gap-6 h-full">
+            {/* Left Column */}
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Candidate</p>
+                <p className="font-medium">{candidateName}</p>
+              </div>
 
-          {/* Slot Selection */}
-          <div>
-            <label className="text-sm font-medium">Slot</label>
-            <Select value={selectedSlotId?.toString() || ''} onValueChange={(value) => setSelectedSlotId(parseInt(value))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a slot" />
-              </SelectTrigger>
-              <SelectContent>
-                {slots.map((slot) => (
-                  <SelectItem key={slot.id} value={slot.id.toString()}>
-                    {slot.name} ({slot.requiredWorkers} workers needed)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Availability Periods */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Availability Periods</label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addAvailabilityPeriod}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Period
-              </Button>
-            </div>
-            
-            <div className="space-y-3">
-              {availabilityPeriods.map((period, index) => (
-                <div key={index} className="flex items-center space-x-2 p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-500">Start Date</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !period.startDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {period.startDate ? format(period.startDate, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={period.startDate}
-                          onSelect={(date) => updateAvailabilityPeriod(index, 'startDate', date)}
-                          className="pointer-events-auto"
-                          disabled={(date) => {
-                            if (jobStartDate && date < new Date(jobStartDate)) return true;
-                            if (jobEndDate && date > new Date(jobEndDate)) return true;
-                            return false;
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-500">End Date</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !period.endDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {period.endDate ? format(period.endDate, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={period.endDate}
-                          onSelect={(date) => updateAvailabilityPeriod(index, 'endDate', date)}
-                          className="pointer-events-auto"
-                          disabled={(date) => {
-                            if (jobStartDate && date < new Date(jobStartDate)) return true;
-                            if (jobEndDate && date > new Date(jobEndDate)) return true;
-                            if (period.startDate && date < period.startDate) return true;
-                            return false;
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  
-                  {availabilityPeriods.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeAvailabilityPeriod(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+              {/* Availability Periods */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-medium">Availability Periods</label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addAvailabilityPeriod}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Period
+                  </Button>
                 </div>
-              ))}
+                
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {availabilityPeriods.map((period, index) => (
+                    <div key={index} className="flex items-end space-x-2 p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <label className="text-xs text-muted-foreground">Start Date</label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !period.startDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {period.startDate ? format(period.startDate, "MMM d") : "Pick date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={period.startDate}
+                              onSelect={(date) => updateAvailabilityPeriod(index, 'startDate', date)}
+                              disabled={(date) => {
+                                if (jobStartDate && date < new Date(jobStartDate)) return true;
+                                if (jobEndDate && date > new Date(jobEndDate)) return true;
+                                return false;
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <label className="text-xs text-muted-foreground">End Date (optional)</label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !period.endDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {period.endDate ? format(period.endDate, "MMM d") : "Same day"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={period.endDate}
+                              onSelect={(date) => updateAvailabilityPeriod(index, 'endDate', date)}
+                              disabled={(date) => {
+                                if (jobStartDate && date < new Date(jobStartDate)) return true;
+                                if (jobEndDate && date > new Date(jobEndDate)) return true;
+                                if (period.startDate && date < period.startDate) return true;
+                                return false;
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      
+                      {availabilityPeriods.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAvailabilityPeriod(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Status</label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={confirmed}
+                  onCheckedChange={(checked) => setConfirmed(checked as boolean)}
+                />
+                <label className="text-sm font-medium">Confirmed</label>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="text-sm font-medium">Instructions</label>
-            <Textarea
-              placeholder="Instructions for worker..."
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              className="min-h-[80px]"
-            />
-          </div>
+            {/* Right Column */}
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Instructions</label>
+                <Textarea
+                  placeholder="Instructions for worker..."
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  className="min-h-32 resize-none"
+                />
+              </div>
 
-          <div>
-            <label className="text-sm font-medium">Notes</label>
-            <Textarea
-              placeholder="Internal notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[80px]"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Status</label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              checked={confirmed}
-              onCheckedChange={(checked) => setConfirmed(checked as boolean)}
-            />
-            <label className="text-sm font-medium">Confirmed</label>
+              <div>
+                <label className="text-sm font-medium">Notes</label>
+                <Textarea
+                  placeholder="Internal notes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="min-h-32 resize-none"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -368,7 +362,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           </Button>
           <Button 
             onClick={handleSave} 
-            disabled={isLoading || !selectedSlotId || availabilityPeriods.length === 0}
+            disabled={isLoading || availabilityPeriods.length === 0}
           >
             {isLoading ? 'Saving...' : 'Save Changes'}
           </Button>
