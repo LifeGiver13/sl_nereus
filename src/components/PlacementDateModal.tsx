@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PlacementDateModalProps {
   open: boolean;
@@ -31,16 +35,16 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   onConfirm,
   editingPlacement
 }) => {
-  const [selectedSlotId, setSelectedSlotId] = useState<number>(editingPlacement?.meta?.slotId || 1);
-  const [startDate, setStartDate] = useState<string>(
+  const [selectedSlotId, setSelectedSlotId] = useState<number>(editingPlacement?.meta?.slotId || slots[0]?.id || 1);
+  const [startDate, setStartDate] = useState<Date | undefined>(
     editingPlacement?.meta?.availability?.[0]?.startDate 
-      ? new Date(editingPlacement.meta.availability[0].startDate).toISOString().split('T')[0]
-      : jobStartDate.split('T')[0]
+      ? new Date(editingPlacement.meta.availability[0].startDate)
+      : undefined
   );
-  const [endDate, setEndDate] = useState<string>(
+  const [endDate, setEndDate] = useState<Date | undefined>(
     editingPlacement?.meta?.availability?.[0]?.endDate 
-      ? new Date(editingPlacement.meta.availability[0].endDate).toISOString().split('T')[0]
-      : jobEndDate.split('T')[0] // Default to job end date for range mode
+      ? new Date(editingPlacement.meta.availability[0].endDate)
+      : undefined
   );
   const [singleDate, setSingleDate] = useState<boolean>(
     editingPlacement?.meta?.availability?.[0]
@@ -49,7 +53,53 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   );
   const { toast } = useToast();
 
-  const checkDateAvailability = (slotId: number, start: string, end: string): boolean => {
+  // Get available and conflicting dates for highlighting
+  const { availableDates, conflictingDates } = useMemo(() => {
+    const selectedSlot = slots.find(s => s.id === selectedSlotId);
+    const jobStart = new Date(jobStartDate);
+    const jobEnd = new Date(jobEndDate);
+    const available = new Set<string>();
+    const conflicts = new Set<string>();
+    
+    if (!selectedSlot) return { availableDates: available, conflictingDates: conflicts };
+    
+    // Generate all job dates
+    const current = new Date(jobStart);
+    while (current <= jobEnd) {
+      const dateStr = current.toISOString().split('T')[0];
+      
+      // If editing, include dates from current placement as available
+      if (editingPlacement?.meta?.availability) {
+        const isCurrentPlacementDate = editingPlacement.meta.availability.some((window: any) => {
+          const start = new Date(window.startDate);
+          const end = new Date(window.endDate);
+          const checkDate = new Date(current);
+          return checkDate >= start && checkDate <= end;
+        });
+        
+        if (isCurrentPlacementDate) {
+          available.add(dateStr);
+        } else if (selectedSlot.occupiedDates.has(dateStr)) {
+          conflicts.add(dateStr);
+        } else {
+          available.add(dateStr);
+        }
+      } else {
+        // For new placements, exclude occupied dates
+        if (selectedSlot.occupiedDates.has(dateStr)) {
+          conflicts.add(dateStr);
+        } else {
+          available.add(dateStr);
+        }
+      }
+      
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return { availableDates: available, conflictingDates: conflicts };
+  }, [slots, selectedSlotId, jobStartDate, jobEndDate, editingPlacement]);
+
+  const checkDateAvailability = (slotId: number, start: Date, end: Date): boolean => {
     const slot = slots.find(s => s.id === slotId);
     if (!slot) return false;
 
@@ -59,17 +109,19 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     // Create a copy of occupied dates, excluding current placement's dates if editing
     const occupiedDates = new Set(slot.occupiedDates);
     
-    if (editingPlacement) {
+    if (editingPlacement?.meta?.availability) {
       // Remove current placement's dates from occupied dates
-      const editingStart = new Date(editingPlacement.startDate);
-      const editingEnd = new Date(editingPlacement.endDate);
-      const editingCurrent = new Date(editingStart);
-      
-      while (editingCurrent <= editingEnd) {
-        const dateString = editingCurrent.toISOString().split('T')[0];
-        occupiedDates.delete(dateString);
-        editingCurrent.setDate(editingCurrent.getDate() + 1);
-      }
+      editingPlacement.meta.availability.forEach((window: any) => {
+        const editingStart = new Date(window.startDate);
+        const editingEnd = new Date(window.endDate);
+        const editingCurrent = new Date(editingStart);
+        
+        while (editingCurrent <= editingEnd) {
+          const dateString = editingCurrent.toISOString().split('T')[0];
+          occupiedDates.delete(dateString);
+          editingCurrent.setDate(editingCurrent.getDate() + 1);
+        }
+      });
     }
     
     while (current <= endCheck) {
@@ -87,7 +139,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     if (!startDate) {
       toast({
         title: "Invalid date",
-        description: "Please select a date.",
+        description: "Please select a start date.",
         variant: "destructive",
       });
       return;
@@ -104,7 +156,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
       return;
     }
 
-    if (!singleDate && new Date(startDate) > new Date(finalEndDate)) {
+    if (!singleDate && startDate > finalEndDate!) {
       toast({
         title: "Invalid date range",
         description: "Start date must be before end date.",
@@ -113,7 +165,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
       return;
     }
 
-    if (!checkDateAvailability(selectedSlotId, startDate, finalEndDate)) {
+    if (!checkDateAvailability(selectedSlotId, startDate, finalEndDate!)) {
       toast({
         title: "Date conflict",
         description: "The selected dates conflict with existing placements in this slot.",
@@ -123,8 +175,8 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     }
 
     const availability = [{
-      startDate: new Date(startDate),
-      endDate: new Date(finalEndDate)
+      startDate: startDate,
+      endDate: finalEndDate!
     }];
 
     onConfirm(user, selectedSlotId, availability);
@@ -133,11 +185,11 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
 
   const selectedSlot = slots.find(s => s.id === selectedSlotId);
   const finalEndDate = singleDate ? startDate : endDate;
-  const isDateRangeAvailable = checkDateAvailability(selectedSlotId, startDate, finalEndDate);
+  const isDateRangeAvailable = startDate && finalEndDate ? checkDateAvailability(selectedSlotId, startDate, finalEndDate) : true;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{editingPlacement ? 'Edit Assignment Dates' : 'Add Candidate to Job'}</DialogTitle>
           <DialogDescription>
@@ -182,31 +234,101 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
             <div className={singleDate ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
               <div>
                 <Label htmlFor="start-date">{singleDate ? "Date" : "Start Date"}</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    if (singleDate) {
-                      setEndDate(e.target.value);
-                    }
-                  }}
-                  min={jobStartDate.split('T')[0]}
-                  max={jobEndDate.split('T')[0]}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        setStartDate(date);
+                        if (singleDate) {
+                          setEndDate(date);
+                        }
+                      }}
+                      disabled={(date) => {
+                        const dateStr = date.toISOString().split('T')[0];
+                        return date < new Date(jobStartDate) || 
+                               date > new Date(jobEndDate) ||
+                               conflictingDates.has(dateStr);
+                      }}
+                      modifiers={{
+                        available: (date) => {
+                          const dateStr = date.toISOString().split('T')[0];
+                          return availableDates.has(dateStr);
+                        },
+                        conflicting: (date) => {
+                          const dateStr = date.toISOString().split('T')[0];
+                          return conflictingDates.has(dateStr);
+                        }
+                      }}
+                      modifiersStyles={{
+                        available: { backgroundColor: 'hsl(var(--primary) / 0.2)', color: 'hsl(var(--primary))' },
+                        conflicting: { backgroundColor: 'hsl(var(--destructive) / 0.2)', color: 'hsl(var(--destructive))' }
+                      }}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               {!singleDate && (
                 <div>
                   <Label htmlFor="end-date">End Date</Label>
-                  <Input
-                    id="end-date"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min={startDate}
-                    max={jobEndDate.split('T')[0]}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        disabled={(date) => {
+                          const dateStr = date.toISOString().split('T')[0];
+                          return date < (startDate || new Date(jobStartDate)) || 
+                                 date > new Date(jobEndDate) ||
+                                 conflictingDates.has(dateStr);
+                        }}
+                        modifiers={{
+                          available: (date) => {
+                            const dateStr = date.toISOString().split('T')[0];
+                            return availableDates.has(dateStr);
+                          },
+                          conflicting: (date) => {
+                            const dateStr = date.toISOString().split('T')[0];
+                            return conflictingDates.has(dateStr);
+                          }
+                        }}
+                        modifiersStyles={{
+                          available: { backgroundColor: 'hsl(var(--primary) / 0.2)', color: 'hsl(var(--primary))' },
+                          conflicting: { backgroundColor: 'hsl(var(--destructive) / 0.2)', color: 'hsl(var(--destructive))' }
+                        }}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
             </div>
@@ -216,7 +338,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 Slot {selectedSlotId} has {selectedSlot.occupiedDates.size} occupied days. 
-                Make sure your selected dates don't overlap.
+                Available dates are highlighted in blue, conflicting dates in red.
               </p>
             </div>
           )}
