@@ -35,53 +35,69 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   );
   const { toast } = useToast();
 
-  // Get available and conflicting dates for highlighting
+  // Get available and conflicting dates for highlighting using actual placement data
   const { availableDates, conflictingDates } = useMemo(() => {
-    const selectedSlot = slots.find(s => s.id === selectedSlotId);
     const available = new Set<string>();
     const conflicts = new Set<string>();
     
+    if (!job) return { availableDates: available, conflictingDates: conflicts };
+    
+    // Use the slot's occupied dates directly from the slots data
+    const selectedSlot = slots.find(s => s.id === selectedSlotId);
     if (!selectedSlot) return { availableDates: available, conflictingDates: conflicts };
     
-    // Parse dates more reliably by creating Date objects in local timezone
-    const jobStart = new Date(job.startDate + 'T00:00:00');
-    const jobEnd = new Date(job.endDate + 'T00:00:00');
+    // Parse job dates and set to noon to avoid timezone issues
+    const jobStart = new Date(job.startDate);
+    jobStart.setHours(12, 0, 0, 0);
+    const jobEnd = new Date(job.endDate);
+    jobEnd.setHours(12, 0, 0, 0);
     
-    // Generate all job dates using local date strings to avoid timezone issues
+    // Generate all job dates
     const current = new Date(jobStart);
     
     while (current <= jobEnd) {
-      // Use local date formatting instead of UTC to avoid timezone shifts
       const year = current.getFullYear();
       const month = String(current.getMonth() + 1).padStart(2, '0');
       const day = String(current.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-        // If editing, include dates from current placement as available
-        if (editingPlacement?.meta?.availability) {
-          const isCurrentPlacementDate = editingPlacement.meta.availability.some((placementDate: string | Date) => {
-            const placementDateStr = new Date(placementDate).toISOString().split('T')[0];
-            return placementDateStr === dateStr;
-          });
-          
-          if (isCurrentPlacementDate) {
-            available.add(dateStr);
-          } else if (selectedSlot.occupiedDates.has(dateStr)) {
-            conflicts.add(dateStr);
-          } else {
-            available.add(dateStr);
-          }
-        } else {
-          // For new placements, exclude occupied dates
-          if (selectedSlot.occupiedDates.has(dateStr)) {
-            conflicts.add(dateStr);
-          } else {
-            available.add(dateStr);
-          }
+      // Skip weekends if not included
+      if (job.body?.includeWeekends === false) {
+        const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          current.setDate(current.getDate() + 1);
+          continue;
         }
+      }
+      
+      // If editing, include dates from current placement as available
+      if (editingPlacement?.meta?.availability) {
+        const isCurrentPlacementDate = editingPlacement.meta.availability.some((placementDate: string | Date) => {
+          const placementDateStr = new Date(placementDate).toISOString().split('T')[0];
+          return placementDateStr === dateStr;
+        });
+        
+        if (isCurrentPlacementDate) {
+          available.add(dateStr);
+        } else if (selectedSlot.occupiedDates.has(dateStr)) {
+          conflicts.add(dateStr);
+        } else {
+          available.add(dateStr);
+        }
+      } else {
+        // For new placements, use the slot's occupied dates
+        if (selectedSlot.occupiedDates.has(dateStr)) {
+          conflicts.add(dateStr);
+        } else {
+          available.add(dateStr);
+        }
+      }
       
       current.setDate(current.getDate() + 1);
     }
+    
+    console.log(`Slot ${selectedSlotId} - Available dates:`, Array.from(available));
+    console.log(`Slot ${selectedSlotId} - Conflicting dates:`, Array.from(conflicts));
     
     return { availableDates: available, conflictingDates: conflicts };
   }, [slots, selectedSlotId, job.startDate, job.endDate, editingPlacement]);
@@ -152,12 +168,12 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
           <div>
             <Label htmlFor="slot-select">Slot</Label>
             <Select value={selectedSlotId.toString()} onValueChange={(value) => setSelectedSlotId(parseInt(value))}>
-              <SelectTrigger>
+              <SelectTrigger className="bg-background">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50 bg-background border border-border shadow-lg">
                 {slots.map((slot) => (
-                  <SelectItem key={slot.id} value={slot.id.toString()}>
+                  <SelectItem key={slot.id} value={slot.id.toString()} className="hover:bg-accent">
                     Slot {slot.id} ({slot.placements.length} candidates, {slot.occupiedDates.size} days occupied)
                   </SelectItem>
                 ))}

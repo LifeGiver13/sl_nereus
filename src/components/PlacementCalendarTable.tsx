@@ -354,14 +354,14 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                     <SelectTrigger className="h-6 text-xs border-0 bg-transparent" onClick={(e) => e.preventDefault()}>
                       <SelectValue placeholder="Select candidate..." />
                     </SelectTrigger>
-                    <SelectContent className="z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600">
+                    <SelectContent className="z-50 bg-background border border-border shadow-lg">
                       {candidates.map((candidate) => {
                         console.log('📋 Rendering candidate option:', candidate.user.displayName);
                         return (
                           <SelectItem 
                             key={candidate.userId} 
                             value={candidate.userId.toString()}
-                            className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="hover:bg-accent text-xs"
                           >
                             <span className="text-xs">{candidate.user.displayName}</span>
                           </SelectItem>

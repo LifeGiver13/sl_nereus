@@ -147,25 +147,21 @@ const JobFill = () => {
   }, [job]);
 
   // Calculate occupied dates for a slot based on its placements
-  const calculateOccupiedDates = (placements: PlacementRow[]): Set<string> => {
+  const calculateOccupiedDates = (slotId: number, allPlacements: any[]): Set<string> => {
     const dates = new Set<string>();
-    placements.forEach(placement => {
-      if (placement.meta?.availability && Array.isArray(placement.meta.availability)) {
-        // New format: array of individual dates
-        placement.meta.availability.forEach((dateItem: any) => {
-          if (typeof dateItem === 'string' || dateItem instanceof Date) {
-            // Individual date
-            const date = new Date(dateItem);
-            if (!isNaN(date.getTime())) {
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, '0');
-              const day = String(date.getDate()).padStart(2, '0');
-              dates.add(`${year}-${month}-${day}`);
-            }
-          }
-        });
-      }
+    
+    // Filter placements for this specific slot (vacancy)
+    const slotPlacements = allPlacements.filter(p => p.vacancy === slotId);
+    
+    slotPlacements.forEach(placement => {
+      // Each placement represents one date
+      const placementDate = new Date(placement.shiftDate);
+      placementDate.setHours(12, 0, 0, 0); // Set to noon for consistency
+      const dateString = placementDate.toISOString().split('T')[0];
+      dates.add(dateString);
     });
+    
+    console.log(`Slot ${slotId} occupied dates:`, Array.from(dates));
     return dates;
   };
 
@@ -174,7 +170,11 @@ const JobFill = () => {
     console.log('Existing placements data:', existingPlacements);
     
     if (existingPlacements?.results && Array.isArray(existingPlacements.results) && job && slots.length > 0) {
-      const updatedSlots = slots.map(slot => ({ ...slot, placements: [] }));
+      const updatedSlots = slots.map(slot => ({ 
+        ...slot, 
+        placements: [],
+        occupiedDates: calculateOccupiedDates(slot.id, existingPlacements.results)
+      }));
       
       // Group placements by user to create consolidated placement rows
       const placementsByUser = new Map<number, any[]>();
@@ -226,11 +226,7 @@ const JobFill = () => {
         updatedSlots[targetSlotIndex].placements.push(placementRow);
       });
       
-      // Update occupied dates for each slot
-      updatedSlots.forEach(slot => {
-        slot.occupiedDates = calculateOccupiedDates(slot.placements);
-      });
-      
+      console.log('Updated slots with placement data:', updatedSlots);
       setSlots(updatedSlots);
     }
   }, [existingPlacements, job]);
@@ -569,11 +565,14 @@ const JobFill = () => {
   };
 
   const handleRemoveUser = (userId: number) => {
-    setSlots(slots.map(slot => ({
-      ...slot,
-      placements: slot.placements.filter(p => p.userId !== userId),
-      occupiedDates: calculateOccupiedDates(slot.placements.filter(p => p.userId !== userId))
-    })));
+    setSlots(slots.map(slot => {
+      const updatedPlacements = slot.placements.filter(p => p.userId !== userId);
+      return {
+        ...slot,
+        placements: updatedPlacements,
+        occupiedDates: calculateOccupiedDates(slot.id, existingPlacements?.results || [])
+      };
+    }));
   };
 
   const handleUpdatePlacement = (userId: number, field: 'instructions' | 'notes' | 'status' | 'confirmed' | 'meta', value: string | boolean | any) => {
@@ -583,18 +582,14 @@ const JobFill = () => {
         if (p.userId === userId) {
           if (field === 'meta') {
             const updatedPlacement = { ...p, meta: { ...p.meta, ...value } };
-            // Recalculate occupied dates if availability changed
-            if (value.availability) {
-              slot.occupiedDates = calculateOccupiedDates(slot.placements.map(placement => 
-                placement.userId === userId ? updatedPlacement : placement
-              ));
-            }
             return updatedPlacement;
           }
           return { ...p, [field]: value };
         }
         return p;
-      })
+      }),
+      // Recalculate occupied dates from actual placement data
+      occupiedDates: calculateOccupiedDates(slot.id, existingPlacements?.results || [])
     })));
   };
 
