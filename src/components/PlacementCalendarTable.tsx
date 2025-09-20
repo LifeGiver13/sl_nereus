@@ -133,10 +133,12 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     const dateString = format(date, 'yyyy-MM-dd');
     
     // Find placement in job.placements that matches this slot (vacancy) and date
-    // Since vacancy field is missing from API response, we'll use the slot ID for now
     const placement = job.placements?.find(p => {
-      const placementDate = format(new Date(p.shiftDate), 'yyyy-MM-dd');
-      return placementDate === dateString;
+      // Set placement date to noon to avoid timezone issues
+      const placementDate = new Date(p.shiftDate);
+      placementDate.setHours(12, 0, 0, 0);
+      const placementDateString = format(placementDate, 'yyyy-MM-dd');
+      return placementDateString === dateString && p.vacancy === slotId;
     });
 
     if (!placement || !placement.user) return null;
