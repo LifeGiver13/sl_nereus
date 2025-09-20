@@ -78,8 +78,9 @@ interface PlacementCalendarTableProps {
 
 const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots, onAssignCandidate }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    // Start with the first week of the job
+    // Start with the first week of the job - set to noon to avoid timezone issues
     const jobStart = parseDate(job.startDate);
+    jobStart.setHours(12, 0, 0, 0);
     return startOfWeek(jobStart, { weekStartsOn: 1 }); // Monday start
   });
   const [editingCell, setEditingCell] = useState<{ slotId: number; date: Date } | null>(null);
@@ -89,8 +90,11 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
   // Get all candidates from all slots
   const candidates = slots.flatMap(slot => slot.placements);
 
+  // Parse job dates and set to noon to avoid timezone issues
   const jobStart = parseDate(job.startDate);
+  jobStart.setHours(12, 0, 0, 0);
   const jobEnd = parseDate(job.endDate);
+  jobEnd.setHours(12, 0, 0, 0);
   const includeWeekends = job.body?.includeWeekends !== false;
 
   // Calculate the current week's end
@@ -104,7 +108,11 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
 
   // Helper function to check if a day is applicable (within job range and not excluded weekend)
   const isDayApplicable = (day: Date) => {
-    if (day < jobStart || day > jobEnd) return false;
+    // Set comparison day to noon for consistent timezone handling
+    const comparisonDay = new Date(day);
+    comparisonDay.setHours(12, 0, 0, 0);
+    
+    if (comparisonDay < jobStart || comparisonDay > jobEnd) return false;
     if (!includeWeekends && isWeekend(day)) return false;
     return true;
   };

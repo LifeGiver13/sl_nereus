@@ -97,7 +97,7 @@ const JobFill = () => {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
 
-  const { data: job, isLoading, error } = useQuery({
+  const { data: job, isLoading, error, refetch: refetchJob } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
       console.log('JobFill: Fetching job with ID:', id);
@@ -397,13 +397,17 @@ const JobFill = () => {
     }
 
     try {
+      // Set date to noon to avoid timezone issues
+      const placementDate = new Date(date);
+      placementDate.setHours(12, 0, 0, 0);
+      
       // Create new placement for this specific date and slot
       const newPlacement = {
         userId: userId,
         jobId: job.id,
         departmentId: job.departmentId,
         shiftId: job.shiftId,
-        shiftDate: date,
+        shiftDate: placementDate.toISOString(),
         vacancy: slotIndex + 1, // Convert 0-based index to 1-based vacancy number
         confirmed: true,
         status: 'accepted',
@@ -431,8 +435,8 @@ const JobFill = () => {
         description: "Candidate assigned successfully.",
       });
 
-      // Refresh placements data
-      await refetchPlacements();
+      // Refresh both job and placements data
+      await Promise.all([refetchJob(), refetchPlacements()]);
 
     } catch (error) {
       console.error('❌ Error creating placement:', error);
@@ -447,8 +451,12 @@ const JobFill = () => {
   const handleAddCandidate = async (user: any, slotId: number, availability: Date[]) => {
     try {
       // Create a separate placement for each selected date
-      const placementPromises = availability.map(date => 
-        fetch(`${API_BASE_URL}/placement`, {
+      const placementPromises = availability.map(date => {
+        // Set date to noon to avoid timezone issues
+        const placementDate = new Date(date);
+        placementDate.setHours(12, 0, 0, 0);
+        
+        return fetch(`${API_BASE_URL}/placement`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -459,7 +467,7 @@ const JobFill = () => {
             jobId: job?.id,
             departmentId: job?.departmentId,
             shiftId: job?.shiftId,
-            shiftDate: date,
+            shiftDate: placementDate.toISOString(),
             vacancy: slotId, // Use the slot number directly
             confirmed: true,
             status: 'accepted',
@@ -469,7 +477,7 @@ const JobFill = () => {
             }
           }),
         })
-      );
+      });
 
       const responses = await Promise.all(placementPromises);
       
@@ -484,8 +492,8 @@ const JobFill = () => {
         description: `${user.profile?.Forename || user.firstName} ${user.profile?.Surname || user.lastName} has been added to the job for ${availability.length} date(s).`,
       });
       
-      // Refresh placements
-      await refetchPlacements();
+      // Refresh both job and placements data
+      await Promise.all([refetchJob(), refetchPlacements()]);
       
       // Clear pending state
       setPendingUser(null);
