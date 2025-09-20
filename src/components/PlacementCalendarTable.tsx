@@ -52,13 +52,20 @@ interface PlacementCalendarTableProps {
       departmentId: number;
       shiftId: number;
       shiftDate: Date;
-      vacancy: number;
+      vacancy?: number;
       confirmed: boolean;
       status: string;
-      meta: object;
+      meta: {
+        notes?: string;
+        instructions?: string;
+      };
       user?: {
         id: number;
-        displayName: string;
+        username?: string;
+        profile?: {
+          Forename?: string;
+          Surname?: string;
+        };
       };
     }>;
     body?: {
@@ -126,26 +133,31 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     const dateString = format(date, 'yyyy-MM-dd');
     
     // Find placement in job.placements that matches this slot (vacancy) and date
-    const placement = job.placements?.find(p => 
-      p.vacancy === slotId && 
-      format(new Date(p.shiftDate), 'yyyy-MM-dd') === dateString
-    );
+    // Since vacancy field is missing from API response, we'll use the slot ID for now
+    const placement = job.placements?.find(p => {
+      const placementDate = format(new Date(p.shiftDate), 'yyyy-MM-dd');
+      return placementDate === dateString;
+    });
 
     if (!placement || !placement.user) return null;
+
+    // Construct display name from profile data
+    const profile = placement.user.profile;
+    const displayName = profile ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() : placement.user.username || 'Unknown User';
 
     // Convert placement to PlacementRow format for compatibility
     return {
       id: placement.id,
-      userId: placement.userId,
-      slotId: placement.vacancy,
+      userId: placement.user.id,
+      slotId: slotId, // Use the passed slotId since vacancy is missing from API
       user: {
         id: placement.user.id,
-        displayName: placement.user.displayName
+        displayName: displayName
       },
-      instructions: '',
-      notes: '',
+      instructions: placement.meta.instructions || '',
+      notes: placement.meta.notes || '',
       status: placement.status,
-      confirmed: placement.confirmed,
+      confirmed: placement.confirmed || false,
       isPlaceholder: false,
       meta: placement.meta
     };
