@@ -16,7 +16,7 @@ import PlacementEditModal from '../components/PlacementEditModal';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { JobAssignee } from '../types/job';
+import { Placement } from '../types/job';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Job {
@@ -169,41 +169,57 @@ const JobFill = () => {
     return dates;
   };
 
-  // Update slots when existing placements are loaded
+  // Update slots when existing placements are loaded - now using new placement structure
   useEffect(() => {
     console.log('Existing placements data:', existingPlacements);
     
     if (existingPlacements?.results && Array.isArray(existingPlacements.results) && job && slots.length > 0) {
       const updatedSlots = slots.map(slot => ({ ...slot, placements: [] }));
       
+      // Group placements by user to create consolidated placement rows
+      const placementsByUser = new Map<number, any[]>();
+      
       existingPlacements.results.forEach((placement: any) => {
-        const firstName = placement.user?.profile?.Forename || 'Unknown';
-        const lastName = placement.user?.profile?.Surname || 'User';
-        const email = placement.user?.username || '';
+        const userId = placement.userId;
+        if (!placementsByUser.has(userId)) {
+          placementsByUser.set(userId, []);
+        }
+        placementsByUser.get(userId)!.push(placement);
+      });
+      
+      // Create placement rows for each user, grouping their dates
+      placementsByUser.forEach((userPlacements, userId) => {
+        const firstPlacement = userPlacements[0];
+        const firstName = firstPlacement.user?.profile?.Forename || 'Unknown';
+        const lastName = firstPlacement.user?.profile?.Surname || 'User';
+        const email = firstPlacement.user?.username || '';
         const displayName = `${firstName} ${lastName} (${email})`;
         
-        // Assign to slot based on placement metadata or default to first available slot
-        const assignedSlotId = placement.meta?.slotId || 1;
+        // Get the vacancy number from the first placement (they should all be the same for this user)
+        const assignedSlotId = firstPlacement.vacancy || 1;
         const slotIndex = updatedSlots.findIndex(s => s.id === assignedSlotId);
         const targetSlotIndex = slotIndex >= 0 ? slotIndex : 0;
         
+        // Collect all dates for this user's placements
+        const availability = userPlacements.map(p => p.shiftDate);
+        
         const placementRow: PlacementRow = {
-          id: placement.id,
-          userId: placement.userId,
+          id: firstPlacement.id,
+          userId: userId,
           slotId: assignedSlotId,
           user: {
-            id: placement.user?.id || placement.userId,
+            id: userId,
             displayName: displayName
           },
-          instructions: placement.meta?.instructions || '',
-          notes: placement.meta?.notes || '',
-          status: placement.status || 'awaiting_confirmation',
-          confirmed: placement.confirmed || false,
+          instructions: firstPlacement.meta?.instructions || '',
+          notes: firstPlacement.meta?.notes || '',
+          status: firstPlacement.status || 'awaiting_confirmation',
+          confirmed: firstPlacement.confirmed || false,
           isPlaceholder: false,
           meta: {
-            availability: placement.meta?.availability || [],
-            instructions: placement.meta?.instructions || '',
-            notes: placement.meta?.notes || ''
+            availability: availability,
+            instructions: firstPlacement.meta?.instructions || '',
+            notes: firstPlacement.meta?.notes || ''
           }
         };
         
@@ -358,64 +374,58 @@ const JobFill = () => {
     }
   };
 
-  // Handle direct assignment from calendar - only create assignee entries
+  // Handle direct assignment from calendar - assign candidate to specific slot/date
   const handleAssignCandidate = async (userId: number, slotIndex: number, date: Date) => {
     console.log('🎯 Assignment request:', { userId, slotIndex, date });
     
     if (!job) return;
 
-    // Check if placement exists for this user - it should already exist
-    const placement = job.placements?.find(p => p.userId === userId);
+    // Check if placement already exists for this user/date/vacancy combination
+    const existingPlacement = job.placements?.find(p => 
+      p.userId === userId && 
+      new Date(p.shiftDate).toDateString() === date.toDateString() &&
+      p.vacancy === slotIndex + 1
+    );
     
-    if (!placement) {
-      console.error('❌ No placement found for user:', userId);
+    if (existingPlacement) {
       toast({
         title: "Error",
-        description: "Placement not found. Please add candidate to job first.",
+        description: "Candidate is already assigned to this slot on this date.",
         variant: "destructive",
       });
       return;
     }
 
-    // Get current user ID for assignedBy field
-    const assignedByUserId = currentUser?.id ? parseInt(currentUser.id) : 1;
-
-    // Create JobAssignee entry with correct field mapping
-    const newAssignee: JobAssignee = {
-      userId: userId,
-      assignedBy: assignedByUserId,
-      assignmentDate: date,
-      status: 'accepted',
-      slot: Math.min(slotIndex + 1, job.vacancies), // Ensure slot doesn't exceed job vacancies
-    };
-
-    // Update job.assignees array
-    const currentAssignees = job.assignees || [];
-    const updatedAssignees = [...currentAssignees, newAssignee];
-
-    console.log('📊 Updating job with new assignee:', newAssignee);
-
     try {
-      // Send full job object (PUT request)
-      const updatedJob = {
-        ...job,
-        assignees: updatedAssignees,
+      // Create new placement for this specific date and slot
+      const newPlacement = {
+        userId: userId,
+        jobId: job.id,
+        departmentId: job.departmentId,
+        shiftId: job.shiftId,
+        shiftDate: date,
+        vacancy: slotIndex + 1, // Convert 0-based index to 1-based vacancy number
+        confirmed: true,
+        status: 'accepted',
+        meta: {}
       };
 
-      const jobResponse = await fetch(`${API_BASE_URL}/job/${job.id}`, {
-        method: 'PUT',
+      console.log('📊 Creating new placement:', newPlacement);
+
+      const placementResponse = await fetch(`${API_BASE_URL}/placement`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-service-user': localStorage.getItem('session_token') || '',
         },
-        body: JSON.stringify(updatedJob),
+        body: JSON.stringify(newPlacement),
       });
 
-      if (!jobResponse.ok) {
-        throw new Error('Failed to update job assignees');
+      if (!placementResponse.ok) {
+        throw new Error('Failed to create placement');
       }
 
-      console.log('✅ Job updated successfully');
+      console.log('✅ Placement created successfully');
       toast({
         title: "Success",
         description: "Candidate assigned successfully.",
@@ -425,7 +435,7 @@ const JobFill = () => {
       await refetchPlacements();
 
     } catch (error) {
-      console.error('❌ Error updating job:', error);
+      console.error('❌ Error creating placement:', error);
       toast({
         title: "Error",
         description: "Failed to assign candidate.",
@@ -436,50 +446,53 @@ const JobFill = () => {
 
   const handleAddCandidate = async (user: any, slotId: number, availability: Date[]) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/placement`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          jobId: job?.id,
-          departmentId: job?.departmentId,
-          shiftId: job?.shiftId,
-          confirmed: true,
-          status: 'accepted',
-          meta: {
-            slotId,
-            instructions: '',
-            notes: '',
-            availability
-          }
-        }),
-      });
+      // Create a separate placement for each selected date
+      const placementPromises = availability.map(date => 
+        fetch(`${API_BASE_URL}/placement`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-service-user': localStorage.getItem('session_token') || '',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            jobId: job?.id,
+            departmentId: job?.departmentId,
+            shiftId: job?.shiftId,
+            shiftDate: date,
+            vacancy: slotId, // Use the slot number directly
+            confirmed: true,
+            status: 'accepted',
+            meta: {
+              instructions: '',
+              notes: ''
+            }
+          }),
+        })
+      );
 
-      if (response.ok) {
-        // Calculate used dates for this placement - availability is now array of individual dates
-        const usedDates: string[] = availability.map(date => date.toISOString().split('T')[0]);
-        
-        // Update job availability
-        await updateJobRemainingAvailability(slotId, usedDates);
-        
-        toast({
-          title: "Success",
-          description: `${user.profile?.Forename || user.firstName} ${user.profile?.Surname || user.lastName} has been added to the job.`,
-        });
-        
-        // Refresh placements
-        await refetchPlacements();
-        
-        // Clear pending state
-        setPendingUser(null);
-        setPendingSource(null);
-        setShowDateModal(false);
-      } else {
-        throw new Error('Failed to add candidate');
+      const responses = await Promise.all(placementPromises);
+      
+      // Check if all requests were successful
+      const failedResponses = responses.filter(response => !response.ok);
+      if (failedResponses.length > 0) {
+        throw new Error(`Failed to create ${failedResponses.length} placement(s)`);
       }
+        
+      toast({
+        title: "Success",
+        description: `${user.profile?.Forename || user.firstName} ${user.profile?.Surname || user.lastName} has been added to the job for ${availability.length} date(s).`,
+      });
+      
+      // Refresh placements
+      await refetchPlacements();
+      
+      // Clear pending state
+      setPendingUser(null);
+      setPendingSource(null);
+      setShowDateModal(false);
     } catch (error) {
+      console.error('Error adding candidate:', error);
       toast({
         title: "Error",
         description: "Failed to add candidate to the job.",

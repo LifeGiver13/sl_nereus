@@ -1,9 +1,23 @@
-export type JobAssignee = {
+export type PlacementStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
+
+export interface Placement {
+  id: number;
   userId: number;
-  assignedBy: number;
-  assignmentDate: Date;
-  status: string;
-  slot: number;
+  jobId: number;
+  departmentId: number;
+  shiftId: number;
+  shiftDate: Date;
+  vacancy: number;
+  confirmed: boolean;
+  status: PlacementStatus;
+  meta: object;
+  createdAt: Date;
+  updatedAt: Date;
+  user?: {
+    id: number;
+    displayName: string;
+    profile?: any;
+  };
 }
 
 export interface Job {
@@ -19,21 +33,12 @@ export interface Job {
   departmentName?: string;
   shiftId: number;
   shiftName?: string;
-  assignees?: JobAssignee[];
   owner?: {
     id: number;
     username: string;
     profile?: any;
   };
-  placements?: Array<{
-    id: number;
-    status: string;
-    userId: number;
-    user?: {
-      displayName: string;
-      id: number;
-    };
-  }>;
+  placements?: Placement[];
   body?: {
     includeWeekends?: boolean;
   };

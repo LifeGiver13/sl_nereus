@@ -45,12 +45,21 @@ interface PlacementCalendarTableProps {
   job: {
     startDate: string;
     endDate: string;
-    assignees?: Array<{
+    placements?: Array<{
+      id: number;
       userId: number;
-      assignedBy: number;
-      assignmentDate: Date;
+      jobId: number;
+      departmentId: number;
+      shiftId: number;
+      shiftDate: Date;
+      vacancy: number;
+      confirmed: boolean;
       status: string;
-      slot: number;
+      meta: object;
+      user?: {
+        id: number;
+        displayName: string;
+      };
     }>;
     body?: {
       includeWeekends?: boolean;
@@ -112,32 +121,34 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
   const canGoToPrevious = startOfWeek(subWeeks(currentWeekStart, 1), { weekStartsOn: 1 }) >= startOfWeek(jobStart, { weekStartsOn: 1 });
   const canGoToNext = startOfWeek(addWeeks(currentWeekStart, 1), { weekStartsOn: 1 }) <= startOfWeek(jobEnd, { weekStartsOn: 1 });
 
-  // Create a mapping of slot + date -> candidate
+  // Create a mapping of slot + date -> candidate using new placement structure
   const getAssignmentForSlotAndDate = (slotId: number, date: Date): PlacementRow | null => {
-    const slot = slots.find(s => s.id === slotId);
-    if (!slot) return null;
-
     const dateString = format(date, 'yyyy-MM-dd');
     
-    // Find placement that has this date in their availability
-    return slot.placements.find(placement => {
-      if (!placement.meta?.availability) return false;
-      
-      // Check if the availability is in the new format (array of date strings) or old format (AvailabilityWindow[])
-      return placement.meta.availability.some(availItem => {
-        if (typeof availItem === 'string' || availItem instanceof Date) {
-          // Individual date format
-          const availDateParsed = parseDate(availItem);
-          return format(availDateParsed, 'yyyy-MM-dd') === dateString;
-        } else if (availItem && typeof availItem === 'object' && 'startDate' in availItem) {
-          // AvailabilityWindow format - check if date falls within the range
-          const startDate = new Date(availItem.startDate);
-          const endDate = new Date(availItem.endDate);
-          return date >= startDate && date <= endDate;
-        }
-        return false;
-      });
-    }) || null;
+    // Find placement in job.placements that matches this slot (vacancy) and date
+    const placement = job.placements?.find(p => 
+      p.vacancy === slotId && 
+      format(new Date(p.shiftDate), 'yyyy-MM-dd') === dateString
+    );
+
+    if (!placement || !placement.user) return null;
+
+    // Convert placement to PlacementRow format for compatibility
+    return {
+      id: placement.id,
+      userId: placement.userId,
+      slotId: placement.vacancy,
+      user: {
+        id: placement.user.id,
+        displayName: placement.user.displayName
+      },
+      instructions: '',
+      notes: '',
+      status: placement.status,
+      confirmed: placement.confirmed,
+      isPlaceholder: false,
+      meta: placement.meta
+    };
   };
 
   // Get candidates for a slot
