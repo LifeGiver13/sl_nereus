@@ -273,19 +273,8 @@ const JobFill = () => {
   };
 
   const handleAddUser = async (user: any, source: 'search' | 'suggested') => {
-    // Check if user is already in any slot
-    const existingPlacement = slots.some(slot => 
-      slot.placements.some(p => p.userId === user.id)
-    );
-    
-    if (existingPlacement) {
-      toast({
-        title: "User already added",
-        description: "This user has already been added to this job.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Allow adding users to different slots or additional dates
+    // No need to check if user already exists - they can work different slots/dates
 
     // Fetch complete user object with placements
     try {
@@ -371,16 +360,16 @@ const JobFill = () => {
   };
 
   // Handle direct assignment from calendar - assign candidate to specific slot/date
-  const handleAssignCandidate = async (userId: number, slotIndex: number, date: Date) => {
-    console.log('🎯 Assignment request:', { userId, slotIndex, date });
+  const handleAssignCandidate = async (candidateId: number, slotId: number, date: Date) => {
+    console.log('🎯 Assignment request:', { candidateId, slotId, date });
     
     if (!job) return;
 
     // Check if placement already exists for this user/date/vacancy combination
     const existingPlacement = job.placements?.find(p => 
-      p.userId === userId && 
+      p.userId === candidateId && 
       new Date(p.shiftDate).toDateString() === date.toDateString() &&
-      p.vacancy === slotIndex + 1
+      p.vacancy === slotId
     );
     
     if (existingPlacement) {
@@ -399,12 +388,12 @@ const JobFill = () => {
       
       // Create new placement for this specific date and slot
       const newPlacement = {
-        userId: userId,
+        userId: candidateId,
         jobId: job.id,
         departmentId: job.departmentId,
         shiftId: job.shiftId,
         shiftDate: placementDate.toISOString(),
-        vacancy: slotIndex + 1, // Convert 0-based index to 1-based vacancy number
+        vacancy: slotId, // Use slotId directly as vacancy number
         confirmed: true,
         status: 'accepted',
         meta: {}

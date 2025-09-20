@@ -219,7 +219,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     });
 
     // Remove conflict checking - candidates can now work different slots on different days
-    console.log('✅ Calling onAssignCandidate with slot index');
+    console.log('✅ Calling onAssignCandidate with corrected parameters');
     onAssignCandidate?.(candidateId, slotId, date); // Pass candidateId first, then slotId
     setEditingCell(null);
     
@@ -341,7 +341,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                     open={true}
                     onValueChange={(value) => {
                       console.log('📋 Dropdown selection made:', { slotId, candidateId: value, date: date.toISOString() });
-                      handleAssignCandidate(parseInt(value), slotId, date);
+                      handleAssignCandidate(slotId, parseInt(value), date);
                     }}
                     onOpenChange={(open) => {
                       console.log('📋 Dropdown open state changed:', open);
