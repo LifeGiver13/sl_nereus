@@ -142,8 +142,21 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     
     // Find placement in job.placements that matches this slot (vacancy) and date
     const placement = job.placements?.find(p => {
+      // Validate that shiftDate exists and is valid
+      if (!p.shiftDate) {
+        console.warn('Placement has no shiftDate:', p);
+        return false;
+      }
+      
       // Set placement date to noon to avoid timezone issues
       const placementDate = new Date(p.shiftDate);
+      
+      // Check if date is valid
+      if (isNaN(placementDate.getTime())) {
+        console.error('Invalid placement date:', p.shiftDate);
+        return false;
+      }
+      
       placementDate.setHours(12, 0, 0, 0);
       const placementDateString = format(placementDate, 'yyyy-MM-dd');
       return placementDateString === dateString && p.vacancy === slotId;

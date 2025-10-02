@@ -155,7 +155,19 @@ const JobFill = () => {
     
     slotPlacements.forEach(placement => {
       // Each placement represents one date
+      if (!placement.shiftDate) {
+        console.warn('Placement missing shiftDate:', placement);
+        return;
+      }
+      
       const placementDate = new Date(placement.shiftDate);
+      
+      // Validate date
+      if (isNaN(placementDate.getTime())) {
+        console.error('Invalid placement shiftDate:', placement.shiftDate);
+        return;
+      }
+      
       placementDate.setHours(12, 0, 0, 0); // Set to noon for consistency
       const dateString = placementDate.toISOString().split('T')[0];
       dates.add(dateString);
@@ -200,8 +212,14 @@ const JobFill = () => {
         const slotIndex = updatedSlots.findIndex(s => s.id === assignedSlotId);
         const targetSlotIndex = slotIndex >= 0 ? slotIndex : 0;
         
-        // Collect all dates for this user's placements
-        const availability = userPlacements.map(p => p.shiftDate);
+      // Collect all dates for this user's placements, filtering out invalid dates
+      const availability = userPlacements
+        .map(p => p.shiftDate)
+        .filter(date => {
+          if (!date) return false;
+          const testDate = new Date(date);
+          return !isNaN(testDate.getTime());
+        });
         
         const placementRow: PlacementRow = {
           id: firstPlacement.id,
