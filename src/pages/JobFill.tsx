@@ -754,7 +754,6 @@ const JobFill = () => {
           job={job} 
           slots={slots}
           onAssignCandidate={handleAssignCandidate}
-          recentlyPlacedCandidates={recentlyPlacedCandidates || []}
         />
 
         {/* Confirm Placements Button */}

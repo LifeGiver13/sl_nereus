@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
-import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameWeek } from 'date-fns';
+import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
 import { parseDate } from '@/config/timezone';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from '@dnd-kit/core';
+import CandidateSelectionModal from './CandidateSelectionModal';
 
 interface AvailabilityWindow {
   startDate: Date;
@@ -75,52 +72,35 @@ interface PlacementCalendarTableProps {
     body?: {
       includeWeekends?: boolean;
     };
+    id: number;
+    skills: number[];
   };
   slots: Slot[];
   onAssignCandidate?: (userId: number, slotIndex: number, date: Date) => void;
-  recentlyPlacedCandidates?: Array<{
-    id: number;
-    username: string;
-    profile?: {
-      Forename?: string;
-      Surname?: string;
-    };
-  }>;
 }
 
-const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots, onAssignCandidate, recentlyPlacedCandidates = [] }) => {
+const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots, onAssignCandidate }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    // Start with the first week of the job - set to noon to avoid timezone issues
     const jobStart = parseDate(job.startDate);
     jobStart.setHours(12, 0, 0, 0);
-    return startOfWeek(jobStart, { weekStartsOn: 1 }); // Monday start
+    return startOfWeek(jobStart, { weekStartsOn: 1 });
   });
-  const [editingCell, setEditingCell] = useState<{ slotId: number; date: Date } | null>(null);
-  const [draggedCandidate, setDraggedCandidate] = useState<PlacementRow | null>(null);
-  const { toast } = useToast();
+  const [selectionModal, setSelectionModal] = useState<{ slotId: number; date: Date } | null>(null);
 
-  // Get all candidates from all slots
-  const candidates = slots.flatMap(slot => slot.placements);
-
-  // Parse job dates and set to noon to avoid timezone issues
   const jobStart = parseDate(job.startDate);
   jobStart.setHours(12, 0, 0, 0);
   const jobEnd = parseDate(job.endDate);
   jobEnd.setHours(12, 0, 0, 0);
   const includeWeekends = job.body?.includeWeekends !== false;
 
-  // Calculate the current week's end
   const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
 
-  // Get all days for the current week (always show full week)
   const weekDays = eachDayOfInterval({ 
     start: currentWeekStart,
     end: currentWeekEnd
   });
 
-  // Helper function to check if a day is applicable (within job range and not excluded weekend)
   const isDayApplicable = (day: Date) => {
-    // Set comparison day to noon for consistent timezone handling
     const comparisonDay = new Date(day);
     comparisonDay.setHours(12, 0, 0, 0);
     
@@ -129,7 +109,6 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     return true;
   };
 
-  // Navigation functions
   const goToPreviousWeek = () => {
     const newWeekStart = subWeeks(currentWeekStart, 1);
     if (newWeekStart >= startOfWeek(jobStart, { weekStartsOn: 1 })) {
@@ -144,29 +123,22 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     }
   };
 
-  // Check if navigation buttons should be disabled
   const canGoToPrevious = startOfWeek(subWeeks(currentWeekStart, 1), { weekStartsOn: 1 }) >= startOfWeek(jobStart, { weekStartsOn: 1 });
   const canGoToNext = startOfWeek(addWeeks(currentWeekStart, 1), { weekStartsOn: 1 }) <= startOfWeek(jobEnd, { weekStartsOn: 1 });
 
-  // Create a mapping of slot + date -> candidate using new placement structure
   const getAssignmentForSlotAndDate = (slotId: number, date: Date): PlacementRow | null => {
     const dateString = format(date, 'yyyy-MM-dd');
     
-    // Find placement in job.placements that matches this slot (vacancy) and date
     const placement = job.placements?.find(p => {
-      // Check for shiftDate in meta first, then fall back to top-level property
       const shiftDate = p.meta?.shiftDate || p.shiftDate;
       
-      // Validate that shiftDate exists and is valid
       if (!shiftDate) {
         console.warn('Placement has no shiftDate:', p);
         return false;
       }
       
-      // Set placement date to noon to avoid timezone issues
       const placementDate = new Date(shiftDate);
       
-      // Check if date is valid
       if (isNaN(placementDate.getTime())) {
         console.error('Invalid placement date:', shiftDate);
         return false;
@@ -175,22 +147,19 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
       placementDate.setHours(12, 0, 0, 0);
       const placementDateString = format(placementDate, 'yyyy-MM-dd');
       
-      // Check slot match: first try meta.vacancy, then top-level vacancy, then default to slot 1
       const placementSlot = p.meta?.vacancy ?? p.vacancy ?? 1;
       return placementDateString === dateString && placementSlot === slotId;
     });
 
     if (!placement || !placement.user) return null;
 
-    // Construct display name from profile data
     const profile = placement.user.profile;
     const displayName = profile ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() : placement.user.username || 'Unknown User';
 
-    // Convert placement to PlacementRow format for compatibility
     return {
       id: placement.id,
       userId: placement.user.id,
-      slotId: slotId, // Use the passed slotId since vacancy is missing from API
+      slotId: slotId,
       user: {
         id: placement.user.id,
         displayName: displayName
@@ -204,299 +173,52 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     };
   };
 
-  // Get candidates for a slot
-  const getCandidatesForSlot = (slotId: number): PlacementRow[] => {
-    const slot = slots.find(s => s.id === slotId);
-    return slot?.placements || [];
+  const handleCandidateSelect = (candidateId: number, slotId: number, date: Date) => {
+    console.log('🎯 Candidate selected:', { candidateId, slotId, date: date.toISOString() });
+    onAssignCandidate?.(candidateId, slotId, date);
   };
 
-  // Check for conflicts when assigning a candidate to a date
-  const checkForConflicts = (candidateId: number, slotId: number, date: Date): boolean => {
-    const dateString = format(date, 'yyyy-MM-dd');
-    
-    // Check if this candidate is already assigned to another slot on this date
-    for (const slot of slots) {
-      if (slot.id === slotId) continue; // Skip the target slot
-      
-      for (const placement of slot.placements) {
-        if (placement.userId === candidateId && placement.meta?.availability) {
-          const hasConflict = placement.meta.availability.some(availItem => {
-            if (typeof availItem === 'string' || availItem instanceof Date) {
-              const availDateParsed = parseDate(availItem);
-              return format(availDateParsed, 'yyyy-MM-dd') === dateString;
-            } else if (availItem && typeof availItem === 'object' && 'startDate' in availItem) {
-              const startDate = new Date(availItem.startDate);
-              const endDate = new Date(availItem.endDate);
-              return date >= startDate && date <= endDate;
-            }
-            return false;
-          });
-          
-          if (hasConflict) return true;
-        }
-      }
-    }
-    
-    return false;
-  };
-
-  // Handle assignment of candidate to specific date
-  const handleAssignCandidate = (slotId: number, candidateId: number, date: Date) => {
-    console.log('🎯 PlacementCalendarTable: handleAssignCandidate called', {
-      slotId,
-      candidateId,
-      date: date.toISOString(),
-      onAssignCandidate: !!onAssignCandidate
-    });
-
-    // Remove conflict checking - candidates can now work different slots on different days
-    console.log('✅ Calling onAssignCandidate with corrected parameters');
-    onAssignCandidate?.(candidateId, slotId, date); // Pass candidateId first, then slotId
-    setEditingCell(null);
-    
-    toast({
-      title: "Assignment Successful",
-      description: "Candidate has been assigned to this date.",
-    });
-  };
-
-  // Drag and drop handlers
-  const handleDragStart = (event: DragStartEvent) => {
-    console.log('🔄 Drag started:', event.active.id);
-    const { active } = event;
-    const [slotId, candidateId] = active.id.toString().split('-');
-    const slot = slots.find(s => s.id === parseInt(slotId));
-    const candidate = slot?.placements.find(p => p.userId === parseInt(candidateId));
-    console.log('🔄 Dragged candidate:', { slotId, candidateId, candidate: candidate?.user.displayName });
-    setDraggedCandidate(candidate || null);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    console.log('🔄 Drag ended:', { active: event.active.id, over: event.over?.id });
-    const { active, over } = event;
-    setDraggedCandidate(null);
-
-    if (!over) {
-      console.log('❌ No drop target');
-      return;
-    }
-
-    const [, candidateId] = active.id.toString().split('-');
-    const [targetSlotId, dateString] = over.id.toString().split('-');
-    const targetDate = new Date(dateString);
-
-    console.log('🔄 Processing drag assignment:', {
-      candidateId: parseInt(candidateId),
-      targetSlotId: parseInt(targetSlotId),
-      targetDate: targetDate.toISOString()
-    });
-
-    handleAssignCandidate(parseInt(targetSlotId), parseInt(candidateId), targetDate);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'accepted': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'declined': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    }
-  };
-
-  // Draggable candidate component
-  const DraggableCandidate: React.FC<{ candidate: PlacementRow; slotId: number }> = ({ candidate, slotId }) => {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-      id: `${slotId}-${candidate.userId}`,
-    });
-
-    const style = transform ? {
-      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    } : undefined;
-
-    return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...listeners}
-        {...attributes}
-        className={`text-xs font-medium truncate max-w-40 cursor-grab active:cursor-grabbing ${
-          isDragging ? 'opacity-50' : ''
-        }`}
-        title={candidate.user.displayName}
-      >
-        {candidate.user.displayName.split(' ').slice(0, 2).join(' ')}
-      </div>
-    );
-  };
-
-  // Convert recently placed candidates to PlacementRow format for the dropdown
-  const recentlyPlacedAsRows: PlacementRow[] = recentlyPlacedCandidates.map(candidate => {
-    const firstName = candidate.profile?.Forename || 'Unknown';
-    const lastName = candidate.profile?.Surname || 'User';
-    const displayName = `${firstName} ${lastName} (${candidate.username})`;
-    
-    return {
-      userId: candidate.id,
-      slotId: 0, // Not relevant for dropdown
-      user: {
-        id: candidate.id,
-        displayName: displayName
-      },
-      instructions: '',
-      notes: '',
-      status: 'pending',
-      confirmed: false,
-      isPlaceholder: false
-    };
-  });
-
-  // Droppable calendar cell component
-  const DroppableCalendarCell: React.FC<{
+  const CalendarCell: React.FC<{
     slotId: number;
     date: Date;
     assignment: PlacementRow | null;
     isApplicable: boolean;
-    candidates: PlacementRow[];
-  }> = ({ slotId, date, assignment, isApplicable, candidates }) => {
-    const { isOver, setNodeRef } = useDroppable({
-      id: `${slotId}-${date.toISOString()}`,
-      disabled: !isApplicable || !!assignment || candidates.length === 0,
-    });
-
+  }> = ({ slotId, date, assignment, isApplicable }) => {
     const isFilled = assignment && isApplicable;
-    // Use recently placed candidates for the "Click to assign" dropdown
-    const dropdownCandidates = recentlyPlacedAsRows.length > 0 ? recentlyPlacedAsRows : candidates;
-    // Always allow assignment if there are candidates available
-    const canBeAssigned = isApplicable && dropdownCandidates.length > 0;
-    const isEditing = editingCell?.slotId === slotId && editingCell?.date.getTime() === date.getTime();
 
     return (
-      <div
-        ref={setNodeRef}
-        className={`h-full ${isOver && canBeAssigned ? 'bg-amber-200 dark:bg-amber-700' : ''}`}
-      >
+      <div className="h-full">
         {isFilled ? (
-          // Filled day - show candidate with option to add more
-          isEditing ? (
-            <div className="bg-green-100 dark:bg-green-900 rounded-md p-2 border border-green-200 dark:border-green-800">
-              <Select 
-                open={true}
-                onValueChange={(value) => {
-                  console.log('📋 Dropdown selection made:', { slotId, candidateId: value, date: date.toISOString() });
-                  handleAssignCandidate(slotId, parseInt(value), date);
-                }}
-                onOpenChange={(open) => {
-                  console.log('📋 Dropdown open state changed:', open);
-                  if (open === false) {
-                    setTimeout(() => setEditingCell(null), 100);
-                  }
-                }}
-              >
-                <SelectTrigger className="h-6 text-xs border-0 bg-transparent" onClick={(e) => e.preventDefault()}>
-                  <SelectValue placeholder="Add another..." />
-                </SelectTrigger>
-                <SelectContent className="z-50 bg-background border border-border shadow-lg">
-                  {dropdownCandidates.map((candidate) => {
-                    console.log('📋 Rendering candidate option:', candidate.user.displayName);
-                    return (
-                      <SelectItem 
-                        key={candidate.userId} 
-                        value={candidate.userId.toString()}
-                        className="hover:bg-accent text-xs"
-                      >
-                        <span className="text-xs">{candidate.user.displayName}</span>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+          <div 
+            className="bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 rounded-md p-2 space-y-1 border border-green-200 dark:border-green-800 cursor-pointer transition-colors"
+            onClick={() => {
+              if (isApplicable) {
+                setSelectionModal({ slotId, date });
+              }
+            }}
+          >
+            <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={assignment.user.displayName}>
+              {assignment.user.displayName.split(' ')[0]}
             </div>
-          ) : (
-            <div 
-              className="bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 rounded-md p-2 space-y-1 border border-green-200 dark:border-green-800 cursor-pointer transition-colors"
-              onClick={() => {
-                if (canBeAssigned) {
-                  console.log('📱 Click to assign on filled cell:', { 
-                    slotId, 
-                    date: date.toISOString(),
-                    currentAssignment: assignment.user.displayName
-                  });
-                  setEditingCell({ slotId, date });
-                }
-              }}
-            >
-              <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={assignment.user.displayName}>
-                {assignment.user.displayName.split(' ')[0]}
-              </div>
-              <div className="text-xs text-green-600 dark:text-green-400 font-medium">
-                {assignment.user.displayName.split(' ')[1]?.charAt(0)}.
-              </div>
+            <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+              {assignment.user.displayName.split(' ')[1]?.charAt(0)}.
             </div>
-          )
-        ) : canBeAssigned ? (
-          // Unfilled but assignable day - amber background, clickable
-          isEditing ? (
-            (() => {
-              console.log('💡 Dropdown should be open:', { isEditing, candidates: dropdownCandidates.length });
-              return (
-                <div className="bg-amber-100 dark:bg-amber-900 rounded-md p-2 border border-amber-200 dark:border-amber-800">
-                  <Select 
-                    open={true}
-                    onValueChange={(value) => {
-                      console.log('📋 Dropdown selection made:', { slotId, candidateId: value, date: date.toISOString() });
-                      handleAssignCandidate(slotId, parseInt(value), date);
-                    }}
-                    onOpenChange={(open) => {
-                      console.log('📋 Dropdown open state changed:', open);
-                      // Only close if explicitly set to false, not on initial mount
-                      if (open === false) {
-                        setTimeout(() => setEditingCell(null), 100);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-6 text-xs border-0 bg-transparent" onClick={(e) => e.preventDefault()}>
-                      <SelectValue placeholder="Select candidate..." />
-                    </SelectTrigger>
-                    <SelectContent className="z-50 bg-background border border-border shadow-lg">
-                      {dropdownCandidates.map((candidate) => {
-                        console.log('📋 Rendering candidate option:', candidate.user.displayName);
-                        return (
-                          <SelectItem 
-                            key={candidate.userId} 
-                            value={candidate.userId.toString()}
-                            className="hover:bg-accent text-xs"
-                          >
-                            <span className="text-xs">{candidate.user.displayName}</span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })()
-          ) : (
-            <div 
-              className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
-              onClick={() => {
-                console.log('📱 Click to assign triggered:', { 
-                  slotId, 
-                  date: date.toISOString(),
-                  candidates: dropdownCandidates.length,
-                  candidateNames: dropdownCandidates.map(c => c.user.displayName)
-                });
-                setEditingCell({ slotId, date });
-              }}
-            >
-              <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
-                Click to assign
-              </div>
+          </div>
+        ) : isApplicable ? (
+          <div 
+            className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
+            onClick={() => {
+              console.log('📱 Click to assign triggered:', { slotId, date: date.toISOString() });
+              setSelectionModal({ slotId, date });
+            }}
+          >
+            <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+              Click to assign
             </div>
-          )
+          </div>
         ) : (
-          // Not applicable or no candidates
-          <div className={`text-xs text-muted-foreground py-4 ${!isApplicable ? 'opacity-40' : ''}`}>
-            {!isApplicable ? '-' : 'Click to assign'}
+          <div className="text-xs text-muted-foreground py-4 opacity-40">
+            -
           </div>
         )}
       </div>
@@ -504,7 +226,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
   };
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <>
       <Card className="shadow-lg">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -537,77 +259,74 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
           </div>
         </CardHeader>
         <CardContent>
-        <div className="overflow-x-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="sticky left-0 bg-muted/50 border-r w-32">
-                  <div className="font-semibold">Slot</div>
-                </TableHead>
-                {weekDays.map((day, index) => {
-                  const isApplicable = isDayApplicable(day);
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="sticky left-0 bg-muted/50 border-r w-32">
+                    <div className="font-semibold">Slot</div>
+                  </TableHead>
+                  {weekDays.map((day, index) => {
+                    const isApplicable = isDayApplicable(day);
+                    return (
+                      <TableHead 
+                        key={index}
+                        className={`text-center border-r last:border-r-0 ${!isApplicable ? 'bg-muted/30' : ''}`}
+                      >
+                        <div className="space-y-1">
+                          <div className="font-semibold">{format(day, 'EEE')}</div>
+                          <div className="text-xs font-normal">{format(day, 'MMM dd')}</div>
+                        </div>
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {slots.map((slot) => {
                   return (
-                    <TableHead key={index} className="text-center min-w-28 border-r last:border-r-0">
-                      <div className={`space-y-1 py-2 ${!isApplicable ? 'opacity-40' : ''}`}>
-                        <div className="text-xs font-medium text-muted-foreground">
-                          {format(day, 'EEE')}
+                    <TableRow key={slot.id} className="hover:bg-muted/30">
+                      <TableCell className="sticky left-0 bg-background border-r">
+                        <div className="py-2">
+                          <div className="font-semibold text-sm text-primary">Slot {slot.id}</div>
                         </div>
-                        <div className="text-lg font-bold">
-                          {format(day, 'dd')}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {format(day, 'MMM')}
-                        </div>
-                      </div>
-                    </TableHead>
+                      </TableCell>
+                      {weekDays.map((day, dayIndex) => {
+                        const assignment = getAssignmentForSlotAndDate(slot.id, day);
+                        const isApplicable = isDayApplicable(day);
+
+                        return (
+                          <TableCell key={dayIndex} className={`text-center p-2 border-r last:border-r-0 ${!isApplicable ? 'bg-muted/30' : ''}`}>
+                            <CalendarCell
+                              slotId={slot.id}
+                              date={day}
+                              assignment={assignment}
+                              isApplicable={isApplicable}
+                            />
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
                   );
                 })}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {slots.map((slot) => {
-                return (
-                  <TableRow key={slot.id} className="hover:bg-muted/30">
-                    <TableCell className="sticky left-0 bg-background border-r">
-                      <div className="py-2">
-                        <div className="font-semibold text-sm text-primary">Slot {slot.id}</div>
-                      </div>
-                    </TableCell>
-                    {weekDays.map((day, dayIndex) => {
-                      const assignment = getAssignmentForSlotAndDate(slot.id, day);
-                      const isApplicable = isDayApplicable(day);
-                      const candidates = getCandidatesForSlot(slot.id);
-
-                      return (
-                        <TableCell key={dayIndex} className={`text-center p-2 border-r last:border-r-0 ${!isApplicable ? 'bg-muted/30' : ''}`}>
-                          <DroppableCalendarCell
-                            slotId={slot.id}
-                            date={day}
-                            assignment={assignment}
-                            isApplicable={isApplicable}
-                            candidates={candidates} // Still passed but not used in "Click to assign" dropdown
-                          />
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-      <DragOverlay>
-        {draggedCandidate ? (
-          <div className="bg-background border rounded-md p-2 shadow-lg">
-            <div className="text-xs font-medium">
-              {draggedCandidate.user.displayName}
-            </div>
+              </TableBody>
+            </Table>
           </div>
-        ) : null}
-      </DragOverlay>
-    </Card>
-    </DndContext>
+        </CardContent>
+      </Card>
+
+      {selectionModal && (
+        <CandidateSelectionModal
+          open={!!selectionModal}
+          onOpenChange={(open) => !open && setSelectionModal(null)}
+          jobId={job.id}
+          skillIds={job.skills || []}
+          slotId={selectionModal.slotId}
+          date={selectionModal.date}
+          onCandidateSelect={handleCandidateSelect}
+        />
+      )}
+    </>
   );
 };
 
