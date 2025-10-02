@@ -130,6 +130,20 @@ const JobFill = () => {
     enabled: !!id
   });
 
+  // Fetch recently placed candidates for this job
+  const { data: recentlyPlacedCandidates } = useQuery({
+    queryKey: ['recentlyPlaced', id],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/candidates/recently-placed/job/${id}`);
+      if (!response.ok) {
+        return [];
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: !!id
+  });
+
   // Initialize slots when job data is available
   useEffect(() => {
     if (job && job.vacancies) {
@@ -740,6 +754,7 @@ const JobFill = () => {
           job={job} 
           slots={slots}
           onAssignCandidate={handleAssignCandidate}
+          recentlyPlacedCandidates={recentlyPlacedCandidates || []}
         />
 
         {/* Confirm Placements Button */}

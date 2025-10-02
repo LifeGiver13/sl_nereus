@@ -78,9 +78,17 @@ interface PlacementCalendarTableProps {
   };
   slots: Slot[];
   onAssignCandidate?: (userId: number, slotIndex: number, date: Date) => void;
+  recentlyPlacedCandidates?: Array<{
+    id: number;
+    username: string;
+    profile?: {
+      Forename?: string;
+      Surname?: string;
+    };
+  }>;
 }
 
-const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots, onAssignCandidate }) => {
+const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots, onAssignCandidate, recentlyPlacedCandidates = [] }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     // Start with the first week of the job - set to noon to avoid timezone issues
     const jobStart = parseDate(job.startDate);
@@ -321,6 +329,27 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     );
   };
 
+  // Convert recently placed candidates to PlacementRow format for the dropdown
+  const recentlyPlacedAsRows: PlacementRow[] = recentlyPlacedCandidates.map(candidate => {
+    const firstName = candidate.profile?.Forename || 'Unknown';
+    const lastName = candidate.profile?.Surname || 'User';
+    const displayName = `${firstName} ${lastName} (${candidate.username})`;
+    
+    return {
+      userId: candidate.id,
+      slotId: 0, // Not relevant for dropdown
+      user: {
+        id: candidate.id,
+        displayName: displayName
+      },
+      instructions: '',
+      notes: '',
+      status: 'pending',
+      confirmed: false,
+      isPlaceholder: false
+    };
+  });
+
   // Droppable calendar cell component
   const DroppableCalendarCell: React.FC<{
     slotId: number;
@@ -335,7 +364,9 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     });
 
     const isFilled = assignment && isApplicable;
-    const canBeAssigned = !assignment && isApplicable && candidates.length > 0;
+    // Use recently placed candidates for the "Click to assign" dropdown
+    const dropdownCandidates = recentlyPlacedAsRows.length > 0 ? recentlyPlacedAsRows : candidates;
+    const canBeAssigned = !assignment && isApplicable && dropdownCandidates.length > 0;
     const isEditing = editingCell?.slotId === slotId && editingCell?.date.getTime() === date.getTime();
 
     return (
@@ -357,7 +388,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
           // Unfilled but assignable day - amber background, clickable
           isEditing ? (
             (() => {
-              console.log('💡 Dropdown should be open:', { isEditing, candidates: candidates.length });
+              console.log('💡 Dropdown should be open:', { isEditing, candidates: dropdownCandidates.length });
               return (
                 <div className="bg-amber-100 dark:bg-amber-900 rounded-md p-2 border border-amber-200 dark:border-amber-800">
                   <Select 
@@ -378,7 +409,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                       <SelectValue placeholder="Select candidate..." />
                     </SelectTrigger>
                     <SelectContent className="z-50 bg-background border border-border shadow-lg">
-                      {candidates.map((candidate) => {
+                      {dropdownCandidates.map((candidate) => {
                         console.log('📋 Rendering candidate option:', candidate.user.displayName);
                         return (
                           <SelectItem 
@@ -402,8 +433,8 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                 console.log('📱 Click to assign triggered:', { 
                   slotId, 
                   date: date.toISOString(),
-                  candidates: candidates.length,
-                  candidateNames: candidates.map(c => c.user.displayName)
+                  candidates: dropdownCandidates.length,
+                  candidateNames: dropdownCandidates.map(c => c.user.displayName)
                 });
                 setEditingCell({ slotId, date });
               }}
@@ -519,7 +550,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
                             date={day}
                             assignment={assignment}
                             isApplicable={isApplicable}
-                            candidates={candidates}
+                            candidates={candidates} // Still passed but not used in "Click to assign" dropdown
                           />
                         </TableCell>
                       );
