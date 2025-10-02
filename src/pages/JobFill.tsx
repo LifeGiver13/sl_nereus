@@ -410,11 +410,12 @@ const JobFill = () => {
         jobId: job.id,
         departmentId: job.departmentId,
         shiftId: job.shiftId,
-        shiftDate: placementDate.toISOString(),
         vacancy: slotId, // Use slotId directly as vacancy number
         confirmed: true,
         status: 'accepted',
-        meta: {}
+        meta: {
+          shiftDate: placementDate.toISOString()
+        }
       };
 
       console.log('📊 Creating new placement:', newPlacement);
@@ -470,11 +471,11 @@ const JobFill = () => {
             jobId: job?.id,
             departmentId: job?.departmentId,
             shiftId: job?.shiftId,
-            shiftDate: placementDate.toISOString(),
             vacancy: slotId, // Use the slot number directly
             confirmed: true,
             status: 'accepted',
             meta: {
+              shiftDate: placementDate.toISOString(),
               instructions: '',
               notes: ''
             }

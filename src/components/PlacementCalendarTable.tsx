@@ -32,6 +32,7 @@ interface PlacementRow {
     availability?: AvailabilityWindow[];
     instructions?: string;
     notes?: string;
+    shiftDate?: string;
   };
 }
 
@@ -58,6 +59,7 @@ interface PlacementCalendarTableProps {
       meta: {
         notes?: string;
         instructions?: string;
+        shiftDate?: string;
       };
       user?: {
         id: number;
@@ -142,18 +144,21 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
     
     // Find placement in job.placements that matches this slot (vacancy) and date
     const placement = job.placements?.find(p => {
+      // Check for shiftDate in meta first, then fall back to top-level property
+      const shiftDate = p.meta?.shiftDate || p.shiftDate;
+      
       // Validate that shiftDate exists and is valid
-      if (!p.shiftDate) {
+      if (!shiftDate) {
         console.warn('Placement has no shiftDate:', p);
         return false;
       }
       
       // Set placement date to noon to avoid timezone issues
-      const placementDate = new Date(p.shiftDate);
+      const placementDate = new Date(shiftDate);
       
       // Check if date is valid
       if (isNaN(placementDate.getTime())) {
-        console.error('Invalid placement date:', p.shiftDate);
+        console.error('Invalid placement date:', shiftDate);
         return false;
       }
       
@@ -406,7 +411,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
         ) : (
           // Not applicable or no candidates
           <div className={`text-xs text-muted-foreground py-4 ${!isApplicable ? 'opacity-40' : ''}`}>
-            {!isApplicable ? '-' : candidates.length === 0 ? 'No candidates' : '-'}
+            {!isApplicable ? '-' : 'Click to assign'}
           </div>
         )}
       </div>
