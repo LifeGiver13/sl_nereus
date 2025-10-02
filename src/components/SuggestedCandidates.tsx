@@ -16,6 +16,7 @@ interface User {
 }
 
 interface SuggestedCandidatesProps {
+  jobId: number;
   skillIds: number[];
   onCandidateSelect: (user: User) => void;
   disabled?: boolean;
@@ -30,6 +31,7 @@ interface SuggestedCandidatesProps {
 }
 
 const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
+  jobId,
   skillIds,
   onCandidateSelect,
   disabled,
@@ -61,6 +63,26 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
       };
     },
     enabled: skillIds && skillIds.length > 0
+  });
+
+  const { data: recentlyPlaced, isLoading: isLoadingRecent } = useQuery({
+    queryKey: ['recentlyPlaced', jobId],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/candidates/recently-placed/job/${jobId}`);
+      
+      if (!response.ok) {
+        console.log('Failed to fetch recently placed candidates, returning empty results');
+        return { results: [] };
+      }
+      
+      const data = await response.json();
+      console.log('Recently placed candidates response:', data);
+      
+      return {
+        results: Array.isArray(data) ? data : []
+      };
+    },
+    enabled: !!jobId
   });
 
   const renderCandidateList = (candidates: any[], isLoading: boolean, emptyMessage: string) => {
@@ -126,9 +148,11 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
       </TabsContent>
       
       <TabsContent value="recent" className="mt-4">
-        <div className="text-center py-4 text-sm text-gray-500">
-          Recently placed candidates feature coming soon...
-        </div>
+        {renderCandidateList(
+          recentlyPlaced?.results || [],
+          isLoadingRecent,
+          "No recently placed candidates found"
+        )}
       </TabsContent>
     </Tabs>
     </div>

@@ -777,6 +777,7 @@ const JobFill = () => {
             </CardHeader>
             <CardContent>
                 <SuggestedCandidates 
+                jobId={job.id}
                 skillIds={jobSkills}
                 onCandidateSelect={(user) => handleAddUser(user, 'suggested')}
                 disabled={false}
