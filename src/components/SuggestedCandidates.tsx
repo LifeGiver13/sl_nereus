@@ -131,7 +131,7 @@ const SuggestedCandidates: React.FC<SuggestedCandidatesProps> = ({
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="skill-match" className="w-full">
+      <Tabs defaultValue="recent" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="skill-match">Good Fit</TabsTrigger>
           <TabsTrigger value="recent">Recently Placed</TabsTrigger>
