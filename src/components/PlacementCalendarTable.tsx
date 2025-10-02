@@ -33,6 +33,7 @@ interface PlacementRow {
     instructions?: string;
     notes?: string;
     shiftDate?: string;
+    vacancy?: number;
   };
 }
 
@@ -60,6 +61,7 @@ interface PlacementCalendarTableProps {
         notes?: string;
         instructions?: string;
         shiftDate?: string;
+        vacancy?: number;
       };
       user?: {
         id: number;
@@ -165,8 +167,8 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
       placementDate.setHours(12, 0, 0, 0);
       const placementDateString = format(placementDate, 'yyyy-MM-dd');
       
-      // Handle missing vacancy field - default to slot 1 if not specified
-      const placementSlot = p.vacancy ?? 1;
+      // Check slot match: first try meta.vacancy, then top-level vacancy, then default to slot 1
+      const placementSlot = p.meta?.vacancy ?? p.vacancy ?? 1;
       return placementDateString === dateString && placementSlot === slotId;
     });
 

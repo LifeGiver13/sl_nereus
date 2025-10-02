@@ -151,8 +151,8 @@ const JobFill = () => {
     const dates = new Set<string>();
     
     // Filter placements for this specific slot (vacancy)
-    // Handle missing vacancy field - default to slot 1 if not specified
-    const slotPlacements = allPlacements.filter(p => (p.vacancy ?? 1) === slotId);
+    // Check meta.vacancy first, then top-level vacancy, then default to slot 1
+    const slotPlacements = allPlacements.filter(p => (p.meta?.vacancy ?? p.vacancy ?? 1) === slotId);
     
     slotPlacements.forEach(placement => {
       // Each placement represents one date
@@ -209,8 +209,8 @@ const JobFill = () => {
         const displayName = `${firstName} ${lastName} (${email})`;
         
         // Get the vacancy number from the first placement (they should all be the same for this user)
-        // Handle missing vacancy field - default to slot 1 if not specified
-        const assignedSlotId = firstPlacement.vacancy ?? 1;
+        // Check meta.vacancy first, then top-level vacancy, then default to slot 1
+        const assignedSlotId = firstPlacement.meta?.vacancy ?? firstPlacement.vacancy ?? 1;
         const slotIndex = updatedSlots.findIndex(s => s.id === assignedSlotId);
         const targetSlotIndex = slotIndex >= 0 ? slotIndex : 0;
         
@@ -416,7 +416,8 @@ const JobFill = () => {
         confirmed: true,
         status: 'accepted',
         meta: {
-          shiftDate: placementDate.toISOString()
+          shiftDate: placementDate.toISOString(),
+          vacancy: slotId
         }
       };
 
@@ -478,6 +479,7 @@ const JobFill = () => {
             status: 'accepted',
             meta: {
               shiftDate: placementDate.toISOString(),
+              vacancy: slotId,
               instructions: '',
               notes: ''
             }
