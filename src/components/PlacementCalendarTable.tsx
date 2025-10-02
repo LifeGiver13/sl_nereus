@@ -164,7 +164,10 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
       
       placementDate.setHours(12, 0, 0, 0);
       const placementDateString = format(placementDate, 'yyyy-MM-dd');
-      return placementDateString === dateString && p.vacancy === slotId;
+      
+      // Handle missing vacancy field - default to slot 1 if not specified
+      const placementSlot = p.vacancy ?? 1;
+      return placementDateString === dateString && placementSlot === slotId;
     });
 
     if (!placement || !placement.user) return null;

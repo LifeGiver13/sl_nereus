@@ -151,7 +151,8 @@ const JobFill = () => {
     const dates = new Set<string>();
     
     // Filter placements for this specific slot (vacancy)
-    const slotPlacements = allPlacements.filter(p => p.vacancy === slotId);
+    // Handle missing vacancy field - default to slot 1 if not specified
+    const slotPlacements = allPlacements.filter(p => (p.vacancy ?? 1) === slotId);
     
     slotPlacements.forEach(placement => {
       // Each placement represents one date
@@ -208,13 +209,14 @@ const JobFill = () => {
         const displayName = `${firstName} ${lastName} (${email})`;
         
         // Get the vacancy number from the first placement (they should all be the same for this user)
-        const assignedSlotId = firstPlacement.vacancy || 1;
+        // Handle missing vacancy field - default to slot 1 if not specified
+        const assignedSlotId = firstPlacement.vacancy ?? 1;
         const slotIndex = updatedSlots.findIndex(s => s.id === assignedSlotId);
         const targetSlotIndex = slotIndex >= 0 ? slotIndex : 0;
         
       // Collect all dates for this user's placements, filtering out invalid dates
       const availability = userPlacements
-        .map(p => p.shiftDate)
+        .map(p => p.meta?.shiftDate || p.shiftDate)
         .filter(date => {
           if (!date) return false;
           const testDate = new Date(date);
