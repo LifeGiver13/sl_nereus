@@ -37,6 +37,8 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
   onCandidateSelect
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Fetch recently placed candidates
   const { data: recentlyPlaced, isLoading: isLoadingRecent } = useQuery({
@@ -70,20 +72,51 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
     enabled: open && skillIds && skillIds.length > 0
   });
 
-  // Search for candidates by name
-  const { data: searchResults, isLoading: isLoadingSearch } = useQuery({
-    queryKey: ['candidateSearch', searchTerm],
-    queryFn: async () => {
-      if (!searchTerm || searchTerm.length < 2) return [];
-      
-      const response = await fetch(`${API_BASE_URL}/users?search=${encodeURIComponent(searchTerm)}&role=worker`);
-      if (!response.ok) return [];
-      
-      const data = await response.json();
-      return Array.isArray(data?.results) ? data.results : [];
-    },
-    enabled: open && searchTerm.length >= 2
-  });
+  // Search for users using the same endpoint as UserSearchForm
+  const searchUsers = async (term: string) => {
+    if (!term.trim() || term.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
+      if (response.ok) {
+        const userData = await response.json();
+        const userArray = Object.entries(userData).map(([id, name]) => {
+          const nameParts = (name as string).split(' ');
+          return {
+            id: parseInt(id),
+            username: name as string,
+            profile: {
+              Forename: nameParts[0] || '',
+              Surname: nameParts.slice(1).join(' ') || ''
+            }
+          };
+        });
+        setSearchResults(userArray);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setSearchTerm(value);
+    if (value.length >= 2) {
+      searchUsers(value);
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  };
 
   const handleSelect = (candidate: User) => {
     onCandidateSelect(candidate.id, slotId, date);
@@ -165,7 +198,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
                 <Input
                   placeholder="Search by name..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleInputChange(e.target.value)}
                   className="pl-9"
                 />
               </div>
@@ -173,12 +206,14 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
                 <div className="text-center py-4 text-sm text-muted-foreground">
                   Type at least 2 characters to search
                 </div>
+              ) : isSearching ? (
+                <div className="text-center py-4 text-sm text-muted-foreground">Loading...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="text-center py-4 text-sm text-muted-foreground">
+                  No candidates found matching "{searchTerm}"
+                </div>
               ) : (
-                renderCandidateList(
-                  searchResults || [],
-                  isLoadingSearch,
-                  "No candidates found matching your search"
-                )
+                renderCandidateList(searchResults, false, "")
               )}
             </div>
           </TabsContent>
