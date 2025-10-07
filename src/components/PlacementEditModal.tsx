@@ -163,52 +163,70 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
       // Update future placements if checkbox is checked
       if (updateFuturePlacements && job) {
-        console.log('🔍 Checking for future placements to update...');
-        console.log('Current placement:', placement);
+        console.log('🔍 ========================================');
+        console.log('🔍 STARTING FUTURE PLACEMENTS UPDATE CHECK');
+        console.log('🔍 ========================================');
+        console.log('Current placement ID:', placement.id);
+        console.log('Current placement userId:', placement.userId);
+        console.log('Current placement jobId:', placement.jobId);
+        console.log('Current placement meta.shiftDate:', placement.meta?.shiftDate);
         console.log('Total existing placements:', existingPlacements.length);
         
         // Get the placement date from meta.shiftDate
         const placementDate = new Date(placement.meta?.shiftDate);
         placementDate.setHours(0, 0, 0, 0);
-        console.log('Placement date (normalized):', placementDate.toISOString());
+        console.log('\n📅 Current placement date (normalized):', placementDate.toISOString());
+        
+        // First, find ALL placements for this user in this job
+        const currentUserId = Number(placement.userId);
+        const currentJobId = Number(placement.jobId);
+        
+        const userPlacements = existingPlacements.filter((p: any) => 
+          Number(p.userId) === currentUserId && Number(p.jobId) === currentJobId
+        );
+        
+        console.log('\n👤 ========================================');
+        console.log(`👤 ALL PLACEMENTS FOR USER ${currentUserId} IN JOB ${currentJobId}:`);
+        console.log('👤 ========================================');
+        console.log(`Found ${userPlacements.length} total placements for this user in this job`);
+        
+        userPlacements.forEach((p: any, index: number) => {
+          const pDate = p.meta?.shiftDate ? new Date(p.meta.shiftDate) : null;
+          if (pDate) {
+            pDate.setHours(0, 0, 0, 0);
+          }
+          const isCurrent = p.id === placement.id;
+          const isFuture = pDate && pDate > placementDate;
+          
+          console.log(`\n  ${index + 1}. Placement ID ${p.id}:`);
+          console.log(`     - User ID: ${p.userId}`);
+          console.log(`     - Job ID: ${p.jobId}`);
+          console.log(`     - Date: ${p.meta?.shiftDate || 'MISSING'}`);
+          console.log(`     - Normalized: ${pDate ? pDate.toISOString() : 'INVALID'}`);
+          console.log(`     - Is Current? ${isCurrent ? '✅ YES' : '❌ NO'}`);
+          console.log(`     - Is Future? ${isFuture ? '✅ YES (WILL UPDATE)' : '❌ NO'}`);
+          console.log(`     - Status: ${p.status}`);
+        });
         
         // Find all future placements for this user in this job (after this placement's date)
-        const futurePlacements = existingPlacements.filter((p: any) => {
-          console.log('Checking placement:', p);
-          
-          const currentUserId = Number(placement.userId);
-          const currentJobId = Number(placement.jobId);
-          const pUserId = Number(p.userId);
-          const pJobId = Number(p.jobId);
-          
-          if (pUserId !== currentUserId) {
-            console.log(`  ❌ User ID mismatch: ${pUserId} !== ${currentUserId}`);
-            return false;
-          }
-          
-          if (pJobId !== currentJobId) {
-            console.log(`  ❌ Job ID mismatch: ${pJobId} !== ${currentJobId}`);
-            return false;
-          }
-          
+        const futurePlacements = userPlacements.filter((p: any) => {
           if (p.id === placement.id) {
-            console.log('  ❌ Same placement (current one)');
+            return false; // Skip current placement
+          }
+          
+          const pDate = p.meta?.shiftDate ? new Date(p.meta.shiftDate) : null;
+          if (!pDate || isNaN(pDate.getTime())) {
+            console.warn(`⚠️ Placement ${p.id} has invalid date:`, p.meta?.shiftDate);
             return false;
           }
           
-          // Get the date for this placement from meta.shiftDate
-          const pDate = new Date(p.meta?.shiftDate);
           pDate.setHours(0, 0, 0, 0);
-          console.log('  Comparing dates:', pDate.toISOString(), '>', placementDate.toISOString());
-          
-          if (pDate > placementDate) {
-            console.log('  ✅ Future placement - WILL UPDATE');
-            return true;
-          } else {
-            console.log('  ❌ Not a future placement');
-            return false;
-          }
+          return pDate > placementDate;
         });
+        
+        console.log('\n🎯 ========================================');
+        console.log('🎯 FUTURE PLACEMENTS TO UPDATE:');
+        console.log('🎯 ========================================');
 
         console.log('🎯 Found future placements to update:', futurePlacements.length);
 
