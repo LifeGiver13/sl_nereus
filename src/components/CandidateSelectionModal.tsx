@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { MultiDaySelector } from './MultiDaySelector';
+import { formatDateString } from '@/config/timezone';
 
 interface User {
   id: number;
@@ -24,7 +28,9 @@ interface CandidateSelectionModalProps {
   skillIds: number[];
   slotId: number;
   date: Date;
-  onCandidateSelect: (candidateId: number, slotId: number, date: Date) => void;
+  job: any;
+  conflictingDates: Set<string>;
+  onCandidateSelect: (candidateId: number, slotId: number, dates: Date[]) => void;
 }
 
 const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
@@ -34,11 +40,15 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
   skillIds,
   slotId,
   date,
+  job,
+  conflictingDates,
   onCandidateSelect
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [multiDateMode, setMultiDateMode] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([date]);
 
   // Fetch recently placed candidates
   const { data: recentlyPlaced, isLoading: isLoadingRecent } = useQuery({
@@ -118,10 +128,36 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
     }
   };
 
+  // Calculate available dates (all job dates minus conflicting ones)
+  const availableDates = useMemo(() => {
+    if (!job) return new Set<string>();
+    
+    const jobStart = new Date(job.startDate);
+    const jobEnd = new Date(job.endDate);
+    const dates = new Set<string>();
+    
+    for (let d = new Date(jobStart); d <= jobEnd; d.setDate(d.getDate() + 1)) {
+      const dateStr = formatDateString(d);
+      if (!conflictingDates.has(dateStr)) {
+        // Check weekends if excluded
+        if (job.body?.includeWeekends === false) {
+          const dayOfWeek = d.getDay();
+          if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+        }
+        dates.add(dateStr);
+      }
+    }
+    
+    return dates;
+  }, [job, conflictingDates]);
+
   const handleSelect = (candidate: User) => {
-    onCandidateSelect(candidate.id, slotId, date);
+    const datesToAssign = multiDateMode ? selectedDates : [date];
+    onCandidateSelect(candidate.id, slotId, datesToAssign);
     onOpenChange(false);
     setSearchTerm('');
+    setMultiDateMode(false);
+    setSelectedDates([date]);
   };
 
   const renderCandidateList = (candidates: User[], isLoading: boolean, emptyMessage: string) => {
@@ -172,9 +208,33 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
         <DialogHeader>
           <DialogTitle>Select Candidate</DialogTitle>
           <DialogDescription>
-            Choose a candidate for Slot {slotId} on {date.toLocaleDateString()}
+            Choose a candidate for Slot {slotId}
+            {multiDateMode ? ` for ${selectedDates.length} date(s)` : ` on ${date.toLocaleDateString()}`}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex items-center space-x-2 pb-4 border-b">
+          <Switch
+            id="multi-date-mode"
+            checked={multiDateMode}
+            onCheckedChange={setMultiDateMode}
+          />
+          <Label htmlFor="multi-date-mode" className="cursor-pointer">
+            Assign to multiple dates
+          </Label>
+        </div>
+
+        {multiDateMode && (
+          <div className="border-b pb-4">
+            <MultiDaySelector
+              selectedDates={selectedDates}
+              onDatesChange={setSelectedDates}
+              availableDates={availableDates}
+              conflictingDates={conflictingDates}
+              job={job}
+            />
+          </div>
+        )}
         
         <Tabs defaultValue="recent" className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-3">

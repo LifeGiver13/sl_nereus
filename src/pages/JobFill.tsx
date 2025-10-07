@@ -395,74 +395,83 @@ const JobFill = () => {
     }
   };
 
-  // Handle direct assignment from calendar - assign candidate to specific slot/date
-  const handleAssignCandidate = async (candidateId: number, slotId: number, date: Date) => {
-    console.log('🎯 Assignment request:', { candidateId, slotId, date });
+  // Handle direct assignment from calendar - assign candidate to specific slot/date(s)
+  const handleAssignCandidate = async (candidateId: number, slotId: number, dates: Date[]) => {
+    console.log('🎯 Assignment request:', { candidateId, slotId, dates });
     
     if (!job) return;
 
-    // Check if placement already exists for this user/date/vacancy combination
-    const existingPlacement = job.placements?.find(p => 
-      p.userId === candidateId && 
-      new Date(p.shiftDate).toDateString() === date.toDateString() &&
-      p.vacancy === slotId
-    );
+    // Check for existing placements for any of the dates
+    const conflictingDates: Date[] = [];
+    dates.forEach(date => {
+      const existingPlacement = job.placements?.find(p => 
+        p.userId === candidateId && 
+        new Date(p.shiftDate).toDateString() === date.toDateString() &&
+        p.vacancy === slotId
+      );
+      if (existingPlacement) {
+        conflictingDates.push(date);
+      }
+    });
     
-    if (existingPlacement) {
+    if (conflictingDates.length > 0) {
       toast({
         title: "Error",
-        description: "Candidate is already assigned to this slot on this date.",
+        description: `Candidate is already assigned to this slot on ${conflictingDates.length} date(s).`,
         variant: "destructive",
       });
       return;
     }
 
     try {
-      // Set date to noon to avoid timezone issues
-      const placementDate = new Date(date);
-      placementDate.setHours(12, 0, 0, 0);
-      
-      // Create new placement for this specific date and slot
-      const newPlacement = {
-        userId: candidateId,
-        jobId: job.id,
-        departmentId: job.departmentId,
-        shiftId: job.shiftId,
-        vacancy: slotId, // Use slotId directly as vacancy number
-        confirmed: true,
-        status: 'accepted',
-        meta: {
-          shiftDate: placementDate.toISOString(),
-          vacancy: slotId
-        }
-      };
+      // Create placements for all selected dates
+      const placementPromises = dates.map(date => {
+        const placementDate = new Date(date);
+        placementDate.setHours(12, 0, 0, 0);
+        
+        const newPlacement = {
+          userId: candidateId,
+          jobId: job.id,
+          departmentId: job.departmentId,
+          shiftId: job.shiftId,
+          vacancy: slotId,
+          confirmed: true,
+          status: 'accepted',
+          meta: {
+            shiftDate: placementDate.toISOString(),
+            vacancy: slotId
+          }
+        };
 
-      console.log('📊 Creating new placement:', newPlacement);
-
-      const placementResponse = await fetch(`${API_BASE_URL}/placement`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-service-user': localStorage.getItem('session_token') || '',
-        },
-        body: JSON.stringify(newPlacement),
+        return fetch(`${API_BASE_URL}/placement`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-service-user': localStorage.getItem('session_token') || '',
+          },
+          body: JSON.stringify(newPlacement),
+        });
       });
 
-      if (!placementResponse.ok) {
-        throw new Error('Failed to create placement');
+      console.log(`📊 Creating ${placementPromises.length} placements...`);
+      const responses = await Promise.all(placementPromises);
+
+      const failedPlacements = responses.filter(r => !r.ok);
+      if (failedPlacements.length > 0) {
+        throw new Error(`Failed to create ${failedPlacements.length} placement(s)`);
       }
 
-      console.log('✅ Placement created successfully');
+      console.log('✅ All placements created successfully');
       toast({
         title: "Success",
-        description: "Candidate assigned successfully.",
+        description: `Candidate assigned to ${dates.length} date(s) successfully.`,
       });
 
       // Refresh both job and placements data
       await Promise.all([refetchJob(), refetchPlacements()]);
 
     } catch (error) {
-      console.error('❌ Error creating placement:', error);
+      console.error('❌ Error creating placements:', error);
       toast({
         title: "Error",
         description: "Failed to assign candidate.",

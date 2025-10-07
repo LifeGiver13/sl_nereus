@@ -77,7 +77,7 @@ interface PlacementCalendarTableProps {
     skills: number[];
   };
   slots: Slot[];
-  onAssignCandidate?: (userId: number, slotIndex: number, date: Date) => void;
+  onAssignCandidate?: (userId: number, slotIndex: number, dates: Date[]) => void;
   onEditPlacement?: (placement: any) => void;
   statusFilter?: string;
 }
@@ -193,9 +193,19 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
     };
   };
 
-  const handleCandidateSelect = (candidateId: number, slotId: number, date: Date) => {
-    console.log('🎯 Candidate selected:', { candidateId, slotId, date: date.toISOString() });
-    onAssignCandidate?.(candidateId, slotId, date);
+  const handleCandidateSelect = (candidateId: number, slotId: number, dates: Date[]) => {
+    console.log('🎯 Candidate selected:', { candidateId, slotId, dates: dates.map(d => d.toISOString()) });
+    onAssignCandidate?.(candidateId, slotId, dates);
+  };
+
+  // Calculate conflicting dates for the current slot
+  const getConflictingDatesForSlot = (slotId: number): Set<string> => {
+    const conflicting = new Set<string>();
+    const slot = slots.find(s => s.id === slotId);
+    if (slot) {
+      slot.occupiedDates.forEach(date => conflicting.add(date));
+    }
+    return conflicting;
   };
 
   const CalendarCell: React.FC<{
@@ -351,6 +361,8 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
           skillIds={job.skills || []}
           slotId={selectionModal.slotId}
           date={selectionModal.date}
+          job={job}
+          conflictingDates={getConflictingDatesForSlot(selectionModal.slotId)}
           onCandidateSelect={handleCandidateSelect}
         />
       )}
