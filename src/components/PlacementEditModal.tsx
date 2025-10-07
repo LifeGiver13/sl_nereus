@@ -164,12 +164,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       // Update future placements if checkbox is checked
       if (updateFuturePlacements && job) {
         console.log('🔍 Checking for future placements to update...');
-        console.log('Current placement:', {
-          id: placement.id,
-          userId: placement.userId,
-          jobId: placement.jobId,
-          metaShiftDate: placement.meta?.shiftDate
-        });
+        console.log('Current placement:', placement);
         console.log('Total existing placements:', existingPlacements.length);
         
         // Get the placement date from meta.shiftDate
@@ -179,20 +174,20 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         
         // Find all future placements for this user in this job (after this placement's date)
         const futurePlacements = existingPlacements.filter((p: any) => {
-          console.log('Checking placement:', {
-            id: p.id,
-            userId: p.userId,
-            jobId: p.jobId,
-            metaShiftDate: p.meta?.shiftDate
-          });
+          console.log('Checking placement:', p);
           
-          if (p.userId !== placement.userId) {
-            console.log('  ❌ User ID mismatch');
+          const currentUserId = Number(placement.userId);
+          const currentJobId = Number(placement.jobId);
+          const pUserId = Number(p.userId);
+          const pJobId = Number(p.jobId);
+          
+          if (pUserId !== currentUserId) {
+            console.log(`  ❌ User ID mismatch: ${pUserId} !== ${currentUserId}`);
             return false;
           }
           
-          if (p.jobId !== placement.jobId) {
-            console.log('  ❌ Job ID mismatch');
+          if (pJobId !== currentJobId) {
+            console.log(`  ❌ Job ID mismatch: ${pJobId} !== ${currentJobId}`);
             return false;
           }
           
