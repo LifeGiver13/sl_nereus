@@ -53,7 +53,6 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const [instructions, setInstructions] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('awaiting_confirmation');
-  const [confirmed, setConfirmed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
@@ -66,7 +65,6 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setInstructions(placement.meta?.instructions || '');
       setNotes(placement.meta?.notes || '');
       setStatus(placement.status || 'awaiting_confirmation');
-      setConfirmed(placement.confirmed || false);
       setSelectedSlotId(placement.meta?.vacancy || placement.vacancy || 1);
       setRemarks(placement.meta?.remarks || '');
       setUpdateFuturePlacements(false);
@@ -146,7 +144,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
     const saveData = {
       status,
-      confirmed,
+      confirmed: true,
       meta: {
         ...placement.meta,
         instructions,
@@ -173,18 +171,18 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
       // Update future placements if checkbox is checked
       if (updateFuturePlacements && job) {
-        const currentDate = new Date(placement.shiftDate || placement.meta?.shiftDate);
-        currentDate.setHours(12, 0, 0, 0);
+        const placementDate = new Date(placement.shiftDate || placement.meta?.shiftDate);
+        placementDate.setHours(0, 0, 0, 0);
         
-        // Find all future placements for this user in this job
+        // Find all future placements for this user in this job (after this placement's date)
         const futurePlacements = existingPlacements.filter((p: any) => {
           if (p.userId !== placement.userId || p.jobId !== placement.jobId || p.id === placement.id) {
             return false;
           }
           
           const pDate = new Date(p.shiftDate || p.meta?.shiftDate);
-          pDate.setHours(12, 0, 0, 0);
-          return pDate > currentDate;
+          pDate.setHours(0, 0, 0, 0);
+          return pDate > placementDate;
         });
 
         // Update each future placement
@@ -293,17 +291,6 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                   />
                 </div>
               )}
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="confirmed"
-                  checked={confirmed}
-                  onCheckedChange={(checked) => setConfirmed(checked === true)}
-                />
-                <label htmlFor="confirmed" className="text-sm font-medium">
-                  Confirmed
-                </label>
-              </div>
 
               <div className="flex items-center space-x-2">
                 <Checkbox
