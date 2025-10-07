@@ -77,6 +77,7 @@ interface PlacementCalendarTableProps {
     skills: number[];
   };
   slots: Slot[];
+  existingPlacements?: Array<any>; // Full placements from /placements/job/:id endpoint
   onAssignCandidate?: (userId: number, slotIndex: number, dates: Date[]) => void;
   onEditPlacement?: (placement: any) => void;
   statusFilter?: string;
@@ -84,7 +85,8 @@ interface PlacementCalendarTableProps {
 
 const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ 
   job, 
-  slots, 
+  slots,
+  existingPlacements = [],
   onAssignCandidate, 
   onEditPlacement,
   statusFilter = 'active'
@@ -220,8 +222,8 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
       if (!isApplicable) return;
       
       if (isFilled && onEditPlacement) {
-        // Find the full placement data with all details
-        const fullPlacement = job.placements?.find(p => p.id === assignment.id);
+        // Find the full placement data from existingPlacements (which has userId, jobId, etc.)
+        const fullPlacement = existingPlacements.find(p => p.id === assignment.id);
         console.log('📋 PlacementCalendarTable: Passing placement to modal:', fullPlacement);
         console.log('📋 Placement has userId?', fullPlacement?.userId);
         console.log('📋 Placement has jobId?', fullPlacement?.jobId);

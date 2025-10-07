@@ -725,6 +725,7 @@ const JobFill = () => {
         <PlacementCalendarTable 
           job={job} 
           slots={slots}
+          existingPlacements={existingPlacements?.results || []}
           onAssignCandidate={handleAssignCandidate}
           onEditPlacement={(placement) => {
             setSelectedPlacement(placement);
