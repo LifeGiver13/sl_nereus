@@ -171,19 +171,59 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
       // Update future placements if checkbox is checked
       if (updateFuturePlacements && job) {
+        console.log('🔍 Checking for future placements to update...');
+        console.log('Current placement:', {
+          id: placement.id,
+          userId: placement.userId,
+          jobId: placement.jobId,
+          shiftDate: placement.shiftDate,
+          metaShiftDate: placement.meta?.shiftDate
+        });
+        console.log('Total existing placements:', existingPlacements.length);
+        
         const placementDate = new Date(placement.shiftDate || placement.meta?.shiftDate);
         placementDate.setHours(0, 0, 0, 0);
+        console.log('Placement date (normalized):', placementDate.toISOString());
         
         // Find all future placements for this user in this job (after this placement's date)
         const futurePlacements = existingPlacements.filter((p: any) => {
-          if (p.userId !== placement.userId || p.jobId !== placement.jobId || p.id === placement.id) {
+          console.log('Checking placement:', {
+            id: p.id,
+            userId: p.userId,
+            jobId: p.jobId,
+            shiftDate: p.shiftDate,
+            metaShiftDate: p.meta?.shiftDate
+          });
+          
+          if (p.userId !== placement.userId) {
+            console.log('  ❌ User ID mismatch');
+            return false;
+          }
+          
+          if (p.jobId !== placement.jobId) {
+            console.log('  ❌ Job ID mismatch');
+            return false;
+          }
+          
+          if (p.id === placement.id) {
+            console.log('  ❌ Same placement (current one)');
             return false;
           }
           
           const pDate = new Date(p.shiftDate || p.meta?.shiftDate);
           pDate.setHours(0, 0, 0, 0);
-          return pDate > placementDate;
+          console.log('  Comparing dates:', pDate.toISOString(), '>', placementDate.toISOString());
+          
+          if (pDate > placementDate) {
+            console.log('  ✅ Future placement - WILL UPDATE');
+            return true;
+          } else {
+            console.log('  ❌ Not a future placement');
+            return false;
+          }
         });
+
+        console.log('🎯 Found future placements to update:', futurePlacements.length);
 
         // Update each future placement
         await Promise.all(futurePlacements.map((fp: any) =>
