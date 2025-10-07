@@ -69,17 +69,10 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setRemarks(placement.meta?.remarks || '');
       setUpdateFuturePlacements(false);
       
-      // Set current placement date - handle both single shiftDate and availability array
-      let dateToUse = null;
-      if (placement.meta?.shiftDate) {
-        dateToUse = placement.meta.shiftDate;
-      } else if (placement.meta?.availability && placement.meta.availability.length > 0) {
-        // For multi-date placements, use the first date as the reference
-        dateToUse = placement.meta.availability[0];
-      }
-      
-      if (dateToUse) {
-        const date = new Date(dateToUse);
+      // Set current placement date from meta.shiftDate
+      const shiftDate = placement.meta?.shiftDate;
+      if (shiftDate) {
+        const date = new Date(shiftDate);
         if (!isNaN(date.getTime())) {
           setSelectedDates([date]);
         }
@@ -95,19 +88,6 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     
     if (!selectedSlot || !job) return { availableDates: available, conflictingDates: conflicts };
     
-    // Get current placement's dates to exclude from conflicts
-    const currentPlacementDates = new Set<string>();
-    if (placement?.meta?.availability) {
-      placement.meta.availability.forEach((placementDate: string | Date) => {
-        try {
-          const dateStr = new Date(placementDate).toISOString().split('T')[0];
-          currentPlacementDates.add(dateStr);
-        } catch (e) {
-          console.warn('Invalid date in placement availability:', placementDate);
-        }
-      });
-    }
-    
     // Generate all job dates
     const jobStart = new Date(job.startDate + 'T00:00:00');
     const jobEnd = new Date(job.endDate + 'T00:00:00');
@@ -119,8 +99,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       const day = String(current.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
-      // Check if this date is occupied by OTHER placements (exclude current placement)
-      const isOccupiedByOthers = selectedSlot.occupiedDates.has(dateStr) && !currentPlacementDates.has(dateStr);
+      // Check if this date is occupied by OTHER placements
+      const isOccupiedByOthers = selectedSlot.occupiedDates.has(dateStr);
       
       if (isOccupiedByOthers) {
         conflicts.add(dateStr);
@@ -188,18 +168,12 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           id: placement.id,
           userId: placement.userId,
           jobId: placement.jobId,
-          metaShiftDate: placement.meta?.shiftDate,
-          metaAvailability: placement.meta?.availability
+          metaShiftDate: placement.meta?.shiftDate
         });
         console.log('Total existing placements:', existingPlacements.length);
         
-        // Get the placement date - handle both single shiftDate and availability array
-        let placementDateValue = placement.meta?.shiftDate;
-        if (!placementDateValue && placement.meta?.availability && placement.meta.availability.length > 0) {
-          placementDateValue = placement.meta.availability[0];
-        }
-        
-        const placementDate = new Date(placementDateValue);
+        // Get the placement date from meta.shiftDate
+        const placementDate = new Date(placement.meta?.shiftDate);
         placementDate.setHours(0, 0, 0, 0);
         console.log('Placement date (normalized):', placementDate.toISOString());
         
@@ -209,8 +183,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
             id: p.id,
             userId: p.userId,
             jobId: p.jobId,
-            metaShiftDate: p.meta?.shiftDate,
-            metaAvailability: p.meta?.availability
+            metaShiftDate: p.meta?.shiftDate
           });
           
           if (p.userId !== placement.userId) {
@@ -228,13 +201,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
             return false;
           }
           
-          // Get the date for this placement - handle both single shiftDate and availability array
-          let pDateValue = p.meta?.shiftDate;
-          if (!pDateValue && p.meta?.availability && p.meta.availability.length > 0) {
-            pDateValue = p.meta.availability[0];
-          }
-          
-          const pDate = new Date(pDateValue);
+          // Get the date for this placement from meta.shiftDate
+          const pDate = new Date(p.meta?.shiftDate);
           pDate.setHours(0, 0, 0, 0);
           console.log('  Comparing dates:', pDate.toISOString(), '>', placementDate.toISOString());
           
@@ -373,11 +341,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
               <div>
                 <label className="text-sm font-medium">Placement Date</label>
                 <p className="text-sm text-muted-foreground">
-                  {placement.meta?.shiftDate 
-                    ? new Date(placement.meta.shiftDate).toLocaleDateString() 
-                    : placement.meta?.availability && placement.meta.availability.length > 0
-                    ? new Date(placement.meta.availability[0]).toLocaleDateString()
-                    : 'N/A'}
+                  {placement.meta?.shiftDate ? new Date(placement.meta.shiftDate).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
 

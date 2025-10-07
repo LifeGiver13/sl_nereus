@@ -90,7 +90,7 @@ const JobFill = () => {
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [pendingSource, setPendingSource] = useState<'search' | 'suggested' | null>(null);
   const [overlapDetails, setOverlapDetails] = useState<string>('');
-  const [editingPlacement, setEditingPlacement] = useState<any>(null);
+  
   const [showPlacementDetail, setShowPlacementDetail] = useState(false);
   const [showPlacementEdit, setShowPlacementEdit] = useState(false);
   const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
@@ -542,49 +542,7 @@ const JobFill = () => {
     }
   };
 
-  const handleEditPlacement = async (user: any, slotId: number, availability: Date[]) => {
-    if (!editingPlacement) return;
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/placement/${editingPlacement.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          meta: {
-            ...editingPlacement.meta,
-            slotId,
-            availability
-          }
-        }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Placement dates updated successfully.",
-        });
-        
-        // Refresh placements
-        await refetchPlacements();
-        
-        // Clear editing state
-        setEditingPlacement(null);
-        setPendingUser(null);
-        setShowDateModal(false);
-      } else {
-        throw new Error('Failed to update placement');
-      }
-    } catch (error) {
-      console.error('Error updating placement:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update placement dates.",
-        variant: "destructive",
-      });
-    }
-  };
+  // Removed handleEditPlacement - editing is now handled by PlacementEditModal which updates individual placements
 
   const handleConfirmOverlap = () => {
     if (pendingUser && pendingSource) {
@@ -630,48 +588,7 @@ const JobFill = () => {
     })));
   };
 
-  const handleConfirmPlacements = async () => {
-    if (!job) return;
-
-    try {
-      const allPlaceholderPlacements = slots.flatMap(slot => 
-        slot.placements.filter(p => p.isPlaceholder)
-      );
-      
-      for (const placement of allPlaceholderPlacements) {
-        const placementData = {
-          userId: placement.userId,
-          jobId: job.id,
-          departmentId: job.departmentId,
-          shiftId: job.shiftId,
-          confirmed: placement.confirmed,
-          status: placement.status,
-          meta: {
-            slotId: placement.slotId,
-            instructions: placement.instructions,
-            notes: placement.notes,
-            availability: placement.meta?.availability?.map((window: any) => ({
-              startDate: window.startDate.toISOString(),
-              endDate: window.endDate.toISOString()
-            })) || []
-          }
-        };
-
-        await fetch(`${API_BASE_URL}/placement`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(placementData)
-        });
-      }
-
-      // Refresh placements to show confirmed ones
-      await refetchPlacements();
-    } catch (error) {
-      console.error('Error creating placements:', error);
-    }
-  };
+  // Removed handleConfirmPlacements - placements are now created immediately as individual records
 
   if (isLoading) {
     return (
@@ -823,15 +740,11 @@ const JobFill = () => {
             open={showDateModal}
             onOpenChange={(open) => {
               setShowDateModal(open);
-              if (!open) {
-                setEditingPlacement(null);
-              }
             }}
             user={pendingUser}
             slots={slots}
             job={job}
-            onConfirm={editingPlacement ? handleEditPlacement : handleAddCandidate}
-            editingPlacement={editingPlacement}
+            onConfirm={handleAddCandidate}
           />
         )}
 

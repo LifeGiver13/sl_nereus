@@ -17,7 +17,6 @@ interface PlacementDateModalProps {
   }>;
   job: any;
   onConfirm: (user: any, slotId: number, availability: Date[]) => void;
-  editingPlacement?: any;
 }
 
 const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
@@ -26,13 +25,10 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
   user,
   slots,
   job,
-  onConfirm,
-  editingPlacement
+  onConfirm
 }) => {
-  const [selectedSlotId, setSelectedSlotId] = useState<number>(editingPlacement?.meta?.slotId || slots[0]?.id || 1);
-  const [selectedDates, setSelectedDates] = useState<Date[]>(
-    editingPlacement?.meta?.availability?.map((date: string | Date) => new Date(date)) || []
-  );
+  const [selectedSlotId, setSelectedSlotId] = useState<number>(slots[0]?.id || 1);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const { toast } = useToast();
 
   // Get available and conflicting dates for highlighting using actual placement data
@@ -70,27 +66,11 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
         }
       }
       
-      // If editing, include dates from current placement as available
-      if (editingPlacement?.meta?.availability) {
-        const isCurrentPlacementDate = editingPlacement.meta.availability.some((placementDate: string | Date) => {
-          const placementDateStr = new Date(placementDate).toISOString().split('T')[0];
-          return placementDateStr === dateStr;
-        });
-        
-        if (isCurrentPlacementDate) {
-          available.add(dateStr);
-        } else if (selectedSlot.occupiedDates.has(dateStr)) {
-          conflicts.add(dateStr);
-        } else {
-          available.add(dateStr);
-        }
+      // Check if this date is occupied by other placements
+      if (selectedSlot.occupiedDates.has(dateStr)) {
+        conflicts.add(dateStr);
       } else {
-        // For new placements, use the slot's occupied dates
-        if (selectedSlot.occupiedDates.has(dateStr)) {
-          conflicts.add(dateStr);
-        } else {
-          available.add(dateStr);
-        }
+        available.add(dateStr);
       }
       
       current.setDate(current.getDate() + 1);
@@ -100,27 +80,16 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     console.log(`Slot ${selectedSlotId} - Conflicting dates:`, Array.from(conflicts));
     
     return { availableDates: available, conflictingDates: conflicts };
-  }, [slots, selectedSlotId, job.startDate, job.endDate, editingPlacement]);
+  }, [slots, selectedSlotId, job.startDate, job.endDate]);
 
   const checkDatesAvailability = (slotId: number, dates: Date[]): boolean => {
     const slot = slots.find(s => s.id === slotId);
     if (!slot) return false;
     
-    // Create a copy of occupied dates, excluding current placement's dates if editing
-    const occupiedDates = new Set(slot.occupiedDates);
-    
-    if (editingPlacement?.meta?.availability) {
-      // Remove current placement's dates from occupied dates
-      editingPlacement.meta.availability.forEach((placementDate: string | Date) => {
-        const dateString = new Date(placementDate).toISOString().split('T')[0];
-        occupiedDates.delete(dateString);
-      });
-    }
-    
     // Check each selected date for conflicts
     for (const date of dates) {
       const dateString = date.toISOString().split('T')[0];
-      if (occupiedDates.has(dateString)) {
+      if (slot.occupiedDates.has(dateString)) {
         return false;
       }
     }
@@ -158,7 +127,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{editingPlacement ? 'Edit Assignment Dates' : 'Add Candidate to Job'}</DialogTitle>
+          <DialogTitle>Add Candidate to Job</DialogTitle>
           <DialogDescription>
             Select the slot and date range for {user?.profile?.Forename || user?.firstName} {user?.profile?.Surname || user?.lastName}
           </DialogDescription>
@@ -221,7 +190,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
             onClick={handleConfirm}
             disabled={!areDatesAvailable || selectedDates.length === 0}
           >
-            {editingPlacement ? 'Update Assignment' : `Add to Slot ${selectedSlotId}`}
+            Add to Slot {selectedSlotId}
           </Button>
         </DialogFooter>
       </DialogContent>
