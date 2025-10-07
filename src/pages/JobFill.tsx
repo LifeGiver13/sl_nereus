@@ -171,17 +171,17 @@ const JobFill = () => {
     const slotPlacements = allPlacements.filter(p => (p.meta?.vacancy ?? p.vacancy ?? 1) === slotId);
     
     slotPlacements.forEach(placement => {
-      // Each placement represents one date
-      if (!placement.shiftDate) {
+      // Each placement represents one date stored in meta.shiftDate
+      if (!placement.meta?.shiftDate) {
         console.warn('Placement missing shiftDate:', placement);
         return;
       }
       
-      const placementDate = new Date(placement.shiftDate);
+      const placementDate = new Date(placement.meta.shiftDate);
       
       // Validate date
       if (isNaN(placementDate.getTime())) {
-        console.error('Invalid placement shiftDate:', placement.shiftDate);
+        console.error('Invalid placement shiftDate:', placement.meta.shiftDate);
         return;
       }
       
