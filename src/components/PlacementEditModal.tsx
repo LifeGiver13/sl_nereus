@@ -70,7 +70,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setUpdateFuturePlacements(false);
       
       // Set current placement date
-      const shiftDate = placement.meta?.shiftDate || placement.shiftDate;
+      const shiftDate = placement.meta?.shiftDate;
       if (shiftDate) {
         const date = new Date(shiftDate);
         if (!isNaN(date.getTime())) {
@@ -176,12 +176,11 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           id: placement.id,
           userId: placement.userId,
           jobId: placement.jobId,
-          shiftDate: placement.shiftDate,
           metaShiftDate: placement.meta?.shiftDate
         });
         console.log('Total existing placements:', existingPlacements.length);
         
-        const placementDate = new Date(placement.shiftDate || placement.meta?.shiftDate);
+        const placementDate = new Date(placement.meta?.shiftDate);
         placementDate.setHours(0, 0, 0, 0);
         console.log('Placement date (normalized):', placementDate.toISOString());
         
@@ -191,7 +190,6 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
             id: p.id,
             userId: p.userId,
             jobId: p.jobId,
-            shiftDate: p.shiftDate,
             metaShiftDate: p.meta?.shiftDate
           });
           
@@ -210,7 +208,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
             return false;
           }
           
-          const pDate = new Date(p.shiftDate || p.meta?.shiftDate);
+          const pDate = new Date(p.meta?.shiftDate);
           pDate.setHours(0, 0, 0, 0);
           console.log('  Comparing dates:', pDate.toISOString(), '>', placementDate.toISOString());
           
@@ -349,8 +347,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
               <div>
                 <label className="text-sm font-medium">Placement Date</label>
                 <p className="text-sm text-muted-foreground">
-                  {placement.shiftDate ? new Date(placement.shiftDate).toLocaleDateString() : 
-                    placement.meta?.shiftDate ? new Date(placement.meta.shiftDate).toLocaleDateString() : 'N/A'}
+                  {placement.meta?.shiftDate ? new Date(placement.meta.shiftDate).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
 
