@@ -222,6 +222,9 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
       if (isFilled && onEditPlacement) {
         // Find the full placement data with all details
         const fullPlacement = job.placements?.find(p => p.id === assignment.id);
+        console.log('📋 PlacementCalendarTable: Passing placement to modal:', fullPlacement);
+        console.log('📋 Placement has userId?', fullPlacement?.userId);
+        console.log('📋 Placement has jobId?', fullPlacement?.jobId);
         if (fullPlacement) {
           onEditPlacement(fullPlacement);
         }

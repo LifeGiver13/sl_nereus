@@ -61,6 +61,11 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('🔍 PlacementEditModal: Received placement prop:', placement);
+    console.log('🔍 placement.userId:', placement?.userId);
+    console.log('🔍 placement.jobId:', placement?.jobId);
+    console.log('🔍 placement.meta:', placement?.meta);
+    
     if (placement) {
       setInstructions(placement.meta?.instructions || '');
       setNotes(placement.meta?.notes || '');
