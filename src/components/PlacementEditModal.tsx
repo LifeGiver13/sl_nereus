@@ -39,6 +39,8 @@ const statusOptions = [
   { value: 'absent_unexplained', label: 'Absent (Unexplained)' }
 ];
 
+const statusesRequiringRemarks = ['cancelled', 'absent_explained', 'absent_unexplained'];
+
 const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   isOpen,
   onClose,
@@ -55,6 +57,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [remarks, setRemarks] = useState('');
+  const [updateFuturePlacements, setUpdateFuturePlacements] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,23 +67,17 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       setNotes(placement.meta?.notes || '');
       setStatus(placement.status || 'awaiting_confirmation');
       setConfirmed(placement.confirmed || false);
-      setSelectedSlotId(placement.meta?.slotId || 1);
+      setSelectedSlotId(placement.meta?.vacancy || placement.vacancy || 1);
+      setRemarks(placement.meta?.remarks || '');
+      setUpdateFuturePlacements(false);
       
-      // Parse existing availability as individual dates
-      const existingAvailability = placement.meta?.availability || [];
-      if (Array.isArray(existingAvailability) && existingAvailability.length > 0) {
-        const dates = existingAvailability
-          .map((dateItem: any) => {
-            if (typeof dateItem === 'string' || dateItem instanceof Date) {
-              const date = new Date(dateItem);
-              return !isNaN(date.getTime()) ? date : null;
-            }
-            return null;
-          })
-          .filter(Boolean);
-        setSelectedDates(dates);
-      } else {
-        setSelectedDates([]);
+      // Set current placement date
+      const shiftDate = placement.meta?.shiftDate || placement.shiftDate;
+      if (shiftDate) {
+        const date = new Date(shiftDate);
+        if (!isNaN(date.getTime())) {
+          setSelectedDates([date]);
+        }
       }
     }
   }, [placement]);
@@ -132,19 +130,15 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   }, [slots, selectedSlotId, job, placement]);
 
   const handleSave = async () => {
-    if (!placement || selectedDates.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one date",
-        variant: "destructive",
-      });
+    if (!placement) {
       return;
     }
 
-    if (!selectedSlotId) {
+    // Validate remarks if status requires them
+    if (statusesRequiringRemarks.includes(status) && !remarks.trim()) {
       toast({
         title: "Error",
-        description: "Please select a slot",
+        description: "Please provide remarks for this status",
         variant: "destructive",
       });
       return;
@@ -154,20 +148,16 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       status,
       confirmed,
       meta: {
+        ...placement.meta,
         instructions,
         notes,
-        slotId: selectedSlotId,
-        availability: selectedDates.map(date => {
-          // Set time to 12pm to avoid timezone confusion
-          const adjustedDate = new Date(date);
-          adjustedDate.setHours(12, 0, 0, 0);
-          return adjustedDate.toISOString();
-        })
+        remarks: statusesRequiringRemarks.includes(status) ? remarks : undefined
       }
     };
 
     setIsLoading(true);
     try {
+      // Update current placement
       const response = await fetch(`${API_BASE_URL}/placement/${placement.id}`, {
         method: 'PUT',
         headers: {
@@ -181,10 +171,43 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
         throw new Error(`Failed to update placement: ${response.status} ${errorText}`);
       }
 
-      toast({
-        title: "Success",
-        description: "Placement updated successfully",
-      });
+      // Update future placements if checkbox is checked
+      if (updateFuturePlacements && job) {
+        const currentDate = new Date(placement.shiftDate || placement.meta?.shiftDate);
+        currentDate.setHours(12, 0, 0, 0);
+        
+        // Find all future placements for this user in this job
+        const futurePlacements = existingPlacements.filter((p: any) => {
+          if (p.userId !== placement.userId || p.jobId !== placement.jobId || p.id === placement.id) {
+            return false;
+          }
+          
+          const pDate = new Date(p.shiftDate || p.meta?.shiftDate);
+          pDate.setHours(12, 0, 0, 0);
+          return pDate > currentDate;
+        });
+
+        // Update each future placement
+        await Promise.all(futurePlacements.map((fp: any) =>
+          fetch(`${API_BASE_URL}/placement/${fp.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(saveData),
+          })
+        ));
+
+        toast({
+          title: "Success",
+          description: `Updated current placement and ${futurePlacements.length} future placement(s)`,
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Placement updated successfully",
+        });
+      }
 
       onSave();
       onClose();
@@ -259,23 +282,17 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                 </Select>
               </div>
 
-              <div>
-                <label className="text-sm font-medium">Slot Assignment</label>
-                <Select value={selectedSlotId?.toString() || "1"} onValueChange={(value) => setSelectedSlotId(parseInt(value))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {slots && slots.length > 0 ? slots.map((slot) => (
-                      <SelectItem key={slot.id} value={slot.id.toString()}>
-                        Slot {slot.id}
-                      </SelectItem>
-                    )) : (
-                      <SelectItem value="1">Slot 1</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              {statusesRequiringRemarks.includes(status) && (
+                <div>
+                  <label className="text-sm font-medium">Remarks *</label>
+                  <Textarea
+                    placeholder="Please provide remarks for this status..."
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                </div>
+              )}
 
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -287,24 +304,50 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
                   Confirmed
                 </label>
               </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="updateFuture"
+                  checked={updateFuturePlacements}
+                  onCheckedChange={(checked) => setUpdateFuturePlacements(checked === true)}
+                />
+                <label htmlFor="updateFuture" className="text-sm font-medium">
+                  Update future placements for this candidate
+                </label>
+              </div>
             </div>
 
-            {/* Right Column - Date Selection */}
+            {/* Right Column - Placement Info */}
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Working Days</label>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Select the specific days when this candidate will work.
+                <label className="text-sm font-medium">Placement Date</label>
+                <p className="text-sm text-muted-foreground">
+                  {placement.shiftDate ? new Date(placement.shiftDate).toLocaleDateString() : 
+                    placement.meta?.shiftDate ? new Date(placement.meta.shiftDate).toLocaleDateString() : 'N/A'}
                 </p>
-                {job && (
-                  <MultiDaySelector
-                    selectedDates={selectedDates}
-                    onDatesChange={setSelectedDates}
-                    availableDates={availableDates}
-                    conflictingDates={conflictingDates}
-                    job={job}
-                  />
-                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Slot</label>
+                <p className="text-sm text-muted-foreground">
+                  Slot {selectedSlotId || 1}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Job</label>
+                <p className="text-sm text-muted-foreground">
+                  {job?.title || 'N/A'}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Date Range</label>
+                <p className="text-sm text-muted-foreground">
+                  {job?.startDate && job?.endDate ? 
+                    `${new Date(job.startDate).toLocaleDateString()} - ${new Date(job.endDate).toLocaleDateString()}` : 
+                    'N/A'}
+                </p>
               </div>
             </div>
           </div>

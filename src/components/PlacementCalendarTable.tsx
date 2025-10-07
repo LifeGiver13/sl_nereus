@@ -59,6 +59,7 @@ interface PlacementCalendarTableProps {
         instructions?: string;
         shiftDate?: string;
         vacancy?: number;
+        remarks?: string;
       };
       user?: {
         id: number;
@@ -77,9 +78,17 @@ interface PlacementCalendarTableProps {
   };
   slots: Slot[];
   onAssignCandidate?: (userId: number, slotIndex: number, date: Date) => void;
+  onEditPlacement?: (placement: any) => void;
+  statusFilter?: string;
 }
 
-const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, slots, onAssignCandidate }) => {
+const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ 
+  job, 
+  slots, 
+  onAssignCandidate, 
+  onEditPlacement,
+  statusFilter = 'active'
+}) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const jobStart = parseDate(job.startDate);
     jobStart.setHours(12, 0, 0, 0);
@@ -148,7 +157,18 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
       const placementDateString = format(placementDate, 'yyyy-MM-dd');
       
       const placementSlot = p.meta?.vacancy ?? p.vacancy ?? 1;
-      return placementDateString === dateString && placementSlot === slotId;
+      
+      // Check if date and slot match
+      if (placementDateString !== dateString || placementSlot !== slotId) {
+        return false;
+      }
+      
+      // Apply status filter
+      if (statusFilter === 'active') {
+        return ['awaiting_confirmation', 'accepted', 'completed'].includes(p.status);
+      } else {
+        return p.status === statusFilter;
+      }
     });
 
     if (!placement || !placement.user) return null;
@@ -186,16 +206,27 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
   }> = ({ slotId, date, assignment, isApplicable }) => {
     const isFilled = assignment && isApplicable;
 
+    const handleClick = () => {
+      if (!isApplicable) return;
+      
+      if (isFilled && onEditPlacement) {
+        // Find the full placement data with all details
+        const fullPlacement = job.placements?.find(p => p.id === assignment.id);
+        if (fullPlacement) {
+          onEditPlacement(fullPlacement);
+        }
+      } else {
+        // Open assignment modal
+        setSelectionModal({ slotId, date });
+      }
+    };
+
     return (
       <div className="h-full">
         {isFilled ? (
           <div 
             className="bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 rounded-md p-2 space-y-1 border border-green-200 dark:border-green-800 cursor-pointer transition-colors"
-            onClick={() => {
-              if (isApplicable) {
-                setSelectionModal({ slotId, date });
-              }
-            }}
+            onClick={handleClick}
           >
             <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={assignment.user.displayName}>
               {assignment.user.displayName.split(' ')[0]}
@@ -207,10 +238,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ job, sl
         ) : isApplicable ? (
           <div 
             className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
-            onClick={() => {
-              console.log('📱 Click to assign triggered:', { slotId, date: date.toISOString() });
-              setSelectionModal({ slotId, date });
-            }}
+            onClick={handleClick}
           >
             <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
               Click to assign

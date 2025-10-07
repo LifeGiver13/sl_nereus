@@ -94,6 +94,8 @@ const JobFill = () => {
   const [showPlacementDetail, setShowPlacementDetail] = useState(false);
   const [showPlacementEdit, setShowPlacementEdit] = useState(false);
   const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [viewMode, setViewMode] = useState<'weekly' | 'monthly'>('weekly');
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
 
@@ -749,61 +751,62 @@ const JobFill = () => {
           </CardContent>
         </Card>
 
+        {/* View Controls */}
+        <Card className="border-0 shadow-lg">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">Status Filter:</label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active (All)</SelectItem>
+                      <SelectItem value="awaiting_confirmation">Awaiting Confirmation</SelectItem>
+                      <SelectItem value="accepted">Accepted</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="absent_explained">Absent (Explained)</SelectItem>
+                      <SelectItem value="absent_unexplained">Absent (Unexplained)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === 'weekly' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('weekly')}
+                >
+                  Weekly
+                </Button>
+                <Button
+                  variant={viewMode === 'monthly' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('monthly')}
+                >
+                  Monthly
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Calendar Table View */}
         <PlacementCalendarTable 
           job={job} 
           slots={slots}
           onAssignCandidate={handleAssignCandidate}
+          onEditPlacement={(placement) => {
+            setSelectedPlacement(placement);
+            setShowPlacementEdit(true);
+          }}
+          statusFilter={statusFilter}
         />
 
-        {/* Confirm Placements Button */}
-        {placeholderPlacements.length > 0 && (
-          <Card className="border-0 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleConfirmPlacements}
-                  disabled={placeholderPlacements.length === 0}
-                  className="bg-[#712B71] hover:bg-[#712B71]/90"
-                >
-                  Confirm Placements ({placeholderPlacements.length})
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* User Search */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">Search Users</CardTitle>
-              <CardDescription>Find and add users to fill this job</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <UserSearchForm 
-                onUserSelect={(user) => handleAddUser(user, 'search')}
-                disabled={false}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Suggested Candidates */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">Suggested Candidates</CardTitle>
-              <CardDescription>Candidates that might be a good fit</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <SuggestedCandidates 
-                jobId={job.id}
-                skillIds={jobSkills}
-                onCandidateSelect={(user) => handleAddUser(user, 'suggested')}
-                disabled={false}
-              />
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Date Selection Modal */}
         {showDateModal && pendingUser && job && (
@@ -847,10 +850,10 @@ const JobFill = () => {
               setShowPlacementEdit(false);
               setSelectedPlacement(null);
             }}
-            onSave={() => {
+            onSave={async () => {
               setShowPlacementEdit(false);
               setSelectedPlacement(null);
-              refetchPlacements();
+              await Promise.all([refetchJob(), refetchPlacements()]);
             }}
             placement={selectedPlacement}
             job={job}
