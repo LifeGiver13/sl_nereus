@@ -128,6 +128,11 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
   }, [slots, selectedSlotId, job, placement]);
 
   const handleSave = async () => {
+    console.log('💾 handleSave called');
+    console.log('updateFuturePlacements:', updateFuturePlacements);
+    console.log('job:', job);
+    console.log('existingPlacements:', existingPlacements);
+    
     if (!placement) {
       return;
     }
