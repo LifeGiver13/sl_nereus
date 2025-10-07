@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 import PlacementDetailModal from '../components/PlacementDetailModal';
 import PlacementEditModal from '../components/PlacementEditModal';
-import JobCalendar from '../components/JobCalendar';
+import PlacementCalendarTable from '../components/PlacementCalendarTable';
 
 interface Job {
   id: number;
@@ -81,14 +81,17 @@ const JobDetail = () => {
     }
   });
 
-  const { data: placementsData, refetch: refetchPlacements } = useQuery({
+  const { data: existingPlacements, refetch: refetchPlacements } = useQuery({
     queryKey: ['placements', id],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
       if (!response.ok) {
         return { results: [] };
       }
-      return response.json();
+      const data = await response.json();
+      return {
+        results: Array.isArray(data?.results) ? data.results : []
+      };
     },
     enabled: !!id
   });
@@ -188,7 +191,7 @@ const JobDetail = () => {
 
   const skillNames = getSkillNames(job.skills || []);
 
-  const placements = placementsData?.results || [];
+  const placements = existingPlacements?.results || [];
 
   return (
     <AdminLayout>
@@ -322,8 +325,17 @@ const JobDetail = () => {
           </Card>
         </div>
 
-        {/* Job Calendar */}
-        <JobCalendar job={job} placements={placements} />
+        {/* Job Schedule */}
+        <PlacementCalendarTable
+          job={job}
+          existingPlacements={existingPlacements?.results || []}
+          onEditPlacement={handleEditPlacement}
+          slots={job?.vacancies ? Array.from({length: job.vacancies}, (_, i) => ({
+            id: i + 1,
+            placements: [],
+            occupiedDates: new Set<string>()
+          })) : [{id: 1, placements: [], occupiedDates: new Set<string>()}]}
+        />
 
         {placements.length > 0 && (
           <Card className="border-0 shadow-lg">
@@ -429,7 +441,7 @@ const JobDetail = () => {
         onSave={handleSavePlacement}
         placement={selectedPlacement}
         job={job}
-        existingPlacements={job?.placements || []}
+        existingPlacements={existingPlacements?.results || []}
         slots={job?.vacancies ? Array.from({length: job.vacancies}, (_, i) => ({
           id: i + 1,
           placements: [],
