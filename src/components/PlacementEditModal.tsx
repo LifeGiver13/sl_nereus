@@ -150,6 +150,17 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
       }
     };
 
+    // For future placements, we only want to update certain fields, NOT the shiftDate
+    const futurePlacementSaveData = {
+      status,
+      confirmed: true,
+      meta: {
+        instructions,
+        notes,
+        remarks: statusesRequiringRemarks.includes(status) ? remarks : undefined
+      }
+    };
+
     setIsLoading(true);
     try {
       // Update current placement
@@ -235,16 +246,27 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
 
         console.log('🎯 Found future placements to update:', futurePlacements.length);
 
-        // Update each future placement
-        await Promise.all(futurePlacements.map((fp: any) =>
-          fetch(`${API_BASE_URL}/placement/${fp.id}`, {
+        // Update each future placement - preserve their individual shiftDates
+        await Promise.all(futurePlacements.map((fp: any) => {
+          // Merge the new data with existing meta, preserving the shiftDate and vacancy
+          const futureData = {
+            ...futurePlacementSaveData,
+            meta: {
+              ...fp.meta, // Keep existing meta (including shiftDate and vacancy)
+              ...futurePlacementSaveData.meta // Override with new instructions, notes, remarks
+            }
+          };
+          
+          console.log(`Updating placement ${fp.id} with shiftDate ${fp.meta?.shiftDate}`);
+          
+          return fetch(`${API_BASE_URL}/placement/${fp.id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(saveData),
-          })
-        ));
+            body: JSON.stringify(futureData),
+          });
+        }));
 
         toast({
           title: "Success",
