@@ -305,6 +305,13 @@ const JobCreate = () => {
     setIsSubmitting(true);
 
     try {
+      const numberOfWorkingDays = calculateWorkingDays(
+        formData.startDate, 
+        formData.endDate, 
+        formData.includeWeekends
+      );
+      const totalPlacements = numberOfWorkingDays * parseInt(formData.vacancies);
+
       const payload = {
         clientId: selectedClientId,
         postedBy: user?.id,
@@ -322,6 +329,10 @@ const JobCreate = () => {
         body: {
           includeWeekends: formData.includeWeekends,
           positionId: selectedPositionId
+        },
+        meta: {
+          totalPlacements,
+          filledPlacements: 0
         }
       };
 
@@ -355,6 +366,28 @@ const JobCreate = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const calculateWorkingDays = (startDate: string, endDate: string | null, includeWeekends: boolean): number => {
+    if (!startDate) return 0;
+    
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : start;
+    let workingDays = 0;
+    
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dayOfWeek = currentDate.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      
+      if (includeWeekends || !isWeekend) {
+        workingDays++;
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return workingDays;
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
