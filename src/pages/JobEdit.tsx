@@ -282,6 +282,15 @@ const JobEdit = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!formData.shiftId) {
+      toast({
+        title: "Error",
+        description: "Please select a shift",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate that end date is after start date if provided
     if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
       toast({
