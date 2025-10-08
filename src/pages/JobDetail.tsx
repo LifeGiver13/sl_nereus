@@ -61,7 +61,7 @@ const JobDetail = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const { data: job, isLoading, error } = useQuery({
+  const { data: job, isLoading, error, refetch: refetchJob } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/job/${id}`);
@@ -157,8 +157,9 @@ const JobDetail = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleSavePlacement = () => {
-    refetchPlacements();
+  const handleSavePlacement = async () => {
+    await refetchPlacements();
+    await refetchJob();
     setSelectedPlacement(null);
   };
 
@@ -189,7 +190,8 @@ const JobDetail = () => {
         }
       }
 
-      refetchPlacements();
+      await refetchPlacements();
+      await refetchJob();
       toast({
         title: 'Success',
         description: `Candidate assigned successfully`,
