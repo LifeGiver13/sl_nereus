@@ -59,7 +59,7 @@ const People = () => {
       // Build search object
       const searchObj: any = {};
       if (searchTerm) {
-        searchObj.username = { "iLike": `%${searchTerm}%` };
+        searchObj.username = { "like": `%${searchTerm}%` };
       }
       if (selectedRoles.length > 0) {
         searchObj.role = selectedRoles;
