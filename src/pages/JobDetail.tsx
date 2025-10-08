@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, UserPlus, X, Eye } from 'lucide-react';
+import { ArrowLeft, Edit, UserPlus, X } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 import PlacementDetailModal from '../components/PlacementDetailModal';
@@ -55,6 +56,7 @@ interface Skill {
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -158,6 +160,47 @@ const JobDetail = () => {
   const handleSavePlacement = () => {
     refetchPlacements();
     setSelectedPlacement(null);
+  };
+
+  const handleAssignCandidate = async (userId: number, slotId: number, dates: Date[]) => {
+    try {
+      for (const date of dates) {
+        const placementData = {
+          userId,
+          jobId: job.id,
+          departmentId: job.departmentId,
+          shiftId: job.shiftId,
+          confirmed: true,
+          status: 'awaiting_confirmation',
+          meta: {
+            vacancy: slotId,
+            shiftDate: date.toISOString()
+          }
+        };
+
+        const response = await fetch(`${API_BASE_URL}/placements`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(placementData)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create placement');
+        }
+      }
+
+      refetchPlacements();
+      toast({
+        title: 'Success',
+        description: `Candidate assigned successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to assign candidate',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -329,6 +372,7 @@ const JobDetail = () => {
         <PlacementCalendarTable
           job={job}
           existingPlacements={existingPlacements?.results || []}
+          onAssignCandidate={handleAssignCandidate}
           onEditPlacement={handleEditPlacement}
           slots={job?.vacancies ? Array.from({length: job.vacancies}, (_, i) => ({
             id: i + 1,
@@ -337,77 +381,6 @@ const JobDetail = () => {
           })) : [{id: 1, placements: [], occupiedDates: new Set<string>()}]}
         />
 
-        {placements.length > 0 && (
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">Current Placements</CardTitle>
-              <CardDescription>People assigned to this job</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Placement ID</TableHead>
-                    <TableHead>Candidate ID</TableHead>
-                    <TableHead>Candidate Name</TableHead>
-                    <TableHead>Shift</TableHead>
-                    <TableHead>Confirmed</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {placements.map((placement: any) => (
-                    <TableRow key={placement.id}>
-                      <TableCell className="font-medium">#{placement.id}</TableCell>
-                      <TableCell>{placement.userId}</TableCell>
-                      <TableCell>
-                        {placement.user?.profile?.Forename && placement.user?.profile?.Surname 
-                          ? `${placement.user.profile.Forename} ${placement.user.profile.Surname}`
-                          : placement.user?.username || 'N/A'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {placement.shift 
-                          ? `${placement.shift.name} (${placement.shift.startTime} - ${placement.shift.endTime})`
-                          : 'N/A'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={placement.confirmed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                          {placement.confirmed ? 'Yes' : 'No'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {placement.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleViewPlacement(placement)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditPlacement(placement)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
 
         {job.assignees && job.assignees.length > 0 && (
           <Card className="border-0 shadow-lg">
