@@ -178,7 +178,7 @@ const JobDetail = () => {
           }
         };
 
-        const response = await fetch(`${API_BASE_URL}/placements`, {
+        const response = await fetch(`${API_BASE_URL}/placement`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(placementData)
