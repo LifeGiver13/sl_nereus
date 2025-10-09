@@ -384,6 +384,8 @@ const JobFill = () => {
       }
 
       const candidateData = await userResponse.json();
+      console.log('🔍 Candidate data fetched:', candidateData.id, candidateData.username);
+      console.log('🔍 Candidate has', candidateData.placements?.length || 0, 'placements');
       
       // Check if candidate has any existing placements on the selected dates
       if (candidateData.placements && candidateData.placements.length > 0) {
@@ -391,21 +393,25 @@ const JobFill = () => {
         
         dates.forEach(date => {
           const dateStr = date.toISOString().split('T')[0];
+          console.log('🔍 Checking date:', dateStr);
           
           const hasExistingPlacement = candidateData.placements.some((placement: any) => {
             const placementDate = placement.meta?.shiftDate;
             if (placementDate) {
               const placementDateStr = new Date(placementDate).toISOString().split('T')[0];
+              console.log('  📅 Comparing with placement date:', placementDateStr, '- Match:', placementDateStr === dateStr);
               return placementDateStr === dateStr;
             }
             return false;
           });
           
+          console.log('  ✅ Has existing placement on', dateStr, ':', hasExistingPlacement);
           if (hasExistingPlacement) {
             conflictingDates.push(dateStr);
           }
         });
 
+        console.log('🔍 Total conflicting dates:', conflictingDates);
         if (conflictingDates.length > 0) {
           toast({
             title: "Candidate already assigned",
@@ -414,6 +420,8 @@ const JobFill = () => {
           });
           return;
         }
+      } else {
+        console.log('✅ Candidate has no existing placements, can assign freely');
       }
     } catch (error) {
       console.error('Error validating candidate availability:', error);
