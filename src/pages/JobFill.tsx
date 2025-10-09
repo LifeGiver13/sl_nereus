@@ -401,23 +401,55 @@ const JobFill = () => {
     
     if (!job) return;
 
-    // Check for existing placements for any of the dates
-    const conflictingDates: Date[] = [];
-    dates.forEach(date => {
-      const existingPlacement = job.placements?.find(p => 
-        p.userId === candidateId && 
-        new Date(p.shiftDate).toDateString() === date.toDateString() &&
-        p.vacancy === slotId
-      );
-      if (existingPlacement) {
-        conflictingDates.push(date);
+    // Fetch complete user data with placements to validate
+    try {
+      const userResponse = await fetch(`${API_BASE_URL}/user/${candidateId}`, {
+        headers: {
+          'x-service-user': localStorage.getItem('session_token') || '',
+        },
+      });
+      
+      if (!userResponse.ok) {
+        throw new Error('Failed to fetch candidate details');
       }
-    });
-    
-    if (conflictingDates.length > 0) {
+
+      const candidateData = await userResponse.json();
+      
+      // Check if candidate has any existing placements on the selected dates
+      if (candidateData.placements && candidateData.placements.length > 0) {
+        const conflictingDates: string[] = [];
+        
+        dates.forEach(date => {
+          const dateStr = date.toISOString().split('T')[0];
+          
+          const hasExistingPlacement = candidateData.placements.some((placement: any) => {
+            const placementDate = placement.meta?.shiftDate;
+            if (placementDate) {
+              const placementDateStr = new Date(placementDate).toISOString().split('T')[0];
+              return placementDateStr === dateStr;
+            }
+            return false;
+          });
+          
+          if (hasExistingPlacement) {
+            conflictingDates.push(dateStr);
+          }
+        });
+
+        if (conflictingDates.length > 0) {
+          toast({
+            title: "Candidate already assigned",
+            description: `This candidate is already assigned on: ${conflictingDates.join(', ')}`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error validating candidate availability:', error);
       toast({
         title: "Error",
-        description: `Candidate is already assigned to this slot on ${conflictingDates.length} date(s).`,
+        description: "Failed to validate candidate availability.",
         variant: "destructive",
       });
       return;

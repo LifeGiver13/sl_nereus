@@ -19,6 +19,12 @@ interface User {
     Forename?: string;
     Surname?: string;
   };
+  placements?: Array<{
+    id: number;
+    meta?: {
+      shiftDate?: string;
+    };
+  }>;
 }
 
 interface CandidateSelectionModalProps {
@@ -151,6 +157,24 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
     return dates;
   }, [job, conflictingDates]);
 
+  // Check if candidate has placements on any of the selected dates
+  const isCandidateUnavailable = (candidate: User, datesToCheck: Date[]): boolean => {
+    if (!candidate.placements || candidate.placements.length === 0) {
+      return false;
+    }
+
+    return datesToCheck.some(selectedDate => {
+      const selectedDateStr = selectedDate.toISOString().split('T')[0];
+      return candidate.placements!.some(placement => {
+        if (placement.meta?.shiftDate) {
+          const placementDateStr = new Date(placement.meta.shiftDate).toISOString().split('T')[0];
+          return placementDateStr === selectedDateStr;
+        }
+        return false;
+      });
+    });
+  };
+
   const handleSelect = (candidate: User) => {
     const datesToAssign = multiDateMode ? selectedDates : [date];
     onCandidateSelect(candidate.id, slotId, datesToAssign);
@@ -177,20 +201,32 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
           const firstName = candidate.profile?.Forename || 'Unknown';
           const lastName = candidate.profile?.Surname || 'User';
           const email = candidate.username || '';
+          const datesToCheck = multiDateMode ? selectedDates : [date];
+          const isUnavailable = isCandidateUnavailable(candidate, datesToCheck);
           
           return (
             <div
               key={candidate.id}
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+              className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                isUnavailable 
+                  ? 'opacity-50 bg-muted cursor-not-allowed' 
+                  : 'hover:bg-accent/50'
+              }`}
             >
-              <div>
+              <div className="flex-1">
                 <p className="font-medium">{firstName} {lastName}</p>
                 <p className="text-sm text-muted-foreground">{email}</p>
+                {isUnavailable && (
+                  <p className="text-xs text-destructive mt-1">
+                    Already assigned on selected date(s)
+                  </p>
+                )}
               </div>
               <Button
                 size="sm"
                 onClick={() => handleSelect(candidate)}
                 variant="outline"
+                disabled={isUnavailable}
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Assign
