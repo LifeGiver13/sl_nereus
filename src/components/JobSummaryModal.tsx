@@ -6,16 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
-import { ExternalLink, Eye } from 'lucide-react';
+import { ExternalLink, Eye, Calendar as CalendarIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 
 interface JobSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
   jobId: number | null;
+  placement?: any;
 }
 
-const JobSummaryModal = ({ isOpen, onClose, jobId }: JobSummaryModalProps) => {
+const JobSummaryModal = ({ isOpen, onClose, jobId, placement }: JobSummaryModalProps) => {
   const navigate = useNavigate();
 
   const { data: job, isLoading } = useQuery({
@@ -30,14 +32,20 @@ const JobSummaryModal = ({ isOpen, onClose, jobId }: JobSummaryModalProps) => {
     enabled: !!jobId && isOpen
   });
 
+  // If placement is provided, fetch all placements for this specific user and job
   const { data: placementsData } = useQuery({
-    queryKey: ['placements-summary', jobId],
+    queryKey: placement ? ['candidate-job-placements', placement.userId, jobId] : ['placements-summary', jobId],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/placements/job/${jobId}`);
       if (!response.ok) {
         return { results: [] };
       }
-      return response.json();
+      const data = await response.json();
+      // If we have a placement (clicked on candidate), filter to only that candidate
+      if (placement) {
+        return { results: data.results.filter((p: any) => p.userId === placement.userId) };
+      }
+      return data;
     },
     enabled: !!jobId && isOpen
   });
@@ -79,33 +87,44 @@ const JobSummaryModal = ({ isOpen, onClose, jobId }: JobSummaryModalProps) => {
 
   const placements = placementsData?.results || [];
 
-  const getClientName = () => {
-    return job.client?.name || `Client ID: ${job.clientId}`;
-  };
+  const candidateName = placement?.user?.profile?.Forename && placement?.user?.profile?.Surname 
+    ? `${placement.user.profile.Forename} ${placement.user.profile.Surname}`
+    : placement?.user?.username || null;
 
-  const getDepartmentName = () => {
-    return job.department?.name || `Department ID: ${job.departmentId}`;
-  };
-
-  const getShiftName = () => {
-    return job.shift ? `${job.shift.name} (${job.shift.startTime} - ${job.shift.endTime})` : `Shift ID: ${job.shiftId}`;
-  };
+  const currentDate = placement?.meta?.shiftDate || placement?.clickedDate;
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'open': return 'bg-green-100 text-green-800';
-      case 'closed': return 'bg-red-100 text-red-800';
-      case 'cancelled': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-blue-100 text-blue-800';
+    switch (status?.toLowerCase()) {
+      case 'accepted':
+      case 'awaiting_confirmation':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'absent_explained':
+      case 'absent_unexplained':
+        return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl text-[#000009]">{job.title}</DialogTitle>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <DialogTitle className="text-xl text-[#000009]">
+                {placement && candidateName ? candidateName : job.title}
+              </DialogTitle>
+              {placement && (
+                <Badge className={getStatusColor(placement.status)} variant="outline">
+                  {placement.status?.replace(/_/g, ' ')}
+                </Badge>
+              )}
+            </div>
             <Button onClick={handleViewFullDetails} variant="outline" size="sm">
               <ExternalLink className="h-4 w-4 mr-2" />
               View Full Details
@@ -113,76 +132,135 @@ const JobSummaryModal = ({ isOpen, onClose, jobId }: JobSummaryModalProps) => {
           </div>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-2">
           {/* Job Summary */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <span className="text-sm font-medium text-gray-600">Client:</span>
-              <p className="text-sm text-gray-900">{getClientName()}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-600">Department:</span>
-              <p className="text-sm text-gray-900">{getDepartmentName()}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-600">Shift:</span>
-              <p className="text-sm text-gray-900">{getShiftName()}</p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-600">Status:</span>
-              <Badge className={getStatusColor(job.status)} variant="outline">
-                {job.status}
-              </Badge>
-            </div>
+          <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+            {placement && (
+              <>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Job:</span>
+                  <p className="text-sm font-medium">{job.title}</p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Client:</span>
+                  <p className="text-sm font-medium">{job.client?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Department:</span>
+                  <p className="text-sm font-medium">{job.department?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Shift:</span>
+                  <p className="text-sm font-medium">
+                    {job.shift ? `${job.shift.name} (${job.shift.startTime} - ${job.shift.endTime})` : 'N/A'}
+                  </p>
+                </div>
+              </>
+            )}
+            {!placement && (
+              <>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Client:</span>
+                  <p className="text-sm font-medium">{job.client?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Department:</span>
+                  <p className="text-sm font-medium">{job.department?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Shift:</span>
+                  <p className="text-sm font-medium">
+                    {job.shift ? `${job.shift.name} (${job.shift.startTime} - ${job.shift.endTime})` : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                  <Badge className={getStatusColor(job.status)} variant="outline">
+                    {job.status}
+                  </Badge>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Placements */}
-          {placements.length > 0 ? (
+          {placement ? (
+            /* Candidate-specific view: Show committed dates */
             <div>
-              <h3 className="text-lg font-semibold text-[#000009] mb-3">Current Placements</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Candidate</TableHead>
-                    <TableHead>Shift</TableHead>
-                    <TableHead>Confirmed</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {placements.map((placement: any) => (
-                    <TableRow key={placement.id}>
-                      <TableCell>
-                        {placement.user?.profile?.Forename && placement.user?.profile?.Surname 
-                          ? `${placement.user.profile.Forename} ${placement.user.profile.Surname}`
-                          : placement.user?.username || 'N/A'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {placement.shift 
-                          ? `${placement.shift.name} (${placement.shift.startTime} - ${placement.shift.endTime})`
-                          : 'N/A'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={placement.confirmed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} variant="outline">
-                          {placement.confirmed ? 'Yes' : 'No'}
+              <h3 className="text-lg font-semibold text-[#000009] mb-3">Committed Dates for this Job</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {placements.length > 0 ? (
+                  placements.map((p: any) => {
+                    const placementDate = p.meta?.shiftDate;
+                    const isCurrentDate = placementDate === currentDate || 
+                      (currentDate && placementDate && format(new Date(placementDate), 'yyyy-MM-dd') === format(new Date(currentDate), 'yyyy-MM-dd'));
+                    
+                    return (
+                      <div
+                        key={p.id}
+                        className={`flex items-center justify-between p-3 rounded-md border ${
+                          isCurrentDate ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">
+                            {placementDate ? format(new Date(placementDate), 'MMM dd, yyyy') : 'No date'}
+                          </span>
+                        </div>
+                        <Badge className={getStatusColor(p.status)} variant="outline">
+                          {p.status?.replace(/_/g, ' ')}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {placement.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground col-span-2">No committed dates</p>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-500">
-              <p>No placements found for this job</p>
-            </div>
+            /* Job view: Show all placements */
+            placements.length > 0 ? (
+              <div>
+                <h3 className="text-lg font-semibold text-[#000009] mb-3">Current Placements</h3>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Candidate</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {placements.map((p: any) => (
+                        <TableRow key={p.id}>
+                          <TableCell>
+                            {p.user?.profile?.Forename && p.user?.profile?.Surname 
+                              ? `${p.user.profile.Forename} ${p.user.profile.Surname}`
+                              : p.user?.username || 'N/A'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {p.meta?.shiftDate ? format(new Date(p.meta.shiftDate), 'MMM dd, yyyy') : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(p.status)} variant="outline">
+                              {p.status?.replace(/_/g, ' ')}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                <p>No placements found for this job</p>
+              </div>
+            )
           )}
         </div>
       </DialogContent>

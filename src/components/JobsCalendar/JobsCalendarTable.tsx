@@ -27,6 +27,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
   
   // Calculate date range based on view type
   const rangeStart = viewType === 'weekly' 
@@ -86,6 +87,12 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
 
   const handleJobCellClick = (jobId: number) => {
     setSelectedJobId(jobId);
+    setSelectedPlacement(null);
+  };
+
+  const handlePlacementClick = (jobId: number, placement: any, date: Date) => {
+    setSelectedJobId(jobId);
+    setSelectedPlacement({ ...placement, clickedDate: date });
   };
 
   const handleVacantClick = (jobId: number) => {
@@ -152,7 +159,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
               className={`${statusColorClass} rounded-md p-1.5 border cursor-pointer transition-colors`}
               onClick={(e) => {
                 e.stopPropagation();
-                handleJobCellClick(job.id);
+                handlePlacementClick(job.id, placement, date);
               }}
             >
               <div className="text-xs font-semibold truncate" title={displayName}>
@@ -303,8 +310,12 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
 
       <JobSummaryModal
         jobId={selectedJobId}
+        placement={selectedPlacement}
         isOpen={!!selectedJobId}
-        onClose={() => setSelectedJobId(null)}
+        onClose={() => {
+          setSelectedJobId(null);
+          setSelectedPlacement(null);
+        }}
       />
     </div>
   );
