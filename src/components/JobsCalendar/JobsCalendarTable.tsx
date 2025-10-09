@@ -202,11 +202,12 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
         <div className="w-32" /> {/* Spacer for alignment */}
       </div>
 
-      <div className="overflow-x-auto rounded-md border max-w-full">
+      <div className="rounded-md border">
+        <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="sticky left-0 bg-muted/50 border-r min-w-[280px]">
+              <TableHead className="sticky left-0 bg-muted/50 border-r min-w-[280px] z-20">
                 <div className="font-semibold">Job</div>
               </TableHead>
               {displayDays.map((day, index) => (
@@ -237,7 +238,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
                 return (
                   <TableRow key={job.id} className="hover:bg-muted/30">
                     <TableCell 
-                      className="sticky left-0 bg-background border-r cursor-pointer"
+                      className="sticky left-0 bg-background border-r cursor-pointer z-10"
                       onClick={() => handleJobCellClick(job.id)}
                     >
                       <div className="py-2 space-y-1 min-w-[250px]">
@@ -277,6 +278,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <JobSummaryModal
