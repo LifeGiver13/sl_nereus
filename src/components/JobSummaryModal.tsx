@@ -183,84 +183,47 @@ const JobSummaryModal = ({ isOpen, onClose, jobId, placement }: JobSummaryModalP
             )}
           </div>
 
-          {/* Placements */}
-          {placement ? (
-            /* Candidate-specific view: Show committed dates */
+          {/* Placements - only show for job view, not candidate view */}
+          {!placement && placements.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold text-[#000009] mb-3">Committed Dates for this Job</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {placements.length > 0 ? (
-                  placements.map((p: any) => {
-                    const placementDate = p.meta?.shiftDate;
-                    const isCurrentDate = placementDate === currentDate || 
-                      (currentDate && placementDate && format(new Date(placementDate), 'yyyy-MM-dd') === format(new Date(currentDate), 'yyyy-MM-dd'));
-                    
-                    return (
-                      <div
-                        key={p.id}
-                        className={`flex items-center justify-between p-3 rounded-md border ${
-                          isCurrentDate ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">
-                            {placementDate ? format(new Date(placementDate), 'MMM dd, yyyy') : 'No date'}
-                          </span>
-                        </div>
-                        <Badge className={getStatusColor(p.status)} variant="outline">
-                          {p.status?.replace(/_/g, ' ')}
-                        </Badge>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-sm text-muted-foreground col-span-2">No committed dates</p>
-                )}
+              <h3 className="text-lg font-semibold text-[#000009] mb-3">Current Placements</h3>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Candidate</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {placements.map((p: any) => (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          {p.user?.profile?.Forename && p.user?.profile?.Surname 
+                            ? `${p.user.profile.Forename} ${p.user.profile.Surname}`
+                            : p.user?.username || 'N/A'
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {p.meta?.shiftDate ? format(new Date(p.meta.shiftDate), 'MMM dd, yyyy') : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(p.status)} variant="outline">
+                            {p.status?.replace(/_/g, ' ')}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </div>
-          ) : (
-            /* Job view: Show all placements */
-            placements.length > 0 ? (
-              <div>
-                <h3 className="text-lg font-semibold text-[#000009] mb-3">Current Placements</h3>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Candidate</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {placements.map((p: any) => (
-                        <TableRow key={p.id}>
-                          <TableCell>
-                            {p.user?.profile?.Forename && p.user?.profile?.Surname 
-                              ? `${p.user.profile.Forename} ${p.user.profile.Surname}`
-                              : p.user?.username || 'N/A'
-                            }
-                          </TableCell>
-                          <TableCell>
-                            {p.meta?.shiftDate ? format(new Date(p.meta.shiftDate), 'MMM dd, yyyy') : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(p.status)} variant="outline">
-                              {p.status?.replace(/_/g, ' ')}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-6 text-muted-foreground">
-                <p>No placements found for this job</p>
-              </div>
-            )
+          )}
+          {!placement && placements.length === 0 && (
+            <div className="text-center py-6 text-muted-foreground">
+              <p>No placements found for this job</p>
+            </div>
           )}
         </div>
       </DialogContent>

@@ -81,7 +81,12 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
       
       const placementVacancy = meta?.vacancy ?? 1;
       
-      return placementDateString === dateString && placementVacancy === vacancy;
+      // Filter out declined/rejected placements - position needs to be refilled
+      const isDeclined = p.status === 'declined';
+      
+      return placementDateString === dateString && 
+             placementVacancy === vacancy && 
+             !isDeclined;
     });
   };
 
