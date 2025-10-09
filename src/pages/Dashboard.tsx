@@ -7,7 +7,9 @@ import { Users, FileText, Building2, Briefcase } from 'lucide-react';
 import { useJobsCalendar } from '@/hooks/useJobsCalendar';
 
 const Dashboard = () => {
-  const { jobs, isLoading } = useJobsCalendar();
+  const { jobs, isLoading, selectedDepartmentId, viewType, currentDate } = useJobsCalendar();
+  
+  console.log('Dashboard stats - Jobs count:', jobs.length, 'Department filter:', selectedDepartmentId);
   
   const unfilledJobs = jobs.filter(job => !job.filled);
   
