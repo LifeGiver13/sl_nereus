@@ -629,6 +629,7 @@ const JobCreate = () => {
                           }
                           return false;
                         }}
+                        weekStartsOn={1}
                         initialFocus
                         className="pointer-events-auto"
                       />
@@ -669,6 +670,7 @@ const JobCreate = () => {
                           }
                           return false;
                         }}
+                        weekStartsOn={1}
                         initialFocus
                         className="pointer-events-auto"
                       />
