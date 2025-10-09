@@ -3,7 +3,7 @@ import React from 'react';
 import AdminLayout from '../components/AdminLayout';
 import JobsCalendar from '../components/JobsCalendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, FileText, Building2, Briefcase } from 'lucide-react';
+import { Users, Briefcase } from 'lucide-react';
 import { useJobsCalendar } from '@/hooks/useJobsCalendar';
 
 const Dashboard = () => {
@@ -24,7 +24,7 @@ const Dashboard = () => {
       title: 'Unfilled Jobs',
       value: isLoading ? '...' : unfilledJobs.length.toString(),
       description: 'In current date range',
-      icon: FileText,
+      icon: Briefcase,
       color: 'text-[#712B71]',
       bgColor: 'bg-[#712B71]/10',
     },
@@ -33,22 +33,6 @@ const Dashboard = () => {
       value: isLoading ? '...' : openShifts.toString(),
       description: 'Vacant shifts to fill',
       icon: Users,
-      color: 'text-[#45f0df]',
-      bgColor: 'bg-[#45f0df]/10',
-    },
-    {
-      title: 'Client Companies',
-      value: '156',
-      description: '+3 new this month',
-      icon: Building2,
-      color: 'text-[#712B71]',
-      bgColor: 'bg-[#712B71]/10',
-    },
-    {
-      title: 'Open Positions',
-      value: '73',
-      description: '+15 posted this week',
-      icon: Briefcase,
       color: 'text-[#45f0df]',
       bgColor: 'bg-[#45f0df]/10',
     },
@@ -66,7 +50,7 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
