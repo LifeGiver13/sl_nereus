@@ -1,3 +1,4 @@
+// Jobs Calendar Table Component - Updated with view toggle
 import React from 'react';
 import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays, Calendar } from 'lucide-react';
