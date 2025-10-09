@@ -221,7 +221,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
   }, [job, conflictingDates]);
 
   // Check if candidate has placements on any of the selected dates
-  // Only block if they have a placement with status "awaiting_confirmation" or "accepted"
+  // Block only if they have a placement with status OTHER THAN "awaiting_confirmation" or "accepted"
   const isCandidateUnavailable = (candidate: User, datesToCheck: Date[]): boolean => {
     if (!candidate.placements || candidate.placements.length === 0) {
       return false;
@@ -233,7 +233,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
         if (placement.meta?.shiftDate) {
           const placementDateStr = new Date(placement.meta.shiftDate).toISOString().split('T')[0];
           const isDateMatch = placementDateStr === selectedDateStr;
-          const isBlockingStatus = placement.status === 'awaiting_confirmation' || placement.status === 'accepted';
+          const isBlockingStatus = placement.status !== 'awaiting_confirmation' && placement.status !== 'accepted';
           return isDateMatch && isBlockingStatus;
         }
         return false;
