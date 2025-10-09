@@ -68,7 +68,6 @@ const JobCreate = () => {
     startDate: '',
     endDate: '',
     vacancies: '',
-    status: 'open',
     departmentId: '',
     shiftId: '',
     includeWeekends: false
@@ -331,7 +330,7 @@ const JobCreate = () => {
         endDate: formData.endDate || null,
         shiftId: formData.shiftId ? parseInt(formData.shiftId) : null,
         vacancies: parseInt(formData.vacancies),
-        status: formData.status,
+        status: 'active',
         skills: selectedSkills.map(skill => skill.id),
         filled: false,
         assignees: [],
