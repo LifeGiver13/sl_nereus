@@ -272,17 +272,22 @@ const JobFill = () => {
       return null;
     }
 
+    // Get all dates for the current job
     const jobStart = new Date(job.startDate);
     const jobEnd = new Date(job.endDate);
+    const jobDates = new Set<string>();
+    
+    for (let d = new Date(jobStart); d <= jobEnd; d.setDate(d.getDate() + 1)) {
+      jobDates.add(d.toISOString().split('T')[0]);
+    }
 
+    // Check if user has any placements on these specific dates
     const overlappingPlacements = user.placements.filter((placement: any) => {
-      if (!placement.job) return false;
+      const placementDate = placement.meta?.shiftDate;
+      if (!placementDate) return false;
       
-      const placementStart = new Date(placement.job.startDate);
-      const placementEnd = new Date(placement.job.endDate);
-      
-      // Check for date overlap
-      return (placementStart <= jobEnd && placementEnd >= jobStart);
+      const dateStr = new Date(placementDate).toISOString().split('T')[0];
+      return jobDates.has(dateStr);
     });
 
     return overlappingPlacements.length > 0 ? overlappingPlacements : null;

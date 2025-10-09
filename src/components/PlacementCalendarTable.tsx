@@ -167,7 +167,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
       
       // Apply status filter
       if (statusFilter === 'active') {
-        return ['awaiting_confirmation', 'accepted', 'completed'].includes(p.status);
+        return ['awaiting_confirmation', 'accepted', 'completed', 'cancelled', 'absent_explained', 'absent_unexplained'].includes(p.status);
       } else {
         return p.status === statusFilter;
       }
@@ -236,17 +236,35 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
       }
     };
 
+    const getStatusColor = (status: string) => {
+      switch (status?.toLowerCase()) {
+        case 'accepted': 
+          return 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
+        case 'awaiting_confirmation': 
+          return 'bg-yellow-100 dark:bg-yellow-900 hover:bg-yellow-200 dark:hover:bg-yellow-800 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200';
+        case 'cancelled': 
+          return 'bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200';
+        case 'absent_explained':
+        case 'absent_unexplained':
+          return 'bg-purple-100 dark:bg-purple-900 hover:bg-purple-200 dark:hover:bg-purple-800 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200';
+        case 'completed':
+          return 'bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200';
+        default: 
+          return 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
+      }
+    };
+
     return (
       <div className="h-full">
         {isFilled ? (
           <div 
-            className="bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 rounded-md p-2 space-y-1 border border-green-200 dark:border-green-800 cursor-pointer transition-colors"
+            className={`${getStatusColor(assignment.status)} rounded-md p-2 space-y-1 border cursor-pointer transition-colors`}
             onClick={handleClick}
           >
-            <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={assignment.user.displayName}>
+            <div className="text-xs font-semibold truncate" title={assignment.user.displayName}>
               {assignment.user.displayName.split(' ')[0]}
             </div>
-            <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+            <div className="text-xs font-medium">
               {assignment.user.displayName.split(' ')[1]?.charAt(0)}.
             </div>
           </div>

@@ -32,9 +32,9 @@ interface PlacementEditModalProps {
 const statusOptions = [
   { value: 'awaiting_confirmation', label: 'Awaiting Confirmation' },
   { value: 'accepted', label: 'Accepted' },
-  { value: 'rejected', label: 'Rejected' },
+  { value: 'rejected', label: 'Rejected (Candidate)' },
   { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'cancelled', label: 'Client Cancelled' },
   { value: 'absent_explained', label: 'Absent (Explained)' },
   { value: 'absent_unexplained', label: 'Absent (Unexplained)' }
 ];
