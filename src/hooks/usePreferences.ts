@@ -34,26 +34,55 @@ export const usePreferences = () => {
 
   useEffect(() => {
     // Load preferences from localStorage on mount
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setPreferences({ ...DEFAULT_PREFERENCES, ...parsed });
-      } catch (error) {
-        console.error('Failed to parse preferences from localStorage:', error);
-        // Use defaults if parsing fails
+    const loadPreferences = () => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setPreferences({ ...DEFAULT_PREFERENCES, ...parsed });
+        } catch (error) {
+          console.error('Failed to parse preferences from localStorage:', error);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PREFERENCES));
+        }
+      } else {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PREFERENCES));
       }
-    } else {
-      // Save defaults if no preferences exist
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PREFERENCES));
-    }
+    };
+
+    loadPreferences();
+
+    // Listen for preference changes from other components
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setPreferences({ ...DEFAULT_PREFERENCES, ...parsed });
+        } catch (error) {
+          console.error('Failed to parse preferences from storage event:', error);
+        }
+      }
+    };
+
+    // Custom event for same-window updates
+    const handlePreferencesUpdate = () => {
+      loadPreferences();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('preferences-updated', handlePreferencesUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('preferences-updated', handlePreferencesUpdate);
+    };
   }, []);
 
   const updatePreferences = (updates: Partial<Preferences>) => {
     const newPreferences = { ...preferences, ...updates };
     setPreferences(newPreferences);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new Event('preferences-updated'));
   };
 
   const updateCalendarPreferences = (updates: Partial<CalendarPreferences>) => {
