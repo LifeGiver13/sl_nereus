@@ -121,9 +121,8 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
     const getStatusColor = (status: string) => {
       switch (status?.toLowerCase()) {
         case 'accepted': 
-          return 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
         case 'awaiting_confirmation': 
-          return 'bg-yellow-100 dark:bg-yellow-900 hover:bg-yellow-200 dark:hover:bg-yellow-800 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200';
+          return 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
         case 'cancelled': 
           return 'bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200';
         case 'absent_explained':
