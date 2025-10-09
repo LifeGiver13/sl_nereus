@@ -4,13 +4,18 @@ import AdminLayout from '../components/AdminLayout';
 import JobsCalendar from '../components/JobsCalendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, FileText, Building2, Briefcase } from 'lucide-react';
+import { useJobsCalendar } from '@/hooks/useJobsCalendar';
 
 const Dashboard = () => {
+  const { jobs, isLoading } = useJobsCalendar();
+  
+  const unfilledJobs = jobs.filter(job => job.status !== 'filled');
+  
   const stats = [
     {
-      title: 'Total Applications',
-      value: '1,247',
-      description: '+12% from last month',
+      title: 'Unfilled Jobs',
+      value: isLoading ? '...' : unfilledJobs.length.toString(),
+      description: 'In current date range',
       icon: FileText,
       color: 'text-[#712B71]',
       bgColor: 'bg-[#712B71]/10',
