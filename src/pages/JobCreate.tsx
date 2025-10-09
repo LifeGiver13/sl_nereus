@@ -12,11 +12,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Save, X, Plus } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ArrowLeft, Save, X, Plus, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface Client {
   id: number;
@@ -63,11 +67,11 @@ const JobCreate = () => {
   const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
   const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    startDate: '',
-    endDate: '',
     vacancies: '',
     departmentId: '',
     shiftId: '',
@@ -79,8 +83,8 @@ const JobCreate = () => {
     clientId: selectedClientId,
     departmentId: formData.departmentId,
     positionId: selectedPositionId,
-    startDate: formData.startDate,
-    endDate: formData.endDate
+    startDate: startDate ? format(startDate, 'yyyy-MM-dd') : '',
+    endDate: endDate ? format(endDate, 'yyyy-MM-dd') : ''
   });
 
   // Fetch skills data
@@ -262,26 +266,35 @@ const JobCreate = () => {
     setSelectedSkills(selectedSkills.filter(skill => skill.id !== skillToRemove.id));
   };
 
-  const handleShiftCreated = (newShift: Shift) => {
+  const handleShiftCreated = async (newShift: Shift) => {
     console.log('=== SHIFT CREATED ===');
     console.log('New shift received:', newShift);
     console.log('New shift ID:', newShift.id);
-    refetchShifts();
+    
+    // Wait for refetch to complete
+    await refetchShifts();
+    console.log('Shifts refetched');
+    
     const shiftIdString = newShift.id.toString();
     console.log('Setting shift ID to:', shiftIdString);
+    
     setFormData(prev => {
       const updated = { ...prev, shiftId: shiftIdString };
-      console.log('Updated formData:', updated);
+      console.log('Updated formData after shift creation:', updated);
       return updated;
     });
     console.log('=== END SHIFT CREATED ===');
   };
 
-  const handlePositionCreated = (newPosition: Position) => {
+  const handlePositionCreated = async (newPosition: Position) => {
     console.log('=== POSITION CREATED ===');
     console.log('New position received:', newPosition);
     console.log('New position ID:', newPosition.id);
-    refetchPositions();
+    
+    // Wait for refetch to complete
+    await refetchPositions();
+    console.log('Positions refetched');
+    
     console.log('Setting position ID to:', newPosition.id);
     setSelectedPositionId(newPosition.id);
     console.log('Selected position ID set to:', newPosition.id);
@@ -324,10 +337,19 @@ const JobCreate = () => {
     }
 
     // Validate that end date is after start date if provided
-    if (formData.startDate && formData.endDate && formData.endDate <= formData.startDate) {
+    if (startDate && endDate && endDate <= startDate) {
       toast({
         title: "Error",
         description: "End date must be later than start date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!startDate) {
+      toast({
+        title: "Error",
+        description: "Please select a start date",
         variant: "destructive",
       });
       return;
@@ -342,9 +364,12 @@ const JobCreate = () => {
     setIsSubmitting(true);
 
     try {
+      const startDateStr = startDate ? format(startDate, 'yyyy-MM-dd') : '';
+      const endDateStr = endDate ? format(endDate, 'yyyy-MM-dd') : '';
+      
       const numberOfWorkingDays = calculateWorkingDays(
-        formData.startDate, 
-        formData.endDate, 
+        startDateStr, 
+        endDateStr, 
         formData.includeWeekends
       );
       const totalPlacements = numberOfWorkingDays * parseInt(formData.vacancies);
@@ -355,8 +380,8 @@ const JobCreate = () => {
         departmentId: formData.departmentId ? parseInt(formData.departmentId) : null,
         title: formData.title,
         description: formData.description,
-        startDate: formData.startDate,
-        endDate: formData.endDate || null,
+        startDate: startDateStr,
+        endDate: endDateStr || null,
         shiftId: formData.shiftId ? parseInt(formData.shiftId) : null,
         vacancies: parseInt(formData.vacancies),
         status: 'active',
@@ -579,27 +604,36 @@ const JobCreate = () => {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Start Date *</label>
-                  <Input
-                    type="date"
-                    required
-                    value={formData.startDate}
-                    onChange={(e) => {
-                      const selectedDate = new Date(e.target.value);
-                      const dayOfWeek = selectedDate.getDay();
-                      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                      
-                      if (!formData.includeWeekends && isWeekend) {
-                        toast({
-                          title: "Invalid Date",
-                          description: "Please select a weekday. Weekends are not included for this job.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      
-                      handleInputChange('startDate', e.target.value);
-                    }}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        disabled={(date) => {
+                          if (!formData.includeWeekends) {
+                            const dayOfWeek = date.getDay();
+                            return dayOfWeek === 0 || dayOfWeek === 6;
+                          }
+                          return false;
+                        }}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                   {!formData.includeWeekends && (
                     <p className="text-xs text-muted-foreground">Only weekdays can be selected</p>
                   )}
@@ -607,27 +641,39 @@ const JobCreate = () => {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">End Date</label>
-                  <Input
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => {
-                      const selectedDate = new Date(e.target.value);
-                      const dayOfWeek = selectedDate.getDay();
-                      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                      
-                      if (!formData.includeWeekends && isWeekend && e.target.value) {
-                        toast({
-                          title: "Invalid Date",
-                          description: "Please select a weekday. Weekends are not included for this job.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      
-                      handleInputChange('endDate', e.target.value);
-                    }}
-                    min={formData.startDate}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP") : <span>Pick a date (optional)</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={setEndDate}
+                        disabled={(date) => {
+                          if (startDate && date < startDate) {
+                            return true;
+                          }
+                          if (!formData.includeWeekends) {
+                            const dayOfWeek = date.getDay();
+                            return dayOfWeek === 0 || dayOfWeek === 6;
+                          }
+                          return false;
+                        }}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <p className="text-xs text-gray-500">Leave blank for ongoing job. If set, must be later than start date</p>
                   {!formData.includeWeekends && (
                     <p className="text-xs text-muted-foreground">Only weekdays can be selected</p>
