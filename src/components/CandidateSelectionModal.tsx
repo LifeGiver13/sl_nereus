@@ -21,6 +21,7 @@ interface User {
   };
   placements?: Array<{
     id: number;
+    status?: string;
     meta?: {
       shiftDate?: string;
     };
@@ -230,7 +231,9 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
       return candidate.placements!.some(placement => {
         if (placement.meta?.shiftDate) {
           const placementDateStr = new Date(placement.meta.shiftDate).toISOString().split('T')[0];
-          return placementDateStr === selectedDateStr;
+          const isDateMatch = placementDateStr === selectedDateStr;
+          const isBlockingStatus = placement.status === 'awaiting_confirmation' || placement.status === 'accepted';
+          return isDateMatch && isBlockingStatus;
         }
         return false;
       });
@@ -266,16 +269,6 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
           const datesToCheck = multiDateMode ? selectedDates : [date];
           const isUnavailable = isCandidateUnavailable(candidate, datesToCheck);
           
-          // Check if candidate has a placement for the specific selected date
-          const hasPlacementOnDate = candidate.placements?.some(placement => {
-            if (placement.meta?.shiftDate) {
-              const placementDateStr = new Date(placement.meta.shiftDate).toISOString().split('T')[0];
-              const selectedDateStr = date.toISOString().split('T')[0];
-              return placementDateStr === selectedDateStr;
-            }
-            return false;
-          });
-          
           return (
             <div
               key={candidate.id}
@@ -286,14 +279,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
               }`}
             >
               <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium">{firstName} {lastName}</p>
-                  {hasPlacementOnDate && (
-                    <Badge variant="secondary" className="text-xs">
-                      Placed
-                    </Badge>
-                  )}
-                </div>
+                <p className="font-medium">{firstName} {lastName}</p>
                 <p className="text-sm text-muted-foreground">{email}</p>
                 {isUnavailable && (
                   <p className="text-xs text-destructive mt-1">
