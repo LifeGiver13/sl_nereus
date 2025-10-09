@@ -307,8 +307,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           <DialogTitle>Edit Placement</DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 overflow-hidden">
-          <div className="grid grid-cols-2 gap-6 h-full">
+        <div className="flex-1 overflow-y-auto min-h-0 pr-2">
+          <div className="grid grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-4">
               <div>
@@ -411,7 +411,7 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="mt-4">
+        <DialogFooter className="mt-4 flex-shrink-0">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

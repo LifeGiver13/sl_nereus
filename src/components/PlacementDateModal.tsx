@@ -157,7 +157,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Add Candidate to Job</DialogTitle>
           <DialogDescription>
@@ -165,7 +165,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-2">
           <div>
             <Label htmlFor="slot-select">Slot</Label>
             <Select value={selectedSlotId.toString()} onValueChange={(value) => setSelectedSlotId(parseInt(value))}>
@@ -214,7 +214,7 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-4 flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
