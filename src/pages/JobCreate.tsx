@@ -263,13 +263,29 @@ const JobCreate = () => {
   };
 
   const handleShiftCreated = (newShift: Shift) => {
+    console.log('=== SHIFT CREATED ===');
+    console.log('New shift received:', newShift);
+    console.log('New shift ID:', newShift.id);
     refetchShifts();
-    setFormData(prev => ({ ...prev, shiftId: newShift.id.toString() }));
+    const shiftIdString = newShift.id.toString();
+    console.log('Setting shift ID to:', shiftIdString);
+    setFormData(prev => {
+      const updated = { ...prev, shiftId: shiftIdString };
+      console.log('Updated formData:', updated);
+      return updated;
+    });
+    console.log('=== END SHIFT CREATED ===');
   };
 
   const handlePositionCreated = (newPosition: Position) => {
+    console.log('=== POSITION CREATED ===');
+    console.log('New position received:', newPosition);
+    console.log('New position ID:', newPosition.id);
     refetchPositions();
+    console.log('Setting position ID to:', newPosition.id);
     setSelectedPositionId(newPosition.id);
+    console.log('Selected position ID set to:', newPosition.id);
+    console.log('=== END POSITION CREATED ===');
   };
 
   const handlePositionSelect = (positionId: string) => {
@@ -550,27 +566,6 @@ const JobCreate = () => {
                 <CardDescription>Dates and requirements</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Start Date *</label>
-                  <Input
-                    type="date"
-                    required
-                    value={formData.startDate}
-                    onChange={(e) => handleInputChange('startDate', e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">End Date</label>
-                  <Input
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => handleInputChange('endDate', e.target.value)}
-                    min={formData.startDate}
-                  />
-                  <p className="text-xs text-gray-500">Leave blank for ongoing job. If set, must be later than start date</p>
-                </div>
-
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="include-weekends"
@@ -580,6 +575,63 @@ const JobCreate = () => {
                   <label htmlFor="include-weekends" className="text-sm font-medium cursor-pointer">
                     Include weekends
                   </label>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Start Date *</label>
+                  <Input
+                    type="date"
+                    required
+                    value={formData.startDate}
+                    onChange={(e) => {
+                      const selectedDate = new Date(e.target.value);
+                      const dayOfWeek = selectedDate.getDay();
+                      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                      
+                      if (!formData.includeWeekends && isWeekend) {
+                        toast({
+                          title: "Invalid Date",
+                          description: "Please select a weekday. Weekends are not included for this job.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      handleInputChange('startDate', e.target.value);
+                    }}
+                  />
+                  {!formData.includeWeekends && (
+                    <p className="text-xs text-muted-foreground">Only weekdays can be selected</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">End Date</label>
+                  <Input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => {
+                      const selectedDate = new Date(e.target.value);
+                      const dayOfWeek = selectedDate.getDay();
+                      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                      
+                      if (!formData.includeWeekends && isWeekend && e.target.value) {
+                        toast({
+                          title: "Invalid Date",
+                          description: "Please select a weekday. Weekends are not included for this job.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      handleInputChange('endDate', e.target.value);
+                    }}
+                    min={formData.startDate}
+                  />
+                  <p className="text-xs text-gray-500">Leave blank for ongoing job. If set, must be later than start date</p>
+                  {!formData.includeWeekends && (
+                    <p className="text-xs text-muted-foreground">Only weekdays can be selected</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
