@@ -47,7 +47,6 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
   const [viewManager, setViewManager] = useState<ViewManager | null>(null);
   const [formData, setFormData] = useState<any>({
     name: '',
-    status: 'active',
     profile: {
       address: {
         town: '',
@@ -123,7 +122,10 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          status: 'active'
+        }),
       });
 
       if (!response.ok) {
@@ -141,7 +143,6 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
       // Reset form
       setFormData({
         name: '',
-        status: 'active',
         profile: {
           address: {
             town: '',
@@ -241,23 +242,6 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
                   required
                   placeholder="Enter company name"
                 />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => handleInputChange('status', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </CardContent>
           </Card>
