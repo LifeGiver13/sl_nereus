@@ -9,7 +9,7 @@ import { useJobsCalendar } from '@/hooks/useJobsCalendar';
 const Dashboard = () => {
   const { jobs, isLoading } = useJobsCalendar();
   
-  const unfilledJobs = jobs.filter(job => job.status !== 'filled');
+  const unfilledJobs = jobs.filter(job => !job.filled);
   
   const stats = [
     {
