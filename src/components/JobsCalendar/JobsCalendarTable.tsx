@@ -4,6 +4,7 @@ import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfMo
 import { ChevronLeft, ChevronRight, CalendarDays, Calendar } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Job, ViewType } from '@/types/job';
 import { useNavigate } from 'react-router-dom';
@@ -88,7 +89,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
   };
 
   const handleVacantClick = (jobId: number) => {
-    navigate(`/jobs/${jobId}`);
+    navigate(`/job/${jobId}`);
   };
 
   const VacancyCell: React.FC<{
@@ -201,7 +202,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
         <div className="w-32" /> {/* Spacer for alignment */}
       </div>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-md border max-w-full">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -239,15 +240,22 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
                       className="sticky left-0 bg-background border-r cursor-pointer"
                       onClick={() => handleJobCellClick(job.id)}
                     >
-                      <div className="py-2 space-y-1">
+                      <div className="py-2 space-y-1 min-w-[250px]">
                         <div className="font-semibold text-sm text-primary">
                           {job.clientName || 'Unknown Client'}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {job.title}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {job.shiftName || 'Shift'} ({vacancyCount} {vacancyCount === 1 ? 'vacancy' : 'vacancies'})
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="text-xs text-muted-foreground">
+                            {job.shiftName || 'Shift'} ({vacancyCount} {vacancyCount === 1 ? 'vacancy' : 'vacancies'})
+                          </div>
+                          {job.departmentName && (
+                            <Badge variant="outline" className="text-xs">
+                              {job.departmentName}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </TableCell>
