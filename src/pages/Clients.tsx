@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import EditClientModal from '../components/EditClientModal';
 import CreateClientModal from '../components/CreateClientModal';
@@ -32,6 +32,7 @@ interface ClientsResponse {
 }
 
 const Clients = () => {
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -328,13 +329,7 @@ const Clients = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                // TODO: Implement post job functionality
-                                toast({
-                                  title: "Coming Soon",
-                                  description: "Post job functionality will be implemented soon",
-                                });
-                              }}
+                              onClick={() => navigate(`/jobs/create?clientId=${client.id}&clientName=${encodeURIComponent(client.name)}`)}
                             >
                               <Briefcase className="h-4 w-4 mr-1" />
                               Post Job

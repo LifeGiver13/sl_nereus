@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import CreateShiftModal from '../components/CreateShiftModal';
 import CreatePositionModal from '../components/CreatePositionModal';
@@ -49,6 +49,7 @@ interface Position {
 
 const JobCreate = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -176,6 +177,18 @@ const JobCreate = () => {
       setAvailableSkills(allSkills);
     }
   }, [skillsData]);
+
+  // Handle pre-selected client from URL params
+  useEffect(() => {
+    const clientIdParam = searchParams.get('clientId');
+    const clientNameParam = searchParams.get('clientName');
+    
+    if (clientIdParam && clientNameParam) {
+      setSelectedClientId(parseInt(clientIdParam));
+      setClientSearchTerm(decodeURIComponent(clientNameParam));
+    }
+  }, [searchParams]);
+
 
   // Reset shift and position selection when client changes
   useEffect(() => {
