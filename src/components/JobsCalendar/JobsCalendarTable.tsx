@@ -203,7 +203,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
       </div>
 
       <div className="rounded-md border">
-        <div className="overflow-x-auto" style={{ maxWidth: '100vw' }}>
+        <div className="overflow-x-auto" style={{ maxWidth: 'calc(100vw - 18rem)' }}>
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
