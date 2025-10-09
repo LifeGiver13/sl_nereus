@@ -11,6 +11,12 @@ const Dashboard = () => {
   
   const unfilledJobs = jobs.filter(job => !job.filled);
   
+  const openShifts = jobs.reduce((total, job) => {
+    const totalPlacements = job.meta?.totalPlacements || 0;
+    const filledPlacements = job.meta?.filledPlacements || 0;
+    return total + (totalPlacements - filledPlacements);
+  }, 0);
+  
   const stats = [
     {
       title: 'Unfilled Jobs',
@@ -21,9 +27,9 @@ const Dashboard = () => {
       bgColor: 'bg-[#712B71]/10',
     },
     {
-      title: 'Active Candidates',
-      value: '892',
-      description: '+8% from last month',
+      title: 'Open Shifts',
+      value: isLoading ? '...' : openShifts.toString(),
+      description: 'Vacant shifts to fill',
       icon: Users,
       color: 'text-[#45f0df]',
       bgColor: 'bg-[#45f0df]/10',
