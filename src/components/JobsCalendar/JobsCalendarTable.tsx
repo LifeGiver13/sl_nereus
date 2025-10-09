@@ -1,36 +1,35 @@
-import React, { useState } from 'react';
-import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
+import React from 'react';
+import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Job } from '@/types/job';
+import { Job, ViewType } from '@/types/job';
 import { useNavigate } from 'react-router-dom';
 
 interface JobsCalendarTableProps {
   jobs: Job[];
   currentDate: Date;
+  viewType: ViewType;
+  setViewType: (newViewType: ViewType) => void;
+  handleDateChange: (direction: 'next' | 'prev') => void;
 }
 
-const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({ jobs, currentDate }) => {
+const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({ 
+  jobs, 
+  currentDate, 
+  viewType,
+  setViewType,
+  handleDateChange 
+}) => {
   const navigate = useNavigate();
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => 
-    startOfWeek(currentDate, { weekStartsOn: 1 })
-  );
-
+  
+  const currentWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
 
   const weekDays = eachDayOfInterval({ 
     start: currentWeekStart,
     end: currentWeekEnd
   });
-
-  const goToPreviousWeek = () => {
-    setCurrentWeekStart(subWeeks(currentWeekStart, 1));
-  };
-
-  const goToNextWeek = () => {
-    setCurrentWeekStart(addWeeks(currentWeekStart, 1));
-  };
 
   // Helper to check if a job is active on a given date
   const isJobActiveOnDate = (job: Job, date: Date): boolean => {
@@ -143,7 +142,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({ jobs, currentDate
         <Button
           variant="outline"
           size="sm"
-          onClick={goToPreviousWeek}
+          onClick={() => handleDateChange('prev')}
           className="h-8"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -155,7 +154,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({ jobs, currentDate
         <Button
           variant="outline"
           size="sm"
-          onClick={goToNextWeek}
+          onClick={() => handleDateChange('next')}
           className="h-8"
         >
           Next Week

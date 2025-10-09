@@ -13,6 +13,9 @@ const JobsCalendar = () => {
   
   const {
     currentDate,
+    viewType,
+    setViewType,
+    handleDateChange,
     jobs,
     isLoading,
     selectedDepartmentId,
@@ -79,6 +82,9 @@ const JobsCalendar = () => {
         <JobsCalendarTable
           jobs={jobs || []}
           currentDate={currentDate}
+          viewType={viewType}
+          setViewType={setViewType}
+          handleDateChange={handleDateChange}
         />
       </CardContent>
     </Card>
