@@ -1,7 +1,8 @@
 import React from 'react';
-import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { ChevronLeft, ChevronRight, CalendarDays, Calendar } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { Job, ViewType } from '@/types/job';
 import { useNavigate } from 'react-router-dom';
@@ -23,12 +24,18 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
 }) => {
   const navigate = useNavigate();
   
-  const currentWeekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
+  // Calculate date range based on view type
+  const rangeStart = viewType === 'weekly' 
+    ? startOfWeek(currentDate, { weekStartsOn: 1 })
+    : startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
+    
+  const rangeEnd = viewType === 'weekly'
+    ? endOfWeek(currentDate, { weekStartsOn: 1 })
+    : endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
 
-  const weekDays = eachDayOfInterval({ 
-    start: currentWeekStart,
-    end: currentWeekEnd
+  const displayDays = eachDayOfInterval({ 
+    start: rangeStart,
+    end: rangeEnd
   });
 
   // Helper to check if a job is active on a given date
@@ -138,28 +145,43 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleDateChange('prev')}
-          className="h-8"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Previous Week
-        </Button>
-        <div className="text-sm font-medium text-muted-foreground px-3">
-          {format(currentWeekStart, 'MMM dd')} - {format(currentWeekEnd, 'MMM dd, yyyy')}
+      <div className="flex items-center justify-between">
+        <ToggleGroup type="single" value={viewType} onValueChange={(value) => value && setViewType(value as ViewType)}>
+          <ToggleGroupItem value="weekly" aria-label="Week view">
+            <CalendarDays className="h-4 w-4 mr-2" />
+            Week
+          </ToggleGroupItem>
+          <ToggleGroupItem value="monthly" aria-label="Month view">
+            <Calendar className="h-4 w-4 mr-2" />
+            Month
+          </ToggleGroupItem>
+        </ToggleGroup>
+        
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDateChange('prev')}
+            className="h-8"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous {viewType === 'weekly' ? 'Week' : 'Month'}
+          </Button>
+          <div className="text-sm font-medium text-muted-foreground px-3 min-w-[200px] text-center">
+            {format(rangeStart, 'MMM dd')} - {format(rangeEnd, 'MMM dd, yyyy')}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDateChange('next')}
+            className="h-8"
+          >
+            Next {viewType === 'weekly' ? 'Week' : 'Month'}
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleDateChange('next')}
-          className="h-8"
-        >
-          Next Week
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        
+        <div className="w-32" /> {/* Spacer for alignment */}
       </div>
 
       <div className="overflow-x-auto rounded-md border">
@@ -169,7 +191,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
               <TableHead className="sticky left-0 bg-muted/50 border-r min-w-[280px]">
                 <div className="font-semibold">Job</div>
               </TableHead>
-              {weekDays.map((day, index) => (
+              {displayDays.map((day, index) => (
                 <TableHead 
                   key={index}
                   className="text-center border-r last:border-r-0 min-w-[100px]"
@@ -207,7 +229,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
                         </div>
                       </div>
                     </TableCell>
-                    {weekDays.map((day, dayIndex) => (
+                    {displayDays.map((day, dayIndex) => (
                       <TableCell 
                         key={dayIndex} 
                         className="text-center p-2 border-r last:border-r-0"
