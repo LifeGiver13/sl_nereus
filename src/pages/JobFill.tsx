@@ -267,29 +267,35 @@ const JobFill = () => {
     }
   }, [existingPlacements, job]);
 
-  const checkForOverlappingPlacements = (user: any) => {
-    if (!user.placements || !Array.isArray(user.placements) || !job) {
+  const checkForOverlappingPlacements = (user: any, selectedDates: string[]) => {
+    if (!user.placements || !Array.isArray(user.placements)) {
+      console.log('🔍 No placements found for user:', user.id);
       return null;
     }
 
-    // Get all dates for the current job
-    const jobStart = new Date(job.startDate);
-    const jobEnd = new Date(job.endDate);
-    const jobDates = new Set<string>();
-    
-    for (let d = new Date(jobStart); d <= jobEnd; d.setDate(d.getDate() + 1)) {
-      jobDates.add(d.toISOString().split('T')[0]);
-    }
+    console.log('🔍 Checking overlaps for user:', user.id);
+    console.log('🔍 Selected dates to check:', selectedDates);
+    console.log('🔍 User has', user.placements.length, 'total placements');
 
-    // Check if user has any placements on these specific dates
+    // Check if user has any placements on the specific dates we're trying to assign
     const overlappingPlacements = user.placements.filter((placement: any) => {
       const placementDate = placement.meta?.shiftDate;
-      if (!placementDate) return false;
+      if (!placementDate) {
+        console.log('🔍 Placement', placement.id, 'has no shiftDate in meta');
+        return false;
+      }
       
       const dateStr = new Date(placementDate).toISOString().split('T')[0];
-      return jobDates.has(dateStr);
+      const hasOverlap = selectedDates.includes(dateStr);
+      
+      if (hasOverlap) {
+        console.log('🔍 OVERLAP FOUND: Placement', placement.id, 'on date', dateStr, 'conflicts with selected dates');
+      }
+      
+      return hasOverlap;
     });
 
+    console.log('🔍 Found', overlappingPlacements.length, 'overlapping placements');
     return overlappingPlacements.length > 0 ? overlappingPlacements : null;
   };
 
@@ -316,52 +322,11 @@ const JobFill = () => {
   const handleAddUser = async (user: any, source: 'search' | 'suggested') => {
     // Allow adding users to different slots or additional dates
     // No need to check if user already exists - they can work different slots/dates
+    // Overlap checking will happen in handleAddCandidate when specific dates are selected
 
-    // Fetch complete user object with placements
-    try {
-      const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
-        headers: {
-          'x-service-user': localStorage.getItem('session_token') || '',
-        },
-      });
-      
-      if (!response.ok) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch user details.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const completeUser = await response.json();
-
-      // Check for overlapping placements using complete user data
-      const overlappingPlacements = checkForOverlappingPlacements(completeUser);
-      if (overlappingPlacements && overlappingPlacements.length > 0) {
-        const overlapInfo = overlappingPlacements.map((placement: any) => 
-          `${placement.job.title} (${new Date(placement.job.startDate).toLocaleDateString()} - ${new Date(placement.job.endDate).toLocaleDateString()})`
-        ).join(', ');
-        
-        setOverlapDetails(overlapInfo);
-        setPendingUser(user); // Keep original user for display purposes
-        setPendingSource(source);
-        setShowOverlapDialog(true);
-        return;
-      }
-
-      // No overlaps, show date selection modal
-      setPendingUser(user);
-      setPendingSource(source);
-      setShowDateModal(true);
-    } catch (error) {
-      console.error('Error fetching user details:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch user details.",
-        variant: "destructive",
-      });
-    }
+    setPendingUser(user);
+    setPendingSource(source);
+    setShowDateModal(true);
   };
 
   const updateJobRemainingAvailability = async (slotId: number, usedDates: string[]) => {
@@ -519,6 +484,37 @@ const JobFill = () => {
 
   const handleAddCandidate = async (user: any, slotId: number, availability: Date[]) => {
     try {
+      // Fetch complete user data with placements to check for overlaps
+      const userResponse = await fetch(`${API_BASE_URL}/user/${user.id}`, {
+        headers: {
+          'x-service-user': localStorage.getItem('session_token') || '',
+        },
+      });
+      
+      if (!userResponse.ok) {
+        throw new Error('Failed to fetch user details');
+      }
+
+      const completeUser = await userResponse.json();
+      
+      // Check for overlaps on the specific dates being assigned
+      const selectedDateStrings = availability.map(date => date.toISOString().split('T')[0]);
+      const overlappingPlacements = checkForOverlappingPlacements(completeUser, selectedDateStrings);
+      
+      if (overlappingPlacements && overlappingPlacements.length > 0) {
+        const conflictDates = overlappingPlacements.map((p: any) => {
+          const date = new Date(p.meta?.shiftDate);
+          return date.toLocaleDateString();
+        }).join(', ');
+        
+        toast({
+          title: "User already assigned",
+          description: `${user.profile?.Forename || user.firstName} ${user.profile?.Surname || user.lastName} is already assigned on: ${conflictDates}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Create a separate placement for each selected date
       const placementPromises = availability.map(date => {
         // Set date to noon to avoid timezone issues
