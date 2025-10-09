@@ -232,7 +232,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
         if (placement.meta?.shiftDate) {
           const placementDateStr = new Date(placement.meta.shiftDate).toISOString().split('T')[0];
           const isDateMatch = placementDateStr === selectedDateStr;
-          const isBlockingStatus = placement.status === 'awaiting_confirmation' || placement.status === 'accepted';
+          const isBlockingStatus = placement.status !== 'awaiting_confirmation' && placement.status !== 'accepted';
           return isDateMatch && isBlockingStatus;
         }
         return false;
