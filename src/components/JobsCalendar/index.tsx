@@ -6,27 +6,15 @@ import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useJobsCalendar } from '../../hooks/useJobsCalendar';
 import { useDepartments } from '../../hooks/useDepartments';
-import { getDateRangeLabel } from '../../utils/jobsCalendarUtils';
-import CalendarNavigation from './CalendarNavigation';
-import CalendarGrid from './CalendarGrid';
-import JobSummaryModal from '../JobSummaryModal';
+import JobsCalendarTable from './JobsCalendarTable';
 
 const JobsCalendar = () => {
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   
   const {
     currentDate,
-    setCurrentDate,
-    viewType,
-    setViewType,
-    rangeStart,
-    rangeEnd,
-    days,
     jobs,
     isLoading,
-    handleDateChange,
     selectedDepartmentId,
     setSelectedDepartmentId
   } = useJobsCalendar();
@@ -35,20 +23,6 @@ const JobsCalendar = () => {
 
   const handleAddJob = () => {
     navigate('/jobs/create');
-  };
-
-  const handleJobClick = (jobId: number) => {
-    setSelectedJobId(jobId);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedJobId(null);
-  };
-
-  const handleTodayClick = () => {
-    setCurrentDate(new Date());
   };
 
   if (isLoading) {
@@ -68,66 +42,46 @@ const JobsCalendar = () => {
   }
 
   return (
-    <>
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-[#000009]">Jobs Calendar</CardTitle>
-              <CardDescription>
-                {getDateRangeLabel(viewType, currentDate, rangeStart, rangeEnd)}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-3">
-              <Select
-                value={selectedDepartmentId?.toString() || "all"}
-                onValueChange={(value) => setSelectedDepartmentId(value === "all" ? null : parseInt(value))}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map((department) => (
-                    <SelectItem key={department.id} value={department.id.toString()}>
-                      {department.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={handleAddJob} className="bg-[#712B71] hover:bg-[#712B71]/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Job
-              </Button>
-            </div>
+    <Card className="border-0 shadow-lg">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-[#000009]">Jobs Calendar</CardTitle>
+            <CardDescription>
+              Weekly view of all active jobs and placements
+            </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <CalendarNavigation
-              viewType={viewType}
-              onViewTypeChange={setViewType}
-              onDateChange={handleDateChange}
-              onTodayClick={handleTodayClick}
-            />
-
-            <CalendarGrid
-              days={days}
-              jobs={jobs}
-              viewType={viewType}
-              currentDate={currentDate}
-              onJobClick={handleJobClick}
-            />
+          <div className="flex items-center gap-3">
+            <Select
+              value={selectedDepartmentId?.toString() || "all"}
+              onValueChange={(value) => setSelectedDepartmentId(value === "all" ? null : parseInt(value))}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((department) => (
+                  <SelectItem key={department.id} value={department.id.toString()}>
+                    {department.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleAddJob} className="bg-[#712B71] hover:bg-[#712B71]/90">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Job
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <JobSummaryModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        jobId={selectedJobId}
-      />
-    </>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <JobsCalendarTable
+          jobs={jobs || []}
+          currentDate={currentDate}
+        />
+      </CardContent>
+    </Card>
   );
 };
 
