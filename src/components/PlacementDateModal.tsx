@@ -116,38 +116,36 @@ const PlacementDateModal: React.FC<PlacementDateModalProps> = ({
       return;
     }
 
-    // Check if user is already assigned to ANY slot on the same dates
-    const conflictingDatesInOtherSlots: string[] = [];
-    selectedDates.forEach(date => {
-      const dateStr = date.toISOString().split('T')[0];
-      // Check all slots except the currently selected one
-      slots.forEach(slot => {
-        if (slot.id !== selectedSlotId) {
-          // Check if this user has a placement on this date in another slot
-          const hasPlacementOnDate = slot.placements.some(p => {
-            if (p.userId === user.id || p.user?.id === user.id) {
-              const placementDate = p.meta?.shiftDate || p.shiftDate;
-              if (placementDate) {
-                const pDateStr = new Date(placementDate).toISOString().split('T')[0];
-                return pDateStr === dateStr;
-              }
-            }
-            return false;
-          });
-          if (hasPlacementOnDate) {
-            conflictingDatesInOtherSlots.push(`${dateStr} (Slot ${slot.id})`);
+    // Check if user already has placements on any of the selected dates
+    if (user.placements && user.placements.length > 0) {
+      const conflictingDates: string[] = [];
+      
+      selectedDates.forEach(date => {
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Check against all user's existing placements
+        const hasExistingPlacement = user.placements.some((placement: any) => {
+          const placementDate = placement.meta?.shiftDate;
+          if (placementDate) {
+            const placementDateStr = new Date(placementDate).toISOString().split('T')[0];
+            return placementDateStr === dateStr;
           }
+          return false;
+        });
+        
+        if (hasExistingPlacement) {
+          conflictingDates.push(dateStr);
         }
       });
-    });
 
-    if (conflictingDatesInOtherSlots.length > 0) {
-      toast({
-        title: "Candidate already assigned",
-        description: `This candidate is already assigned on: ${conflictingDatesInOtherSlots.join(', ')}`,
-        variant: "destructive",
-      });
-      return;
+      if (conflictingDates.length > 0) {
+        toast({
+          title: "Candidate already assigned",
+          description: `This candidate is already assigned on: ${conflictingDates.join(', ')}`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     onConfirm(user, selectedSlotId, selectedDates);
