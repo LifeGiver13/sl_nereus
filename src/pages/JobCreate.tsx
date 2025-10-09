@@ -472,7 +472,13 @@ const JobCreate = () => {
                   <div className="flex gap-2">
                     <Select
                       value={selectedPositionId?.toString() || ''}
-                      onValueChange={handlePositionSelect}
+                      onValueChange={(value) => {
+                        if (value === 'create-new') {
+                          setIsPositionModalOpen(true);
+                        } else {
+                          handlePositionSelect(value);
+                        }
+                      }}
                       disabled={!selectedClientId}
                       required
                     >
@@ -480,6 +486,11 @@ const JobCreate = () => {
                         <SelectValue placeholder={selectedClientId ? "Select position" : "Select client first"} />
                       </SelectTrigger>
                       <SelectContent>
+                        {positions?.length === 0 && selectedClientId && (
+                          <SelectItem value="create-new" className="text-primary font-medium">
+                            + Create new position
+                          </SelectItem>
+                        )}
                         {positions?.map((position) => (
                           <SelectItem key={position.id} value={position.id.toString()}>
                             {position.name}
@@ -563,13 +574,24 @@ const JobCreate = () => {
                   <div className="flex gap-2">
                     <Select
                       value={formData.shiftId}
-                      onValueChange={(value) => handleInputChange('shiftId', value)}
-                      disabled={!selectedClientId || !shifts?.length}
+                      onValueChange={(value) => {
+                        if (value === 'create-new') {
+                          setIsShiftModalOpen(true);
+                        } else {
+                          handleInputChange('shiftId', value);
+                        }
+                      }}
+                      disabled={!selectedClientId}
                     >
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder={selectedClientId ? (shifts?.length ? "Select shift" : "No shifts available") : "Select client first"} />
+                        <SelectValue placeholder={selectedClientId ? "Select shift" : "Select client first"} />
                       </SelectTrigger>
                       <SelectContent>
+                        {shifts?.length === 0 && selectedClientId && (
+                          <SelectItem value="create-new" className="text-primary font-medium">
+                            + Create new shift
+                          </SelectItem>
+                        )}
                         {shifts?.map((shift) => (
                           <SelectItem key={shift.id} value={shift.id.toString()}>
                             {shift.name}
