@@ -1,5 +1,5 @@
 // Jobs Calendar Table Component - Updated with view toggle
-import React from 'react';
+import React, { useState } from 'react';
 import { format, eachDayOfInterval, isWeekend, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarDays, Calendar } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,6 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { Job, ViewType } from '@/types/job';
 import { useNavigate } from 'react-router-dom';
+import JobSummaryModal from '../JobSummaryModal';
 
 interface JobsCalendarTableProps {
   jobs: Job[];
@@ -24,6 +25,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
   handleDateChange 
 }) => {
   const navigate = useNavigate();
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   
   // Calculate date range based on view type
   const rangeStart = viewType === 'weekly' 
@@ -81,17 +83,20 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
     });
   };
 
-  const handleJobClick = (jobId: number) => {
+  const handleJobCellClick = (jobId: number) => {
+    setSelectedJobId(jobId);
+  };
+
+  const handleVacantClick = (jobId: number) => {
     navigate(`/jobs/${jobId}`);
   };
 
   const VacancyCell: React.FC<{
     job: Job;
-    vacancy: number;
+    vacancies: number[];
     date: Date;
-  }> = ({ job, vacancy, date }) => {
+  }> = ({ job, vacancies, date }) => {
     const isActive = isJobActiveOnDate(job, date);
-    const placement = getPlacementForVacancyAndDate(job, vacancy, date);
     
     if (!isActive) {
       return (
@@ -101,48 +106,59 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
       );
     }
 
-    if (placement && placement.user) {
-      const user = placement.user as any;
-      const profile = user.profile;
-      const displayName = profile 
-        ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() 
-        : user.username || 'Unknown';
+    // Get placements for all vacancies on this date
+    const placementsForDate = vacancies.map(vacancy => ({
+      vacancy,
+      placement: getPlacementForVacancyAndDate(job, vacancy, date)
+    }));
 
-      return (
-        <div 
-          className="bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 rounded-md p-2 space-y-1 border border-green-200 dark:border-green-800 cursor-pointer transition-colors"
-          onClick={() => handleJobClick(job.id)}
-        >
-          <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={displayName}>
-            {displayName.split(' ')[0]}
-          </div>
-          <div className="text-xs text-green-600 dark:text-green-400 font-medium">
-            {displayName.split(' ')[1]?.charAt(0) || ''}.
-          </div>
-        </div>
-      );
-    }
+    // Separate filled and vacant slots
+    const filledSlots = placementsForDate.filter(p => p.placement && p.placement.user);
+    const vacantSlots = placementsForDate.filter(p => !p.placement || !p.placement.user);
 
     return (
-      <div 
-        className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
-        onClick={() => handleJobClick(job.id)}
-      >
-        <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
-          Vacant
-        </div>
+      <div className="space-y-1">
+        {filledSlots.map(({ placement }) => {
+          const user = placement!.user as any;
+          const profile = user.profile;
+          const displayName = profile 
+            ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() 
+            : user.username || 'Unknown';
+
+          return (
+            <div 
+              key={`${placement!.id}`}
+              className="bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 rounded-md p-1.5 border border-green-200 dark:border-green-800 cursor-pointer transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleJobCellClick(job.id);
+              }}
+            >
+              <div className="text-xs font-semibold truncate text-green-800 dark:text-green-200" title={displayName}>
+                {displayName.split(' ')[0]} {displayName.split(' ')[1]?.charAt(0) || ''}.
+              </div>
+            </div>
+          );
+        })}
+        {vacantSlots.map(({ vacancy }) => (
+          <div 
+            key={`vacant-${vacancy}`}
+            className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-1.5 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleVacantClick(job.id);
+            }}
+          >
+            <div className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+              Vacant
+            </div>
+          </div>
+        ))}
       </div>
     );
   };
 
-  // Expand jobs into rows with one row per vacancy
-  const jobRows = jobs.flatMap(job => {
-    const vacancies = job.vacancies || 1;
-    return Array.from({ length: vacancies }, (_, i) => ({
-      job,
-      vacancy: i + 1,
-    }));
-  });
+  const selectedJob = selectedJobId ? jobs.find(j => j.id === selectedJobId) : null;
 
   return (
     <div className="space-y-4">
@@ -206,18 +222,23 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {jobRows.length === 0 ? (
+            {jobs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={displayDays.length + 1} className="text-center py-8 text-muted-foreground">
                   No jobs scheduled for this period
                 </TableCell>
               </TableRow>
             ) : (
-              jobRows.map((row, rowIndex) => {
-                const { job, vacancy } = row;
+              jobs.map((job) => {
+                const vacancyCount = job.vacancies || 1;
+                const vacancies = Array.from({ length: vacancyCount }, (_, i) => i + 1);
+                
                 return (
-                  <TableRow key={`${job.id}-${vacancy}`} className="hover:bg-muted/30">
-                    <TableCell className="sticky left-0 bg-background border-r">
+                  <TableRow key={job.id} className="hover:bg-muted/30">
+                    <TableCell 
+                      className="sticky left-0 bg-background border-r cursor-pointer"
+                      onClick={() => handleJobCellClick(job.id)}
+                    >
                       <div className="py-2 space-y-1">
                         <div className="font-semibold text-sm text-primary">
                           {job.clientName || 'Unknown Client'}
@@ -226,18 +247,18 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
                           {job.title}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {job.shiftName || 'Shift'} - Vacancy {vacancy}
+                          {job.shiftName || 'Shift'} ({vacancyCount} {vacancyCount === 1 ? 'vacancy' : 'vacancies'})
                         </div>
                       </div>
                     </TableCell>
                     {displayDays.map((day, dayIndex) => (
                       <TableCell 
                         key={dayIndex} 
-                        className="text-center p-2 border-r last:border-r-0"
+                        className="text-center p-2 border-r last:border-r-0 align-top"
                       >
                         <VacancyCell
                           job={job}
-                          vacancy={vacancy}
+                          vacancies={vacancies}
                           date={day}
                         />
                       </TableCell>
@@ -249,6 +270,12 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
           </TableBody>
         </Table>
       </div>
+
+      <JobSummaryModal
+        jobId={selectedJobId}
+        isOpen={!!selectedJobId}
+        onClose={() => setSelectedJobId(null)}
+      />
     </div>
   );
 };
