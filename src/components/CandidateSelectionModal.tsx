@@ -56,19 +56,40 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
   const [multiDateMode, setMultiDateMode] = useState(false);
   const [selectedDates, setSelectedDates] = useState<Date[]>([date]);
 
-  // Fetch recently placed candidates
+  // Fetch recently placed candidates with full placement data
   const { data: recentlyPlaced, isLoading: isLoadingRecent } = useQuery({
     queryKey: ['recentlyPlaced', jobId],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/candidates/recently-placed/job/${jobId}`);
       if (!response.ok) return [];
       const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      const candidates = Array.isArray(data) ? data : [];
+      
+      // Fetch full user data with placements for each candidate
+      const candidatesWithPlacements = await Promise.all(
+        candidates.map(async (candidate) => {
+          try {
+            const userResponse = await fetch(`${API_BASE_URL}/user/${candidate.id}`, {
+              headers: {
+                'x-service-user': localStorage.getItem('session_token') || '',
+              },
+            });
+            if (userResponse.ok) {
+              return await userResponse.json();
+            }
+          } catch (error) {
+            console.error(`Failed to fetch placements for user ${candidate.id}:`, error);
+          }
+          return candidate;
+        })
+      );
+      
+      return candidatesWithPlacements;
     },
     enabled: open && !!jobId
   });
 
-  // Fetch good fit candidates
+  // Fetch good fit candidates with full placement data
   const { data: goodFitCandidates, isLoading: isLoadingGoodFit } = useQuery({
     queryKey: ['candidateMatches', skillIds],
     queryFn: async () => {
@@ -81,8 +102,29 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
       if (!response.ok) return { results: [] };
       
       const data = await response.json();
+      const candidates = Array.isArray(data?.results) ? data.results : [];
+      
+      // Fetch full user data with placements for each candidate
+      const candidatesWithPlacements = await Promise.all(
+        candidates.map(async (candidate) => {
+          try {
+            const userResponse = await fetch(`${API_BASE_URL}/user/${candidate.id}`, {
+              headers: {
+                'x-service-user': localStorage.getItem('session_token') || '',
+              },
+            });
+            if (userResponse.ok) {
+              return await userResponse.json();
+            }
+          } catch (error) {
+            console.error(`Failed to fetch placements for user ${candidate.id}:`, error);
+          }
+          return candidate;
+        })
+      );
+      
       return {
-        results: Array.isArray(data?.results) ? data.results : []
+        results: candidatesWithPlacements
       };
     },
     enabled: open && skillIds && skillIds.length > 0
@@ -112,7 +154,27 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
             }
           };
         });
-        setSearchResults(userArray);
+        
+        // Fetch full user data with placements for each search result
+        const usersWithPlacements = await Promise.all(
+          userArray.map(async (user) => {
+            try {
+              const userResponse = await fetch(`${API_BASE_URL}/user/${user.id}`, {
+                headers: {
+                  'x-service-user': localStorage.getItem('session_token') || '',
+                },
+              });
+              if (userResponse.ok) {
+                return await userResponse.json();
+              }
+            } catch (error) {
+              console.error(`Failed to fetch placements for user ${user.id}:`, error);
+            }
+            return user;
+          })
+        );
+        
+        setSearchResults(usersWithPlacements);
       } else {
         setSearchResults([]);
       }
