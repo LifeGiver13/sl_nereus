@@ -665,6 +665,7 @@ const ApplicationFormCreate = () => {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [isSortingSections, setIsSortingSections] = useState(false);
   const [sortingFieldsSection, setSortingFieldsSection] = useState<string | null>(null);
+  const [expandedField, setExpandedField] = useState<{ section: string; index: number } | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -986,6 +987,82 @@ const ApplicationFormCreate = () => {
     return null;
   };
 
+  // Compact field card component with expand functionality
+  const CompactFieldCard = ({ 
+    field, 
+    fieldIndex, 
+    sectionName,
+    onExpand
+  }: { 
+    field: Field; 
+    fieldIndex: number; 
+    sectionName: string;
+    onExpand: () => void;
+  }) => {
+    const isExpanded = expandedField?.section === sectionName && expandedField?.index === fieldIndex;
+
+    if (isExpanded) {
+      return (
+        <div className="border rounded-lg p-4 space-y-4 bg-card">
+          <SortableField
+            field={field}
+            fieldIndex={fieldIndex}
+            sectionName={sectionName}
+            onUpdateField={updateField}
+            onDeleteField={deleteField}
+            allFields={allFields}
+          />
+          <div className="flex justify-between items-center pt-2 border-t">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setExpandedField(null)}
+            >
+              Collapse
+            </Button>
+            <Button
+              size="sm"
+              onClick={saveForm}
+              disabled={loading}
+            >
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Save className="h-4 w-4 mr-2" />
+              Save
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        className="border rounded-lg p-3 bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+        onClick={onExpand}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 flex-1">
+            <div>
+              <div className="font-medium text-sm">{field.label || field.name}</div>
+              <div className="text-xs text-muted-foreground">{field.name} • {field.type}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              {field.required && (
+                <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded">Required</span>
+              )}
+              {field.readOnly && (
+                <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">Read Only</span>
+              )}
+              {field.condition?.field && (
+                <span className="text-xs px-2 py-0.5 bg-blue-500/10 text-blue-600 rounded">Conditional</span>
+              )}
+            </div>
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </div>
+    );
+  };
+
   // Simplified sortable field for sorting mode
   const SortableFieldSimple = ({ 
     field, 
@@ -1255,7 +1332,10 @@ const ApplicationFormCreate = () => {
                         <Button
                           size="sm"
                           variant={sortingFieldsSection === sectionName ? "default" : "outline"}
-                          onClick={() => setSortingFieldsSection(sortingFieldsSection === sectionName ? null : sectionName)}
+                          onClick={() => {
+                            setSortingFieldsSection(sortingFieldsSection === sectionName ? null : sectionName);
+                            setExpandedField(null); // Collapse any expanded field when sorting
+                          }}
                         >
                           <GripVertical className="h-4 w-4 mr-2" />
                           {sortingFieldsSection === sectionName ? "Done Sorting" : "Sort Fields"}
@@ -1286,16 +1366,14 @@ const ApplicationFormCreate = () => {
                         </SortableContext>
                       </DndContext>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-2">
                         {section.fields.map((field, fieldIndex) => (
-                          <SortableField
+                          <CompactFieldCard
                             key={fieldIndex}
                             field={field}
                             fieldIndex={fieldIndex}
                             sectionName={sectionName}
-                            onUpdateField={updateField}
-                            onDeleteField={deleteField}
-                            allFields={allFields}
+                            onExpand={() => setExpandedField({ section: sectionName, index: fieldIndex })}
                           />
                         ))}
                       </div>
