@@ -51,6 +51,11 @@ export type Field = {
     acceptedFormats?: string;
     maxFileSize?: string;
     fileName?: string;
+    minLength?: number;
+    maxLength?: number;
+    capitalize?: boolean;
+    toUppercase?: boolean;
+    stripSpaces?: boolean;
   };
 };
 
@@ -151,7 +156,7 @@ const SortableField = ({
   };
 
   // Helper function to update meta properties
-  const updateMeta = (key: string, value: string) => {
+  const updateMeta = (key: string, value: string | number | boolean | '') => {
     const currentMeta = field.meta || {};
     onUpdateField(sectionName, fieldIndex, { 
       meta: { ...currentMeta, [key]: value } 
@@ -436,25 +441,97 @@ const SortableField = ({
 
           {/* Standard text-based fields (text, email, tel, password, textArea, checkbox) */}
           {['text', 'email', 'tel', 'password', 'textArea', 'checkbox'].includes(field.type) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs">Default Value</Label>
-                <Input
-                  placeholder="Default value"
-                  value={getDefaultMeta().defaultValue || ''}
-                  onChange={(e) => updateMeta('defaultValue', e.target.value)}
-                  className="mt-1"
-                />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Default Value</Label>
+                  <Input
+                    placeholder="Default value"
+                    value={getDefaultMeta().defaultValue || ''}
+                    onChange={(e) => updateMeta('defaultValue', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Placeholder</Label>
+                  <Input
+                    placeholder="Placeholder text"
+                    value={getDefaultMeta().placeHolder || ''}
+                    onChange={(e) => updateMeta('placeHolder', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Placeholder</Label>
-                <Input
-                  placeholder="Placeholder text"
-                  value={getDefaultMeta().placeHolder || ''}
-                  onChange={(e) => updateMeta('placeHolder', e.target.value)}
-                  className="mt-1"
-                />
-              </div>
+
+              {/* Validation Rules - only for text input types */}
+              {['text', 'email', 'tel', 'password', 'textArea'].includes(field.type) && (
+                <div>
+                  <Label className="text-xs font-semibold mb-2 block">Validation Rules</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs">Minimum Length</Label>
+                      <Input
+                        type="number"
+                        placeholder="Min characters"
+                        value={getDefaultMeta().minLength || ''}
+                        onChange={(e) => updateMeta('minLength', e.target.value ? parseInt(e.target.value) : '')}
+                        className="mt-1"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Maximum Length</Label>
+                      <Input
+                        type="number"
+                        placeholder="Max characters"
+                        value={getDefaultMeta().maxLength || ''}
+                        onChange={(e) => updateMeta('maxLength', e.target.value ? parseInt(e.target.value) : '')}
+                        className="mt-1"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Transformers - only for text input types */}
+              {['text', 'email', 'tel', 'password', 'textArea'].includes(field.type) && (
+                <div>
+                  <Label className="text-xs font-semibold mb-2 block">Transformers</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`capitalize-${sectionName}-${fieldIndex}`}
+                        checked={!!getDefaultMeta().capitalize}
+                        onCheckedChange={(checked) => updateMeta('capitalize', !!checked)}
+                      />
+                      <Label htmlFor={`capitalize-${sectionName}-${fieldIndex}`} className="text-xs">
+                        Capitalize (First letter of each word)
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`uppercase-${sectionName}-${fieldIndex}`}
+                        checked={!!getDefaultMeta().toUppercase}
+                        onCheckedChange={(checked) => updateMeta('toUppercase', !!checked)}
+                      />
+                      <Label htmlFor={`uppercase-${sectionName}-${fieldIndex}`} className="text-xs">
+                        To Uppercase (ALL CAPS)
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`stripspaces-${sectionName}-${fieldIndex}`}
+                        checked={!!getDefaultMeta().stripSpaces}
+                        onCheckedChange={(checked) => updateMeta('stripSpaces', !!checked)}
+                      />
+                      <Label htmlFor={`stripspaces-${sectionName}-${fieldIndex}`} className="text-xs">
+                        Strip Spaces (Remove all spaces)
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
