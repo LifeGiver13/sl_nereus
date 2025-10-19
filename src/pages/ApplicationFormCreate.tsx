@@ -664,6 +664,7 @@ const ApplicationFormCreate = () => {
   const [cloneSectionDialog, setCloneSectionDialog] = useState({ open: false, sectionName: '', newName: '' });
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [isSortingSections, setIsSortingSections] = useState(false);
+  const [sortingFieldsSection, setSortingFieldsSection] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -981,89 +982,50 @@ const ApplicationFormCreate = () => {
       );
     }
 
-    // Full view for editing mode
+    // Full view for editing mode - never rendered in section sorting mode
+    return null;
+  };
+
+  // Simplified sortable field for sorting mode
+  const SortableFieldSimple = ({ 
+    field, 
+    fieldIndex, 
+    sectionName 
+  }: { 
+    field: Field; 
+    fieldIndex: number; 
+    sectionName: string;
+  }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+    } = useSortable({ id: `field-${sectionName}-${fieldIndex}` });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
     return (
-      <Card key={sectionName} ref={setNodeRef} style={style} className="mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">{section.name}</CardTitle>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm font-medium whitespace-nowrap">Section Action:</Label>
-                <Select
-                  value={section.meta?.action || 'none'}
-                  onValueChange={(value) => {
-                    setForm(prev => ({
-                      ...prev,
-                      sections: {
-                        ...prev.sections,
-                        [sectionName]: {
-                          ...prev.sections[sectionName],
-                          meta: {
-                            ...prev.sections[sectionName].meta,
-                            action: value === 'none' ? undefined : value
-                          }
-                        }
-                      }
-                    }));
-                  }}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select action" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No Action</SelectItem>
-                    <SelectItem value="verifyEmailAddress">Send Verification Email</SelectItem>
-                    <SelectItem value="preRegistration">Submit Pre-Registration</SelectItem>
-                    <SelectItem value="submitApplication">Submit Complete Application</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => deleteSection(sectionName)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+      <div ref={setNodeRef} style={style} className="border rounded-lg p-3 bg-card">
+        <div className="flex items-center gap-3">
+          <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleFieldDragEnd}
-          >
-            <SortableContext items={section.fields.map((_, index) => `field-${sectionName}-${index}`)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-4">
-                {section.fields.map((field, fieldIndex) => (
-                  <SortableField
-                    key={fieldIndex}
-                    field={field}
-                    fieldIndex={fieldIndex}
-                    sectionName={sectionName}
-                    onUpdateField={updateField}
-                    onDeleteField={deleteField}
-                    allFields={allFields}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-          
-          <Button
-            onClick={() => addField(sectionName)}
-            variant="outline"
-            className="w-full"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Field
-          </Button>
-        </CardContent>
-      </Card>
+          <div className="flex-1 flex items-center gap-4">
+            <div>
+              <div className="font-medium text-sm">{field.label || field.name}</div>
+              <div className="text-xs text-muted-foreground">{field.name} • {field.type}</div>
+            </div>
+            {field.required && (
+              <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded">Required</span>
+            )}
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -1287,27 +1249,57 @@ const ApplicationFormCreate = () => {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                   <CardContent className="space-y-4">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleFieldDragEnd}
-                    >
-                      <SortableContext items={section.fields.map((_, index) => `field-${index}`)} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-4">
-                          {section.fields.map((field, fieldIndex) => (
-                            <SortableField
-                              key={fieldIndex}
-                              field={field}
-                              fieldIndex={fieldIndex}
-                              sectionName={sectionName}
-                              onUpdateField={updateField}
-                              onDeleteField={deleteField}
-                              allFields={allFields}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
+                    {/* Toggle for field sorting */}
+                    {section.fields.length > 1 && (
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          variant={sortingFieldsSection === sectionName ? "default" : "outline"}
+                          onClick={() => setSortingFieldsSection(sortingFieldsSection === sectionName ? null : sectionName)}
+                        >
+                          <GripVertical className="h-4 w-4 mr-2" />
+                          {sortingFieldsSection === sectionName ? "Done Sorting" : "Sort Fields"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {sortingFieldsSection === sectionName ? (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleFieldDragEnd}
+                      >
+                        <SortableContext 
+                          items={section.fields.map((_, index) => `field-${sectionName}-${index}`)} 
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-2">
+                            {section.fields.map((field, fieldIndex) => (
+                              <SortableFieldSimple
+                                key={fieldIndex}
+                                field={field}
+                                fieldIndex={fieldIndex}
+                                sectionName={sectionName}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    ) : (
+                      <div className="space-y-4">
+                        {section.fields.map((field, fieldIndex) => (
+                          <SortableField
+                            key={fieldIndex}
+                            field={field}
+                            fieldIndex={fieldIndex}
+                            sectionName={sectionName}
+                            onUpdateField={updateField}
+                            onDeleteField={deleteField}
+                            allFields={allFields}
+                          />
+                        ))}
+                      </div>
+                    )}
                     
                     <Button
                       onClick={() => addField(sectionName)}
