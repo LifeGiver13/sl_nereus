@@ -116,7 +116,7 @@ const SortableField = ({
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ id: `field-${fieldIndex}` });
+  } = useSortable({ id: `field-${sectionName}-${fieldIndex}` });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -822,17 +822,18 @@ const ApplicationFormCreate = () => {
       return;
     }
 
-    // Find the section containing these fields
-    const activeFieldIndex = parseInt(active.id.toString().replace('field-', ''));
-    const overFieldIndex = parseInt(over.id.toString().replace('field-', ''));
+    // Parse field IDs: format is "field-{sectionName}-{fieldIndex}"
+    const activeIdParts = active.id.toString().split('-');
+    const overIdParts = over.id.toString().split('-');
+    
+    // Extract section name and field index
+    const activeSectionName = activeIdParts.slice(1, -1).join('-'); // Handle section names with hyphens
+    const activeFieldIndex = parseInt(activeIdParts[activeIdParts.length - 1]);
+    const overSectionName = overIdParts.slice(1, -1).join('-');
+    const overFieldIndex = parseInt(overIdParts[overIdParts.length - 1]);
 
-    // Find which section contains the active field
-    const sectionName = Object.keys(form.sections).find(sectionName => {
-      const section = form.sections[sectionName];
-      return activeFieldIndex < section.fields.length;
-    });
-
-    if (!sectionName || activeFieldIndex === overFieldIndex) {
+    // Only allow reordering within the same section
+    if (activeSectionName !== overSectionName || activeFieldIndex === overFieldIndex) {
       return;
     }
 
@@ -840,9 +841,9 @@ const ApplicationFormCreate = () => {
       ...prev,
       sections: {
         ...prev.sections,
-        [sectionName]: {
-          ...prev.sections[sectionName],
-          fields: arrayMove(prev.sections[sectionName].fields, activeFieldIndex, overFieldIndex)
+        [activeSectionName]: {
+          ...prev.sections[activeSectionName],
+          fields: arrayMove(prev.sections[activeSectionName].fields, activeFieldIndex, overFieldIndex)
         }
       }
     }));
