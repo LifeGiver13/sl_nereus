@@ -1037,7 +1037,7 @@ const ApplicationFormCreate = () => {
             collisionDetection={closestCenter}
             onDragEnd={handleFieldDragEnd}
           >
-            <SortableContext items={section.fields.map((_, index) => `field-${index}`)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={section.fields.map((_, index) => `field-${sectionName}-${index}`)} strategy={verticalListSortingStrategy}>
               <div className="space-y-4">
                 {section.fields.map((field, fieldIndex) => (
                   <SortableField
