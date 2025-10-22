@@ -636,6 +636,137 @@ const FieldEditor = ({
   );
 };
 
+// Compact field card component with expand functionality
+const CompactFieldCard = ({ 
+  field, 
+  fieldIndex, 
+  sectionName,
+  onExpand,
+  isExpanded,
+  onUpdateField,
+  onDeleteField,
+  allFields,
+  onCollapse,
+  onSave,
+  loading
+}: { 
+  field: Field; 
+  fieldIndex: number; 
+  sectionName: string;
+  onExpand: () => void;
+  isExpanded: boolean;
+  onUpdateField: (sectionName: string, fieldIndex: number, field: Partial<Field>) => void;
+  onDeleteField: (sectionName: string, fieldIndex: number) => void;
+  allFields: Field[];
+  onCollapse: () => void;
+  onSave: () => void;
+  loading: boolean;
+}) => {
+  if (isExpanded) {
+    return (
+      <div className="border rounded-lg p-4 space-y-4 bg-card">
+        <FieldEditor
+          field={field}
+          fieldIndex={fieldIndex}
+          sectionName={sectionName}
+          onUpdateField={onUpdateField}
+          onDeleteField={onDeleteField}
+          allFields={allFields}
+        />
+        <div className="flex justify-between items-center pt-2 border-t">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onCollapse}
+          >
+            Collapse
+          </Button>
+          <Button
+            size="sm"
+            onClick={onSave}
+            disabled={loading}
+          >
+            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Save className="h-4 w-4 mr-2" />
+            Save
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="border rounded-lg p-3 bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+      onClick={onExpand}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4 flex-1">
+          <div>
+            <div className="font-medium text-sm">{field.label || field.name}</div>
+            <div className="text-xs text-muted-foreground">{field.name} • {field.type}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            {field.required && (
+              <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded">Required</span>
+            )}
+            {field.readOnly && (
+              <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">Read Only</span>
+            )}
+            {field.condition?.field && (
+              <span className="text-xs px-2 py-0.5 bg-blue-500/10 text-blue-600 rounded">Conditional</span>
+            )}
+          </div>
+        </div>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </div>
+    </div>
+  );
+};
+
+// Simplified sortable field for sorting mode
+const SortableFieldSimple = ({ 
+  field, 
+  fieldIndex, 
+  sectionName 
+}: { 
+  field: Field; 
+  fieldIndex: number; 
+  sectionName: string;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: `field-${sectionName}-${fieldIndex}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="border rounded-lg p-3 bg-card">
+      <div className="flex items-center gap-3">
+        <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div className="flex-1 flex items-center gap-4">
+          <div>
+            <div className="font-medium text-sm">{field.label || field.name}</div>
+            <div className="text-xs text-muted-foreground">{field.name} • {field.type}</div>
+          </div>
+          {field.required && (
+            <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded">Required</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ApplicationFormCreate = () => {
   const [form, setForm] = useState<ApplicationForm>({
     name: '',
@@ -971,125 +1102,6 @@ const ApplicationFormCreate = () => {
     return null;
   };
 
-  // Compact field card component with expand functionality
-  const CompactFieldCard = ({ 
-    field, 
-    fieldIndex, 
-    sectionName,
-    onExpand
-  }: { 
-    field: Field; 
-    fieldIndex: number; 
-    sectionName: string;
-    onExpand: () => void;
-  }) => {
-    const isExpanded = expandedField?.section === sectionName && expandedField?.index === fieldIndex;
-
-    if (isExpanded) {
-      return (
-        <div className="border rounded-lg p-4 space-y-4 bg-card">
-          <FieldEditor
-            field={field}
-            fieldIndex={fieldIndex}
-            sectionName={sectionName}
-            onUpdateField={updateField}
-            onDeleteField={deleteField}
-            allFields={allFields}
-          />
-          <div className="flex justify-between items-center pt-2 border-t">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setExpandedField(null)}
-            >
-              Collapse
-            </Button>
-            <Button
-              size="sm"
-              onClick={saveForm}
-              disabled={loading}
-            >
-              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div 
-        className="border rounded-lg p-3 bg-card hover:bg-muted/50 cursor-pointer transition-colors"
-        onClick={onExpand}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            <div>
-              <div className="font-medium text-sm">{field.label || field.name}</div>
-              <div className="text-xs text-muted-foreground">{field.name} • {field.type}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              {field.required && (
-                <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded">Required</span>
-              )}
-              {field.readOnly && (
-                <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">Read Only</span>
-              )}
-              {field.condition?.field && (
-                <span className="text-xs px-2 py-0.5 bg-blue-500/10 text-blue-600 rounded">Conditional</span>
-              )}
-            </div>
-          </div>
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </div>
-    );
-  };
-
-  // Simplified sortable field for sorting mode
-  const SortableFieldSimple = ({ 
-    field, 
-    fieldIndex, 
-    sectionName 
-  }: { 
-    field: Field; 
-    fieldIndex: number; 
-    sectionName: string;
-  }) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-    } = useSortable({ id: `field-${sectionName}-${fieldIndex}` });
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-    };
-
-    return (
-      <div ref={setNodeRef} style={style} className="border rounded-lg p-3 bg-card">
-        <div className="flex items-center gap-3">
-          <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="flex-1 flex items-center gap-4">
-            <div>
-              <div className="font-medium text-sm">{field.label || field.name}</div>
-              <div className="text-xs text-muted-foreground">{field.name} • {field.type}</div>
-            </div>
-            {field.required && (
-              <span className="text-xs px-2 py-0.5 bg-destructive/10 text-destructive rounded">Required</span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const saveForm = async () => {
     if (!form.name.trim()) {
       toast({
@@ -1358,6 +1370,13 @@ const ApplicationFormCreate = () => {
                             fieldIndex={fieldIndex}
                             sectionName={sectionName}
                             onExpand={() => setExpandedField({ section: sectionName, index: fieldIndex })}
+                            isExpanded={expandedField?.section === sectionName && expandedField?.index === fieldIndex}
+                            onUpdateField={updateField}
+                            onDeleteField={deleteField}
+                            allFields={allFields}
+                            onCollapse={() => setExpandedField(null)}
+                            onSave={saveForm}
+                            loading={loading}
                           />
                         ))}
                       </div>
