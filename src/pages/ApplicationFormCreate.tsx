@@ -180,6 +180,7 @@ const SortableField = ({
           <div className="flex-1">
             <Label className="text-xs">Name</Label>
             <Input
+              key={`name-${sectionName}-${fieldIndex}`}
               placeholder="field_name"
               value={field.name}
               onChange={(e) => onUpdateField(sectionName, fieldIndex, { name: e.target.value })}
@@ -190,6 +191,7 @@ const SortableField = ({
         <div>
           <Label className="text-xs">Label</Label>
           <Input
+            key={`label-${sectionName}-${fieldIndex}`}
             placeholder="Display Name"
             value={field.label}
             onChange={(e) => onUpdateField(sectionName, fieldIndex, { label: e.target.value })}
