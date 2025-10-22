@@ -1371,7 +1371,7 @@ const ApplicationFormCreate = () => {
                       <div className="space-y-2">
                         {section.fields.map((field, fieldIndex) => (
                           <CompactFieldCard
-                            key={`${sectionName}-field-${fieldIndex}-${field.name || fieldIndex}`}
+                            key={`${sectionName}-field-${fieldIndex}`}
                             field={field}
                             fieldIndex={fieldIndex}
                             sectionName={sectionName}
