@@ -95,13 +95,14 @@ const getConditionDescription = (condition: any) => {
   }
 };
 
-const SortableField = ({ 
+const FieldEditor = ({ 
   field, 
   fieldIndex, 
   sectionName, 
   onUpdateField, 
   onDeleteField,
-  allFields 
+  allFields,
+  enableDragDrop = false
 }: { 
   field: Field; 
   fieldIndex: number; 
@@ -109,19 +110,17 @@ const SortableField = ({
   onUpdateField: (sectionName: string, fieldIndex: number, field: Partial<Field>) => void;
   onDeleteField: (sectionName: string, fieldIndex: number) => void;
   allFields: Field[];
+  enableDragDrop?: boolean;
 }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: `field-${sectionName}-${fieldIndex}` });
+  const sortable = useSortable({ 
+    id: `field-${sectionName}-${fieldIndex}`,
+    disabled: !enableDragDrop
+  });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+  const style = enableDragDrop ? {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+  } : {};
 
   // Helper functions for select field options
   const addSelectOption = () => {
@@ -170,17 +169,18 @@ const SortableField = ({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="border rounded-lg p-4 space-y-4">
+    <div ref={enableDragDrop ? sortable.setNodeRef : undefined} style={style} className="border rounded-lg p-4 space-y-4">
       {/* Main row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="flex items-center">
-          <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing mr-2">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
+          {enableDragDrop && (
+            <div {...sortable.attributes} {...sortable.listeners} className="cursor-grab hover:cursor-grabbing mr-2">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
           <div className="flex-1">
             <Label className="text-xs">Name</Label>
             <Input
-              key={`name-${sectionName}-${fieldIndex}`}
               placeholder="field_name"
               value={field.name}
               onChange={(e) => onUpdateField(sectionName, fieldIndex, { name: e.target.value })}
@@ -191,7 +191,6 @@ const SortableField = ({
         <div>
           <Label className="text-xs">Label</Label>
           <Input
-            key={`label-${sectionName}-${fieldIndex}`}
             placeholder="Display Name"
             value={field.label}
             onChange={(e) => onUpdateField(sectionName, fieldIndex, { label: e.target.value })}
@@ -1006,13 +1005,14 @@ const ApplicationFormCreate = () => {
     if (isExpanded) {
       return (
         <div className="border rounded-lg p-4 space-y-4 bg-card">
-          <SortableField
+          <FieldEditor
             field={field}
             fieldIndex={fieldIndex}
             sectionName={sectionName}
             onUpdateField={updateField}
             onDeleteField={deleteField}
             allFields={allFields}
+            enableDragDrop={false}
           />
           <div className="flex justify-between items-center pt-2 border-t">
             <Button
@@ -1358,7 +1358,7 @@ const ApplicationFormCreate = () => {
                           <div className="space-y-2">
                             {section.fields.map((field, fieldIndex) => (
                               <SortableFieldSimple
-                                key={fieldIndex}
+                                key={`sort-${sectionName}-${fieldIndex}`}
                                 field={field}
                                 fieldIndex={fieldIndex}
                                 sectionName={sectionName}
@@ -1371,7 +1371,7 @@ const ApplicationFormCreate = () => {
                       <div className="space-y-2">
                         {section.fields.map((field, fieldIndex) => (
                           <CompactFieldCard
-                            key={fieldIndex}
+                            key={`${sectionName}-field-${fieldIndex}-${field.name || fieldIndex}`}
                             field={field}
                             fieldIndex={fieldIndex}
                             sectionName={sectionName}
