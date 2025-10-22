@@ -95,14 +95,14 @@ const getConditionDescription = (condition: any) => {
   }
 };
 
+// Pure field editor without any drag-drop functionality
 const FieldEditor = ({ 
   field, 
   fieldIndex, 
   sectionName, 
   onUpdateField, 
   onDeleteField,
-  allFields,
-  enableDragDrop = false
+  allFields
 }: { 
   field: Field; 
   fieldIndex: number; 
@@ -110,17 +110,7 @@ const FieldEditor = ({
   onUpdateField: (sectionName: string, fieldIndex: number, field: Partial<Field>) => void;
   onDeleteField: (sectionName: string, fieldIndex: number) => void;
   allFields: Field[];
-  enableDragDrop?: boolean;
 }) => {
-  const sortable = useSortable({ 
-    id: `field-${sectionName}-${fieldIndex}`,
-    disabled: !enableDragDrop
-  });
-
-  const style = enableDragDrop ? {
-    transform: CSS.Transform.toString(sortable.transform),
-    transition: sortable.transition,
-  } : {};
 
   // Helper functions for select field options
   const addSelectOption = () => {
@@ -169,24 +159,17 @@ const FieldEditor = ({
   };
 
   return (
-    <div ref={enableDragDrop ? sortable.setNodeRef : undefined} style={style} className="border rounded-lg p-4 space-y-4">
+    <div className="space-y-4">
       {/* Main row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="flex items-center">
-          {enableDragDrop && (
-            <div {...sortable.attributes} {...sortable.listeners} className="cursor-grab hover:cursor-grabbing mr-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
-            </div>
-          )}
-          <div className="flex-1">
-            <Label className="text-xs">Name</Label>
-            <Input
-              placeholder="field_name"
-              value={field.name}
-              onChange={(e) => onUpdateField(sectionName, fieldIndex, { name: e.target.value })}
-              className="mt-1"
-            />
-          </div>
+        <div>
+          <Label className="text-xs">Name</Label>
+          <Input
+            placeholder="field_name"
+            value={field.name}
+            onChange={(e) => onUpdateField(sectionName, fieldIndex, { name: e.target.value })}
+            className="mt-1"
+          />
         </div>
         <div>
           <Label className="text-xs">Label</Label>
@@ -1012,7 +995,6 @@ const ApplicationFormCreate = () => {
             onUpdateField={updateField}
             onDeleteField={deleteField}
             allFields={allFields}
-            enableDragDrop={false}
           />
           <div className="flex justify-between items-center pt-2 border-t">
             <Button
