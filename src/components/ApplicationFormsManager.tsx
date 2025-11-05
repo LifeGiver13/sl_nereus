@@ -257,7 +257,14 @@ const ApplicationFormsManager = () => {
                 ) : (
                   (forms || []).map((form) => (
                     <TableRow key={form.id}>
-                      <TableCell className="font-medium">{form.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <button
+                          onClick={() => handleConfigureForm(form.id, form.name)}
+                          className="text-left hover:underline hover:text-primary transition-colors"
+                        >
+                          {form.name}
+                        </button>
+                      </TableCell>
                       <TableCell>{form.description || 'No description'}</TableCell>
                       <TableCell>
                         {form.sections 

@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Save, ArrowLeft, GripVertical, Loader2, Copy, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, GripVertical, Loader2, Copy, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/AdminLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -781,6 +781,7 @@ const ApplicationFormCreate = () => {
   const [isSortingSections, setIsSortingSections] = useState(false);
   const [sortingFieldsSection, setSortingFieldsSection] = useState<string | null>(null);
   const [expandedField, setExpandedField] = useState<{ section: string; index: number } | null>(null);
+  const [editingSectionName, setEditingSectionName] = useState<{ sectionIndex: number; currentName: string; newName: string } | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -831,6 +832,64 @@ const ApplicationFormCreate = () => {
       const newSet = new Set(prev);
       newSet.delete(sectionName);
       return newSet;
+    });
+  };
+
+  const updateSectionName = (sectionIndex: number, currentName: string, newName: string) => {
+    if (!newName.trim() || newName === currentName) {
+      setEditingSectionName(null);
+      return;
+    }
+
+    // Check if new section name already exists
+    if (form.sections[newName]) {
+      toast({
+        title: "Error",
+        description: "A section with this name already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Use index-based approach to ensure we update the correct section
+    const sortedSections = getSortedSections();
+    const [oldKey, section] = sortedSections[sectionIndex];
+
+    if (oldKey !== currentName) {
+      toast({
+        title: "Error",
+        description: "Section reference mismatch. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newSections = { ...form.sections };
+    delete newSections[currentName];
+    newSections[newName] = {
+      ...section,
+      name: newName
+    };
+
+    setForm(prev => ({
+      ...prev,
+      sections: newSections
+    }));
+
+    // Update collapsed sections set
+    if (collapsedSections.has(currentName)) {
+      setCollapsedSections(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(currentName);
+        newSet.add(newName);
+        return newSet;
+      });
+    }
+
+    setEditingSectionName(null);
+    toast({
+      title: "Success",
+      description: `Section renamed to "${newName}"`,
     });
   };
 
@@ -1258,17 +1317,65 @@ const ApplicationFormCreate = () => {
             </SortableContext>
           </DndContext>
         ) : (
-          getSortedSections().map(([sectionName, section]) => {
+          getSortedSections().map(([sectionName, section], sectionIndex) => {
             const isCollapsed = collapsedSections.has(sectionName);
+            const isEditingThisSection = editingSectionName?.sectionIndex === sectionIndex;
+            
             return (
               <Collapsible key={sectionName} open={!isCollapsed} onOpenChange={() => toggleSectionCollapse(sectionName)}>
                 <Card className="mb-6">
                   <CollapsibleTrigger asChild>
                     <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg">{section.name}</CardTitle>
-                          {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                        <div className="flex items-center gap-2" onClick={(e) => {
+                          if (isEditingThisSection) {
+                            e.stopPropagation();
+                          }
+                        }}>
+                          {isEditingThisSection ? (
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <Input
+                                value={editingSectionName.newName}
+                                onChange={(e) => setEditingSectionName({ ...editingSectionName, newName: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    updateSectionName(sectionIndex, editingSectionName.currentName, editingSectionName.newName);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingSectionName(null);
+                                  }
+                                }}
+                                className="text-lg font-semibold"
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => updateSectionName(sectionIndex, editingSectionName.currentName, editingSectionName.newName)}
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingSectionName(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <CardTitle 
+                                className="text-lg hover:text-primary transition-colors"
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingSectionName({ sectionIndex, currentName: sectionName, newName: sectionName });
+                                }}
+                              >
+                                {section.name}
+                              </CardTitle>
+                              {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                            </>
+                          )}
                         </div>
                         <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
