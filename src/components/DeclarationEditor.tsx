@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Bold, List, Type } from 'lucide-react';
+import { Bold, List, ListOrdered, Type } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import ReactMarkdown from 'react-markdown';
 
@@ -65,6 +65,35 @@ export const DeclarationEditor: React.FC<DeclarationEditorProps> = ({ content, o
     }, 0);
   };
 
+  const insertNumberedList = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    
+    let newContent;
+    if (selectedText) {
+      // Convert selected lines to numbered list
+      const lines = selectedText.split('\n');
+      const numberedList = lines.map((line, index) => 
+        line.trim() ? `${index + 1}. ${line.trim()}` : ''
+      ).join('\n');
+      newContent = content.substring(0, start) + numberedList + content.substring(end);
+    } else {
+      // Insert template numbered list
+      const numberedList = '1. Item 1\n2. Item 2\n3. Item 3';
+      newContent = content.substring(0, start) + numberedList + content.substring(end);
+    }
+    
+    onChange(newContent);
+    
+    setTimeout(() => {
+      textarea.focus();
+    }, 0);
+  };
+
   const insertColoredText = () => {
     insertFormatting('<span style="color: #FF0000;">', '</span>', 'colored text');
   };
@@ -91,6 +120,15 @@ export const DeclarationEditor: React.FC<DeclarationEditorProps> = ({ content, o
             title="Bullet List"
           >
             <List className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={insertNumberedList}
+            title="Numbered List"
+          >
+            <ListOrdered className="h-4 w-4" />
           </Button>
           <Button
             type="button"
@@ -123,6 +161,7 @@ export const DeclarationEditor: React.FC<DeclarationEditorProps> = ({ content, o
           <ul className="list-disc list-inside space-y-1 mt-1">
             <li>**bold text** for bold</li>
             <li>- Item for bullet lists</li>
+            <li>1. Item for numbered lists</li>
             <li>[link text](url) for links</li>
             <li>&lt;span style="color: #FF0000;"&gt;text&lt;/span&gt; for colored text</li>
           </ul>
@@ -137,6 +176,7 @@ export const DeclarationEditor: React.FC<DeclarationEditorProps> = ({ content, o
               // Allow HTML in markdown for colored text
               p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
               ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
               li: ({ children }) => <li className="ml-2">{children}</li>,
               a: ({ href, children }) => (
                 <a href={href} className="text-primary underline hover:text-primary/80" target="_blank" rel="noopener noreferrer">
