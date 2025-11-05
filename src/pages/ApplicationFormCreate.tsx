@@ -7,13 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, Save, ArrowLeft, GripVertical, Loader2, Copy, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Plus, Trash2, Save, ArrowLeft, GripVertical, Loader2, Copy, ChevronDown, ChevronUp, X, Bold, List, Type } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/AdminLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useApplicationForms } from '@/hooks/useApplicationForms';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DeclarationEditor } from '@/components/DeclarationEditor';
 import {
   DndContext,
   closestCenter,
@@ -34,7 +35,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 export type Field = {
   name: string;
-  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden";
+  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden" | "declaration";
   label: string;
   required?: boolean;
   readOnly?: boolean;
@@ -56,6 +57,7 @@ export type Field = {
     capitalize?: boolean;
     toUppercase?: boolean;
     stripSpaces?: boolean;
+    content?: string;
   };
 };
 
@@ -212,6 +214,13 @@ const FieldEditor = ({
                   maxFileSize: '',
                   fileName: ''
                 };
+              } else if (value === 'declaration') {
+                updates.options = undefined;
+                updates.meta = {
+                  content: ''
+                };
+                updates.required = false;
+                updates.readOnly = true;
               } else {
                 updates.options = undefined;
                 updates.meta = {
@@ -241,6 +250,7 @@ const FieldEditor = ({
               <SelectItem value="employmentHistory">Employment History</SelectItem>
               <SelectItem value="referees">Referees</SelectItem>
               <SelectItem value="hidden">Hidden</SelectItem>
+              <SelectItem value="declaration">Declaration (Formatted Text Display)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -421,6 +431,14 @@ const FieldEditor = ({
                 />
               </div>
             </div>
+          )}
+
+          {/* Declaration field options */}
+          {field.type === 'declaration' && (
+            <DeclarationEditor 
+              content={getDefaultMeta().content || ''}
+              onChange={(content) => updateMeta('content', content)}
+            />
           )}
 
           {/* Standard text-based fields (text, email, tel, password, textArea, checkbox) */}
