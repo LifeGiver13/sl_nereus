@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,6 +46,7 @@ const Applications = () => {
   const [total, setTotal] = useState(0);
   const { token } = useAuth();
   const { preferences, updateTablePreferences } = usePreferences();
+  const navigate = useNavigate();
   const pageSize = preferences.table.pageSize;
 
   useEffect(() => {
@@ -188,7 +189,7 @@ const Applications = () => {
                   </TableHeader>
                   <TableBody>
                     {applications.map((application) => (
-                      <TableRow key={application.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/application/${application.id}`}>
+                      <TableRow key={application.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/application/${application.id}`)}>
                         <TableCell className="font-medium">#{application.id}</TableCell>
                         <TableCell>{application.user?.username || 'N/A'}</TableCell>
                         <TableCell>
