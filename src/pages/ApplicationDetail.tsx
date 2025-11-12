@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '../components/AdminLayout';
-import { PreRegistrationWizard, PostRegistrationWizard, WizardFormConfig } from '../config/wizardConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config/env';
 import { RemarkSystem, AllRemarks, SectionRemarks, Remark, hasUnresolvedRemarks, getSectionRemarkCount } from '../components/RemarkSystem';
@@ -78,10 +77,15 @@ const ApplicationDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Default form ID - this should ideally come from config or application data
+  const DEFAULT_FORM_ID = 2;
+
   useEffect(() => {
     const fetchApplicationDetail = async () => {
       try {
         setIsLoading(true);
+        
+        // Fetch application data
         const response = await fetch(`${API_BASE_URL}/application/${id}`, {
           method: 'GET',
           headers: {
@@ -97,33 +101,33 @@ const ApplicationDetail = () => {
         const data = await response.json();
         console.log('=== APPLICATION DATA LOADED ===');
         console.log('Full application data:', data);
-        console.log('Has formId?', data.formId);
         console.log('Data structure keys:', Object.keys(data.data || {}));
-        console.log('================================');
         
         setApplication(data);
 
-        // Fetch the application form if formId exists
-        if (data.formId) {
-          console.log('Fetching form for formId:', data.formId);
-          const formResponse = await fetch(`${API_BASE_URL}/application-form/${data.formId}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+        // Always fetch the form structure (use formId from data, or default form)
+        const formIdToUse = data.formId || DEFAULT_FORM_ID;
+        console.log('Loading form structure from formId:', formIdToUse);
+        
+        const formResponse = await fetch(`${API_BASE_URL}/application-form/${formIdToUse}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
 
-          if (formResponse.ok) {
-            const formData = await formResponse.json();
-            console.log('Form data loaded:', formData);
-            setApplicationForm(formData);
-          } else {
-            console.log('Form fetch failed:', formResponse.status);
-          }
+        if (formResponse.ok) {
+          const formData = await formResponse.json();
+          console.log('Form structure loaded:', formData);
+          console.log('Form sections:', formData.sections?.map((s: any) => s.name));
+          setApplicationForm(formData);
         } else {
-          console.log('No formId found - will use legacy wizard rendering');
+          console.error('Failed to load form structure:', formResponse.status);
+          throw new Error('Failed to load form structure');
         }
+        
+        console.log('================================');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
         console.error('Error fetching application:', err);
@@ -156,34 +160,11 @@ const ApplicationDetail = () => {
     );
   };
 
-  const isFormBasedApplication = () => {
-    const result = application?.formId && applicationForm;
-    console.log('isFormBasedApplication check:', { 
-      hasFormId: !!application?.formId, 
-      hasForm: !!applicationForm, 
-      result 
-    });
-    return result;
-  };
-
   const getSortedSections = () => {
     if (!applicationForm?.sections) return [];
     return [...applicationForm.sections].sort((a, b) => 
       (a.displayOrder || 0) - (b.displayOrder || 0)
     );
-  };
-
-  const getAllWizardSections = () => {
-    const preRegistrationSections = Object.keys(PreRegistrationWizard);
-    const postRegistrationSections = Object.keys(PostRegistrationWizard);
-    return [...preRegistrationSections, ...postRegistrationSections];
-  };
-
-  const getWizardConfig = (sectionId: string): WizardFormConfig => {
-    if (Object.keys(PreRegistrationWizard).includes(sectionId)) {
-      return PreRegistrationWizard;
-    }
-    return PostRegistrationWizard;
   };
 
   // Load remarks when application is loaded
@@ -392,18 +373,18 @@ const ApplicationDetail = () => {
     return value || 'Not provided';
   };
 
-  const renderFormSectionContent = (section: FormSection) => {
+  const renderSectionContent = (section: FormSection) => {
     if (!application?.data) return null;
     
+    // Match form section name with application data keys
     const sectionData = application.data[section.name]?.fields || {};
     
-    // Debug logging
-    console.log('=== Section Debug ===');
+    console.log('=== Rendering Section ===');
     console.log('Section name:', section.name);
-    console.log('Application data keys:', Object.keys(application.data));
-    console.log('Section data:', sectionData);
-    console.log('Section fields from form:', section.fields.map(f => f.name));
-    console.log('====================');
+    console.log('Section has data?', !!application.data[section.name]);
+    console.log('Field count:', section.fields?.length || 0);
+    console.log('Data keys:', Object.keys(sectionData));
+    console.log('========================');
     
     if (!section.fields || section.fields.length === 0) {
       return <p className="text-muted-foreground">This section has no fields.</p>;
@@ -425,6 +406,9 @@ const ApplicationDetail = () => {
           }
 
           const fieldValue = sectionData[field.name];
+          
+          console.log(`Field "${field.name}":`, fieldValue);
+          
           const shouldRender = !field.condition || (() => {
             const conditionValue = sectionData[field.condition.field];
             const targetValue = field.condition.value;
@@ -438,8 +422,6 @@ const ApplicationDetail = () => {
               conditionMet = conditionValue !== targetValue;
             }
             
-            // If action is 'hide', we show when condition is NOT met
-            // If action is 'show', we show when condition IS met
             return action === 'hide' ? !conditionMet : conditionMet;
           })();
           
@@ -466,163 +448,6 @@ const ApplicationDetail = () => {
         })}
       </div>
     );
-  };
-
-  const renderWizardSectionContent = (sectionId: string) => {
-    if (!application?.data) return null;
-    
-    const wizardConfig = getWizardConfig(sectionId);
-    const sectionConfig = wizardConfig[sectionId];
-    const sectionData = application.data[sectionId]?.fields || {};
-    
-    if (!sectionConfig) return <p>Section configuration not found.</p>;
-    
-    if (sectionConfig.fields) {
-      return (
-        <div className="space-y-4">
-          {sectionConfig.fields.map((field) => {
-            const fieldValue = sectionData[field.name];
-            const shouldRender = !field.condition || (() => {
-              const conditionValue = sectionData[field.condition.field];
-              const targetValue = field.condition.value;
-              const operator = field.condition.operator || 'equals';
-              const action = field.condition.action || 'hide';
-              
-              let conditionMet = false;
-              if (operator === 'equals') {
-                conditionMet = conditionValue === targetValue;
-              } else if (operator === 'not_equals') {
-                conditionMet = conditionValue !== targetValue;
-              }
-              
-              return action === 'hide' ? !conditionMet : conditionMet;
-            })();
-            
-            if (!shouldRender) return null;
-            
-            return (
-              <div key={field.name} className="border-b pb-3 last:border-b-0">
-                <p className="text-sm font-medium text-foreground">{field.label}</p>
-                <div className="mt-1">
-                  {renderFieldValue(field, fieldValue)}
-                </div>
-                {user && (
-                  <RemarkSystem
-                    sectionId={sectionId}
-                    fieldName={field.name}
-                    remarks={remarks[sectionId]?.[field.name] || []}
-                    currentUserId={user.id}
-                    onAddRemark={handleAddRemark}
-                    onToggleResolve={handleToggleResolve}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-    
-    if (sectionId === 'employment-information' && sectionConfig.history) {
-      return (
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-medium">Employment History</h3>
-            <div className="mt-3 space-y-6">
-              {(application.data[sectionId]?.history || []).map((history: any, index: number) => (
-                <div key={index} className="border rounded-md p-4 bg-muted/50">
-                  <h4 className="font-medium">Position {index + 1}</h4>
-                  {sectionConfig.history && sectionConfig.history[0].map((field) => (
-                    <div key={field.name} className="mt-2">
-                      <p className="text-sm font-medium text-foreground">{field.label}</p>
-                      <div className="mt-1">
-                        {renderFieldValue(field, history[field.name])}
-                      </div>
-                      {user && (
-                        <RemarkSystem
-                          sectionId={sectionId}
-                          fieldName={`history-${index}-${field.name}`}
-                          remarks={remarks[sectionId]?.[`history-${index}-${field.name}`] || []}
-                          currentUserId={user.id}
-                          onAddRemark={handleAddRemark}
-                          onToggleResolve={handleToggleResolve}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-              {(!application.data[sectionId]?.history || application.data[sectionId]?.history.length === 0) && (
-                <p className="text-muted-foreground">No employment history provided</p>
-              )}
-            </div>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-medium">References</h3>
-            <div className="mt-3 space-y-6">
-              {(application.data[sectionId]?.references || []).map((reference: any, index: number) => (
-                <div key={index} className="border rounded-md p-4 bg-muted/50">
-                  <h4 className="font-medium">Reference {index + 1}</h4>
-                  {sectionConfig.references && sectionConfig.references[0].map((field) => (
-                    <div key={field.name} className="mt-2">
-                      <p className="text-sm font-medium text-foreground">{field.label}</p>
-                      <div className="mt-1">
-                        {renderFieldValue(field, reference[field.name])}
-                      </div>
-                      {user && (
-                        <RemarkSystem
-                          sectionId={sectionId}
-                          fieldName={`reference-${index}-${field.name}`}
-                          remarks={remarks[sectionId]?.[`reference-${index}-${field.name}`] || []}
-                          currentUserId={user.id}
-                          onAddRemark={handleAddRemark}
-                          onToggleResolve={handleToggleResolve}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-              {(!application.data[sectionId]?.references || application.data[sectionId]?.references.length === 0) && (
-                <p className="text-muted-foreground">No references provided</p>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    if (sectionId === 'skills-information') {
-      return (
-        <div>
-          <h3 className="text-lg font-medium">Skills</h3>
-          <div className="mt-3">
-            {application.data[sectionId]?.skills?.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {application.data[sectionId].skills.map((skill: any, index: number) => (
-                  <Badge key={index}>{typeof skill === 'string' ? skill : skill.name}</Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No skills provided</p>
-            )}
-          </div>
-          {user && (
-            <RemarkSystem
-              sectionId={sectionId}
-              fieldName="skills"
-              remarks={remarks[sectionId]?.['skills'] || []}
-              currentUserId={user.id}
-              onAddRemark={handleAddRemark}
-              onToggleResolve={handleToggleResolve}
-            />
-          )}
-        </div>
-      );
-    }
-    
-    return <p>This section has no renderable content.</p>;
   };
 
   if (isLoading) {
@@ -722,91 +547,31 @@ const ApplicationDetail = () => {
                     </TabsTrigger>
                     <Separator className="my-2" />
                     
-                    {isFormBasedApplication() ? (
-                      // New form-based application sections
-                      getSortedSections().map((section) => {
-                        const sectionRemarks = remarks[section.name] || {};
-                        const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
-                        const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
-                        
-                        return (
-                          <TabsTrigger 
-                            key={section.name}
-                            value={section.name}
-                            className="justify-start text-left w-full"
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span>{section.name}</span>
-                              {hasRemarks && (
-                                <div className="flex items-center space-x-1">
-                                  <MessageSquare className="h-3 w-3 text-blue-500" />
-                                  {hasUnresolved && (
-                                    <AlertCircle className="h-3 w-3 text-red-500" />
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </TabsTrigger>
-                        );
-                      })
-                    ) : (
-                      // Legacy wizard-based sections
-                      <>
-                        <p className="text-xs font-semibold text-muted-foreground px-2 py-1">PRE-REGISTRATION</p>
-                        {Object.keys(PreRegistrationWizard).map((sectionId) => {
-                          const sectionRemarks = remarks[sectionId] || {};
-                          const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
-                          const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
-                          
-                          return (
-                            <TabsTrigger 
-                              key={sectionId}
-                              value={sectionId}
-                              className="justify-start text-left w-full"
-                            >
-                              <div className="flex items-center justify-between w-full">
-                                <span>{PreRegistrationWizard[sectionId].title}</span>
-                                {hasRemarks && (
-                                  <div className="flex items-center space-x-1">
-                                    <MessageSquare className="h-3 w-3 text-blue-500" />
-                                    {hasUnresolved && (
-                                      <AlertCircle className="h-3 w-3 text-red-500" />
-                                    )}
-                                  </div>
+                    {getSortedSections().map((section) => {
+                      const sectionRemarks = remarks[section.name] || {};
+                      const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
+                      const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
+                      
+                      return (
+                        <TabsTrigger 
+                          key={section.name}
+                          value={section.name}
+                          className="justify-start text-left w-full"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>{section.name}</span>
+                            {hasRemarks && (
+                              <div className="flex items-center space-x-1">
+                                <MessageSquare className="h-3 w-3 text-blue-500" />
+                                {hasUnresolved && (
+                                  <AlertCircle className="h-3 w-3 text-red-500" />
                                 )}
                               </div>
-                            </TabsTrigger>
-                          );
-                        })}
-                        <Separator className="my-2" />
-                        <p className="text-xs font-semibold text-muted-foreground px-2 py-1">POST-REGISTRATION</p>
-                        {Object.keys(PostRegistrationWizard).map((sectionId) => {
-                          const sectionRemarks = remarks[sectionId] || {};
-                          const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
-                          const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
-                          
-                          return (
-                            <TabsTrigger 
-                              key={sectionId}
-                              value={sectionId}
-                              className="justify-start text-left w-full"
-                            >
-                              <div className="flex items-center justify-between w-full">
-                                <span>{PostRegistrationWizard[sectionId].title}</span>
-                                {hasRemarks && (
-                                  <div className="flex items-center space-x-1">
-                                    <MessageSquare className="h-3 w-3 text-blue-500" />
-                                    {hasUnresolved && (
-                                      <AlertCircle className="h-3 w-3 text-red-500" />
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </TabsTrigger>
-                          );
-                        })}
-                      </>
-                    )}
+                            )}
+                          </div>
+                        </TabsTrigger>
+                      );
+                    })}
                   </TabsList>
                 </Tabs>
               </CardContent>
@@ -829,34 +594,8 @@ const ApplicationDetail = () => {
                                 <div className="flex items-start">
                                   <User className="h-5 w-5 mr-2 text-muted-foreground mt-0.5" />
                                   <div>
-                                    <p className="text-sm text-muted-foreground">Name</p>
-                                    <p className="font-medium">
-                                      {application.data['personal-info']?.fields?.firstName || 
-                                       application.data['Personal Information']?.fields?.first_name || ''}{' '}
-                                      {application.data['personal-info']?.fields?.lastName ||
-                                       application.data['Personal Information']?.fields?.last_name || ''}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-start">
-                                  <Mail className="h-5 w-5 mr-2 text-muted-foreground mt-0.5" />
-                                  <div>
-                                    <p className="text-sm text-muted-foreground">Email</p>
+                                    <p className="text-sm text-muted-foreground">Username</p>
                                     <p className="font-medium">{application.user.username}</p>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-start">
-                                  <Phone className="h-5 w-5 mr-2 text-muted-foreground mt-0.5" />
-                                  <div>
-                                    <p className="text-sm text-muted-foreground">Phone</p>
-                                    <p className="font-medium">
-                                      {application.data['personal-info']?.fields?.phoneNumber ||
-                                       application.data['Personal Information']?.fields?.phone_number || 'Not provided'}
-                                    </p>
                                   </div>
                                 </div>
                               </div>
@@ -891,7 +630,7 @@ const ApplicationDetail = () => {
 
                       {applicationForm && (
                         <div className="mt-4">
-                          <h3 className="text-md font-medium mb-2">Form</h3>
+                          <h3 className="text-md font-medium mb-2">Application Form</h3>
                           <p className="text-sm text-muted-foreground">{applicationForm.name}</p>
                           {applicationForm.description && (
                             <p className="text-sm text-muted-foreground mt-1">{applicationForm.description}</p>
@@ -901,34 +640,16 @@ const ApplicationDetail = () => {
                     </div>
                   </TabsContent>
                   
-                  {isFormBasedApplication() ? (
-                    // New form-based sections
-                    getSortedSections().map((section) => (
-                      <TabsContent key={section.name} value={section.name} className="mt-0 p-0">
-                        <div>
-                          <h2 className="text-xl font-semibold mb-4">
-                            {section.name}
-                          </h2>
-                          {renderFormSectionContent(section)}
-                        </div>
-                      </TabsContent>
-                    ))
-                  ) : (
-                    // Legacy wizard-based sections
-                    getAllWizardSections().map((sectionId) => (
-                      <TabsContent key={sectionId} value={sectionId} className="mt-0 p-0">
-                        <div>
-                          <h2 className="text-xl font-semibold mb-4">
-                            {getWizardConfig(sectionId)[sectionId].title}
-                          </h2>
-                          <p className="text-muted-foreground mb-6">
-                            {getWizardConfig(sectionId)[sectionId].description}
-                          </p>
-                          {renderWizardSectionContent(sectionId)}
-                        </div>
-                      </TabsContent>
-                    ))
-                  )}
+                  {getSortedSections().map((section) => (
+                    <TabsContent key={section.name} value={section.name} className="mt-0 p-0">
+                      <div>
+                        <h2 className="text-xl font-semibold mb-4">
+                          {section.name}
+                        </h2>
+                        {renderSectionContent(section)}
+                      </div>
+                    </TabsContent>
+                  ))}
                 </Tabs>
               </CardContent>
             </Card>
