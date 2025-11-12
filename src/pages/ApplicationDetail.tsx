@@ -571,12 +571,12 @@ const ApplicationDetail = () => {
                         <TabsTrigger 
                           key={section.name}
                           value={section.name}
-                          className="justify-start text-left w-full"
+                          className="justify-start text-left w-full whitespace-normal h-auto min-h-[2.5rem] py-2"
                         >
-                          <div className="flex items-center justify-between w-full">
-                            <span>{section.name}</span>
+                          <div className="flex items-start justify-between w-full gap-2">
+                            <span className="break-words flex-1 leading-snug">{section.name}</span>
                             {hasRemarks && (
-                              <div className="flex items-center space-x-1">
+                              <div className="flex items-center space-x-1 flex-shrink-0 mt-0.5">
                                 <MessageSquare className="h-3 w-3 text-blue-500" />
                                 {hasUnresolved && (
                                   <AlertCircle className="h-3 w-3 text-red-500" />
