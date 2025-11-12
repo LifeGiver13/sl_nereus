@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import AdminLayout from '../components/AdminLayout';
-import { PreRegistrationWizard, PostRegistrationWizard, WizardFormConfig } from '../config/wizardConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config/env';
 import { RemarkSystem, AllRemarks, SectionRemarks, Remark, hasUnresolvedRemarks, getSectionRemarkCount } from '../components/RemarkSystem';
+import ReactMarkdown from 'react-markdown';
 
 interface User {
   id: number;
@@ -24,9 +24,38 @@ interface User {
   meta: { [key: string]: any };
 }
 
+interface Field {
+  name: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  options?: string[];
+  condition?: any;
+  meta?: {
+    content?: string;
+    [key: string]: any;
+  };
+}
+
+interface FormSection {
+  name: string;
+  fields: Field[];
+  displayOrder?: number;
+  meta?: any;
+}
+
+interface ApplicationForm {
+  id: number;
+  name: string;
+  description: string;
+  sections: FormSection[];
+  meta?: any;
+}
+
 interface Application {
   id: number;
   userId: number;
+  formId?: number;
   status: 'complete' | 'incomplete';
   data: { [key: string]: any };
   meta: { [key: string]: any };
@@ -38,6 +67,7 @@ interface Application {
 const ApplicationDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [application, setApplication] = useState<Application | null>(null);
+  const [applicationForm, setApplicationForm] = useState<ApplicationForm | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -65,6 +95,22 @@ const ApplicationDetail = () => {
 
         const data = await response.json();
         setApplication(data);
+
+        // Fetch the application form if formId exists
+        if (data.formId) {
+          const formResponse = await fetch(`${API_BASE_URL}/application-form/${data.formId}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+          if (formResponse.ok) {
+            const formData = await formResponse.json();
+            setApplicationForm(formData);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
         console.error('Error fetching application:', err);
@@ -97,17 +143,11 @@ const ApplicationDetail = () => {
     );
   };
 
-  const getAllSections = () => {
-    const preRegistrationSections = Object.keys(PreRegistrationWizard);
-    const postRegistrationSections = Object.keys(PostRegistrationWizard);
-    return [...preRegistrationSections, ...postRegistrationSections];
-  };
-
-  const getWizardConfig = (sectionId: string): WizardFormConfig => {
-    if (Object.keys(PreRegistrationWizard).includes(sectionId)) {
-      return PreRegistrationWizard;
-    }
-    return PostRegistrationWizard;
+  const getSortedSections = () => {
+    if (!applicationForm?.sections) return [];
+    return [...applicationForm.sections].sort((a, b) => 
+      (a.displayOrder || 0) - (b.displayOrder || 0)
+    );
   };
 
   // Load remarks when application is loaded
@@ -245,7 +285,31 @@ const ApplicationDetail = () => {
     );
   };
 
-  const renderFieldValue = (field: any, value: any) => {
+  const renderFieldValue = (field: Field, value: any) => {
+    if (field.type === 'declaration') {
+      const content = field.meta?.content || 'No content provided';
+      return (
+        <div className="prose prose-sm max-w-none p-4 bg-muted/50 rounded-md border">
+          <ReactMarkdown
+            components={{
+              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+              li: ({ children }) => <li className="ml-2">{children}</li>,
+              a: ({ href, children }) => (
+                <a href={href} className="text-primary underline hover:text-primary/80" target="_blank" rel="noopener noreferrer">
+                  {children}
+                </a>
+              ),
+              strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        </div>
+      );
+    }
+
     if (field.type === 'boolean') {
       const boolValue = value === 'true' || value?.booleanValue === 'true';
       return boolValue ? (
@@ -265,7 +329,7 @@ const ApplicationDetail = () => {
           href={`${API_BASE_URL}/files/${value.fileKey}`} 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-blue-500 hover:underline flex items-center"
+          className="text-primary hover:underline flex items-center"
         >
           <FileText className="h-4 w-4 mr-1" /> 
           {value.fileName || value.fileKey.split('/').pop()}
@@ -292,163 +356,72 @@ const ApplicationDetail = () => {
     return value || 'Not provided';
   };
 
-  const renderSectionContent = (sectionId: string) => {
+  const renderSectionContent = (section: FormSection) => {
     if (!application?.data) return null;
     
-    const wizardConfig = getWizardConfig(sectionId);
-    const sectionConfig = wizardConfig[sectionId];
-    const sectionData = application.data[sectionId]?.fields || {};
+    const sectionData = application.data[section.name]?.fields || {};
     
-    if (!sectionConfig) return <p>Section configuration not found.</p>;
+    if (!section.fields || section.fields.length === 0) {
+      return <p className="text-muted-foreground">This section has no fields.</p>;
+    }
     
-    if (sectionConfig.fields) {
-      return (
-        <div className="space-y-4">
-          {sectionConfig.fields.map((field) => {
-            const fieldValue = sectionData[field.name];
-            const shouldRender = !field.condition || (() => {
-              const conditionValue = sectionData[field.condition.field];
-              const targetValue = field.condition.value;
-              const operator = field.condition.operator || 'equals';
-              const action = field.condition.action || 'hide';
-              
-              let conditionMet = false;
-              if (operator === 'equals') {
-                conditionMet = conditionValue === targetValue;
-              } else if (operator === 'not_equals') {
-                conditionMet = conditionValue !== targetValue;
-              }
-              
-              // If action is 'hide', we show when condition is NOT met
-              // If action is 'show', we show when condition IS met
-              return action === 'hide' ? !conditionMet : conditionMet;
-            })();
-            
-            if (!shouldRender) return null;
-            
+    return (
+      <div className="space-y-4">
+        {section.fields.map((field) => {
+          // For declaration fields, we don't need user input, just display content
+          if (field.type === 'declaration') {
             return (
-              <div key={field.name} className="border-b pb-3 last:border-b-0">
-                <p className="text-sm font-medium text-gray-700">{field.label}</p>
+              <div key={field.name} className="pb-3">
+                <p className="text-sm font-medium mb-2">{field.label}</p>
                 <div className="mt-1">
-                  {renderFieldValue(field, fieldValue)}
+                  {renderFieldValue(field, null)}
                 </div>
-                {user && (
-                  <RemarkSystem
-                    sectionId={sectionId}
-                    fieldName={field.name}
-                    remarks={remarks[sectionId]?.[field.name] || []}
-                    currentUserId={user.id}
-                    onAddRemark={handleAddRemark}
-                    onToggleResolve={handleToggleResolve}
-                  />
-                )}
               </div>
             );
-          })}
-        </div>
-      );
-    }
-    
-    if (sectionId === 'employment-information' && sectionConfig.history) {
-      return (
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-medium">Employment History</h3>
-            <div className="mt-3 space-y-6">
-              {(application.data[sectionId]?.history || []).map((history: any, index: number) => (
-                <div key={index} className="border rounded-md p-4 bg-gray-50">
-                  <h4 className="font-medium">Position {index + 1}</h4>
-                  {sectionConfig.history && sectionConfig.history[0].map((field) => (
-                    <div key={field.name} className="mt-2">
-                      <p className="text-sm font-medium text-gray-700">{field.label}</p>
-                      <div className="mt-1">
-                        {renderFieldValue(field, history[field.name])}
-                      </div>
-                      {user && (
-                        <RemarkSystem
-                          sectionId={sectionId}
-                          fieldName={`history-${index}-${field.name}`}
-                          remarks={remarks[sectionId]?.[`history-${index}-${field.name}`] || []}
-                          currentUserId={user.id}
-                          onAddRemark={handleAddRemark}
-                          onToggleResolve={handleToggleResolve}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-              {(!application.data[sectionId]?.history || application.data[sectionId]?.history.length === 0) && (
-                <p className="text-gray-500">No employment history provided</p>
-              )}
-            </div>
-          </div>
+          }
+
+          const fieldValue = sectionData[field.name];
+          const shouldRender = !field.condition || (() => {
+            const conditionValue = sectionData[field.condition.field];
+            const targetValue = field.condition.value;
+            const operator = field.condition.operator || 'equals';
+            const action = field.condition.action || 'hide';
+            
+            let conditionMet = false;
+            if (operator === 'equals') {
+              conditionMet = conditionValue === targetValue;
+            } else if (operator === 'not_equals') {
+              conditionMet = conditionValue !== targetValue;
+            }
+            
+            // If action is 'hide', we show when condition is NOT met
+            // If action is 'show', we show when condition IS met
+            return action === 'hide' ? !conditionMet : conditionMet;
+          })();
           
-          <div>
-            <h3 className="text-lg font-medium">References</h3>
-            <div className="mt-3 space-y-6">
-              {(application.data[sectionId]?.references || []).map((reference: any, index: number) => (
-                <div key={index} className="border rounded-md p-4 bg-gray-50">
-                  <h4 className="font-medium">Reference {index + 1}</h4>
-                  {sectionConfig.references && sectionConfig.references[0].map((field) => (
-                    <div key={field.name} className="mt-2">
-                      <p className="text-sm font-medium text-gray-700">{field.label}</p>
-                      <div className="mt-1">
-                        {renderFieldValue(field, reference[field.name])}
-                      </div>
-                      {user && (
-                        <RemarkSystem
-                          sectionId={sectionId}
-                          fieldName={`reference-${index}-${field.name}`}
-                          remarks={remarks[sectionId]?.[`reference-${index}-${field.name}`] || []}
-                          currentUserId={user.id}
-                          onAddRemark={handleAddRemark}
-                          onToggleResolve={handleToggleResolve}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-              {(!application.data[sectionId]?.references || application.data[sectionId]?.references.length === 0) && (
-                <p className="text-gray-500">No references provided</p>
+          if (!shouldRender) return null;
+          
+          return (
+            <div key={field.name} className="border-b pb-3 last:border-b-0">
+              <p className="text-sm font-medium text-foreground">{field.label}</p>
+              <div className="mt-1">
+                {renderFieldValue(field, fieldValue)}
+              </div>
+              {user && field.type !== 'declaration' && (
+                <RemarkSystem
+                  sectionId={section.name}
+                  fieldName={field.name}
+                  remarks={remarks[section.name]?.[field.name] || []}
+                  currentUserId={user.id}
+                  onAddRemark={handleAddRemark}
+                  onToggleResolve={handleToggleResolve}
+                />
               )}
             </div>
-          </div>
-        </div>
-      );
-    }
-    
-    if (sectionId === 'skills-information') {
-      return (
-        <div>
-          <h3 className="text-lg font-medium">Skills</h3>
-          <div className="mt-3">
-            {application.data[sectionId]?.skills?.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {application.data[sectionId].skills.map((skill: string, index: number) => (
-                  <Badge key={index}>{skill}</Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500">No skills provided</p>
-            )}
-          </div>
-          {user && (
-            <RemarkSystem
-              sectionId={sectionId}
-              fieldName="skills"
-              remarks={remarks[sectionId]?.['skills'] || []}
-              currentUserId={user.id}
-              onAddRemark={handleAddRemark}
-              onToggleResolve={handleToggleResolve}
-            />
-          )}
-        </div>
-      );
-    }
-    
-    return <p>This section has no renderable content.</p>;
+          );
+        })}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -546,60 +519,36 @@ const ApplicationDetail = () => {
                         <span>Overview</span>
                       </div>
                     </TabsTrigger>
-                    <Separator className="my-2" />
-                    <p className="text-xs font-semibold text-gray-500 px-2 py-1">PRE-REGISTRATION</p>
-                    {Object.keys(PreRegistrationWizard).map((sectionId) => {
-                      const sectionRemarks = remarks[sectionId] || {};
-                      const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
-                      const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
-                      
-                      return (
-                        <TabsTrigger 
-                          key={sectionId}
-                          value={sectionId}
-                          className="justify-start text-left w-full"
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span>{PreRegistrationWizard[sectionId].title}</span>
-                            {hasRemarks && (
-                              <div className="flex items-center space-x-1">
-                                <MessageSquare className="h-3 w-3 text-blue-500" />
-                                {hasUnresolved && (
-                                  <AlertCircle className="h-3 w-3 text-red-500" />
+                    {applicationForm && getSortedSections().length > 0 && (
+                      <>
+                        <Separator className="my-2" />
+                        {getSortedSections().map((section) => {
+                          const sectionRemarks = remarks[section.name] || {};
+                          const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
+                          const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
+                          
+                          return (
+                            <TabsTrigger 
+                              key={section.name}
+                              value={section.name}
+                              className="justify-start text-left w-full"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <span>{section.name}</span>
+                                {hasRemarks && (
+                                  <div className="flex items-center space-x-1">
+                                    <MessageSquare className="h-3 w-3 text-blue-500" />
+                                    {hasUnresolved && (
+                                      <AlertCircle className="h-3 w-3 text-red-500" />
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        </TabsTrigger>
-                      );
-                    })}
-                    <Separator className="my-2" />
-                    <p className="text-xs font-semibold text-gray-500 px-2 py-1">POST-REGISTRATION</p>
-                    {Object.keys(PostRegistrationWizard).map((sectionId) => {
-                      const sectionRemarks = remarks[sectionId] || {};
-                      const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
-                      const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
-                      
-                      return (
-                        <TabsTrigger 
-                          key={sectionId}
-                          value={sectionId}
-                          className="justify-start text-left w-full"
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span>{PostRegistrationWizard[sectionId].title}</span>
-                            {hasRemarks && (
-                              <div className="flex items-center space-x-1">
-                                <MessageSquare className="h-3 w-3 text-blue-500" />
-                                {hasUnresolved && (
-                                  <AlertCircle className="h-3 w-3 text-red-500" />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </TabsTrigger>
-                      );
-                    })}
+                            </TabsTrigger>
+                          );
+                        })}
+                      </>
+                    )}
                   </TabsList>
                 </Tabs>
               </CardContent>
@@ -620,41 +569,18 @@ const ApplicationDetail = () => {
                             <>
                               <div className="space-y-2">
                                 <div className="flex items-start">
-                                  <User className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
+                                  <User className="h-5 w-5 mr-2 text-muted-foreground mt-0.5" />
                                   <div>
-                                    <p className="text-sm text-gray-500">Name</p>
-                                    <p className="font-medium">
-                                      {application.data['personal-info']?.fields?.firstName || ''}{' '}
-                                      {application.data['personal-info']?.fields?.lastName || ''}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-start">
-                                  <Mail className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm text-gray-500">Email</p>
+                                    <p className="text-sm text-muted-foreground">Username</p>
                                     <p className="font-medium">{application.user.username}</p>
                                   </div>
                                 </div>
                               </div>
                               <div className="space-y-2">
                                 <div className="flex items-start">
-                                  <Phone className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
+                                  <Calendar className="h-5 w-5 mr-2 text-muted-foreground mt-0.5" />
                                   <div>
-                                    <p className="text-sm text-gray-500">Phone</p>
-                                    <p className="font-medium">
-                                      {application.data['personal-info']?.fields?.phoneNumber || 'Not provided'}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-start">
-                                  <Calendar className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm text-gray-500">Application Date</p>
+                                    <p className="text-sm text-muted-foreground">Application Date</p>
                                     <p className="font-medium">{formatDate(application.createdAt)}</p>
                                   </div>
                                 </div>
@@ -663,50 +589,13 @@ const ApplicationDetail = () => {
                           )}
                         </div>
                       </div>
-                      
-                      <Separator />
-                      
-                      <div>
-                        <h2 className="text-xl font-semibold mb-4">Application Summary</h2>
-                        <div className="prose prose-sm max-w-none">
-                          <p className="text-gray-700">
-                            {application.data['contact-info']?.fields?.briefDescription || 'No description provided.'}
-                          </p>
-                          {application.data['contact-info']?.fields?.uploadCV && (
-                            <div className="mt-4">
-                              <p className="font-medium">Uploaded CV:</p>
-                              <a 
-                                href={`${API_BASE_URL}/files/${application.data['contact-info'].fields.uploadCV.fileKey}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:underline flex items-center mt-1"
-                              >
-                                <FileText className="h-4 w-4 mr-1" /> 
-                                View CV
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      </div>
 
                       <Separator />
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <h3 className="text-md font-medium mb-2">Application Status</h3>
                           {getStatusBadge(application.status)}
-                        </div>
-                        <div>
-                          <h3 className="text-md font-medium mb-2">Eligible to Work in UK</h3>
-                          {application.data['contact-info']?.fields?.eligibleToWorkInUK?.booleanValue === 'true' ? (
-                            <div className="flex items-center">
-                              <Check className="h-5 w-5 text-green-500 mr-1" /> Yes
-                            </div>
-                          ) : (
-                            <div className="flex items-center">
-                              <X className="h-5 w-5 text-red-500 mr-1" /> No
-                            </div>
-                          )}
                         </div>
                         <div>
                           <h3 className="text-md font-medium mb-2">User Account Status</h3>
@@ -715,19 +604,26 @@ const ApplicationDetail = () => {
                           </Badge>
                         </div>
                       </div>
+
+                      {applicationForm && (
+                        <div className="mt-4">
+                          <h3 className="text-md font-medium mb-2">Form</h3>
+                          <p className="text-sm text-muted-foreground">{applicationForm.name}</p>
+                          {applicationForm.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{applicationForm.description}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
                   
-                  {getAllSections().map((sectionId) => (
-                    <TabsContent key={sectionId} value={sectionId} className="mt-0 p-0">
+                  {applicationForm && getSortedSections().map((section) => (
+                    <TabsContent key={section.name} value={section.name} className="mt-0 p-0">
                       <div>
                         <h2 className="text-xl font-semibold mb-4">
-                          {getWizardConfig(sectionId)[sectionId].title}
+                          {section.name}
                         </h2>
-                        <p className="text-gray-600 mb-6">
-                          {getWizardConfig(sectionId)[sectionId].description}
-                        </p>
-                        {renderSectionContent(sectionId)}
+                        {renderSectionContent(section)}
                       </div>
                     </TabsContent>
                   ))}
