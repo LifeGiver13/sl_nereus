@@ -379,6 +379,14 @@ const ApplicationDetail = () => {
     
     const sectionData = application.data[section.name]?.fields || {};
     
+    // Debug logging
+    console.log('=== Section Debug ===');
+    console.log('Section name:', section.name);
+    console.log('Application data keys:', Object.keys(application.data));
+    console.log('Section data:', sectionData);
+    console.log('Section fields from form:', section.fields.map(f => f.name));
+    console.log('====================');
+    
     if (!section.fields || section.fields.length === 0) {
       return <p className="text-muted-foreground">This section has no fields.</p>;
     }
