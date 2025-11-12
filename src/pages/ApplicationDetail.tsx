@@ -444,20 +444,22 @@ const ApplicationDetail = () => {
           
           return (
             <div key={field.name} className="border-b pb-3 last:border-b-0">
-              <p className="text-sm font-medium text-foreground">{field.label}</p>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <p className="text-sm font-medium text-foreground">{field.label}</p>
+                {user && field.type !== 'declaration' && (
+                  <RemarkSystem
+                    sectionId={section.name}
+                    fieldName={field.name}
+                    remarks={remarks[section.name]?.[field.name] || []}
+                    currentUserId={user.id}
+                    onAddRemark={handleAddRemark}
+                    onToggleResolve={handleToggleResolve}
+                  />
+                )}
+              </div>
               <div className="mt-1">
                 {renderFieldValue(field, fieldValue)}
               </div>
-              {user && field.type !== 'declaration' && (
-                <RemarkSystem
-                  sectionId={section.name}
-                  fieldName={field.name}
-                  remarks={remarks[section.name]?.[field.name] || []}
-                  currentUserId={user.id}
-                  onAddRemark={handleAddRemark}
-                  onToggleResolve={handleToggleResolve}
-                />
-              )}
             </div>
           );
         })}

@@ -65,31 +65,30 @@ export const RemarkSystem: React.FC<RemarkSystemProps> = ({
   };
 
   return (
-    <div className="ml-4 mt-2">
+    <div className="flex-shrink-0">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 p-1 text-xs"
+            className="h-7 px-2 text-xs hover:bg-muted/50"
           >
-            <MessageSquare className="h-3 w-3 mr-1" />
+            <MessageSquare className="h-3.5 w-3.5" />
             {remarks.length > 0 && (
               <>
-                {remarks.length} remark{remarks.length !== 1 ? 's' : ''}
+                <span className="ml-1">{remarks.length}</span>
                 {unresolvedCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-4 text-xs">
-                    {unresolvedCount} unresolved
+                  <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">
+                    {unresolvedCount}
                   </Badge>
                 )}
               </>
             )}
-            {remarks.length === 0 && 'Add remark'}
           </Button>
         </CollapsibleTrigger>
         
-        <CollapsibleContent className="mt-2">
-          <Card className="border-l-4 border-l-blue-500">
+        <CollapsibleContent className="mt-2 absolute right-0 z-50 w-96">
+          <Card className="border-l-4 border-l-blue-500 shadow-lg">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Enter a comment for the applicant</CardTitle>
             </CardHeader>
