@@ -95,10 +95,17 @@ const ApplicationDetail = () => {
         }
 
         const data = await response.json();
+        console.log('=== APPLICATION DATA LOADED ===');
+        console.log('Full application data:', data);
+        console.log('Has formId?', data.formId);
+        console.log('Data structure keys:', Object.keys(data.data || {}));
+        console.log('================================');
+        
         setApplication(data);
 
         // Fetch the application form if formId exists
         if (data.formId) {
+          console.log('Fetching form for formId:', data.formId);
           const formResponse = await fetch(`${API_BASE_URL}/application-form/${data.formId}`, {
             method: 'GET',
             headers: {
@@ -109,8 +116,13 @@ const ApplicationDetail = () => {
 
           if (formResponse.ok) {
             const formData = await formResponse.json();
+            console.log('Form data loaded:', formData);
             setApplicationForm(formData);
+          } else {
+            console.log('Form fetch failed:', formResponse.status);
           }
+        } else {
+          console.log('No formId found - will use legacy wizard rendering');
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -145,7 +157,13 @@ const ApplicationDetail = () => {
   };
 
   const isFormBasedApplication = () => {
-    return application?.formId && applicationForm;
+    const result = application?.formId && applicationForm;
+    console.log('isFormBasedApplication check:', { 
+      hasFormId: !!application?.formId, 
+      hasForm: !!applicationForm, 
+      result 
+    });
+    return result;
   };
 
   const getSortedSections = () => {
