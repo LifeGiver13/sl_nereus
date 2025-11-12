@@ -48,7 +48,7 @@ interface ApplicationForm {
   id: number;
   name: string;
   description: string;
-  sections: FormSection[];
+  sections: FormSection[] | { [key: string]: FormSection };
   meta?: any;
 }
 
@@ -120,7 +120,16 @@ const ApplicationDetail = () => {
         if (formResponse.ok) {
           const formData = await formResponse.json();
           console.log('Form structure loaded:', formData);
-          console.log('Form sections:', formData.sections?.map((s: any) => s.name));
+          console.log('Sections type:', Array.isArray(formData.sections) ? 'array' : typeof formData.sections);
+          console.log('Sections:', formData.sections);
+          
+          // Log section names whether it's an array or object
+          if (Array.isArray(formData.sections)) {
+            console.log('Form sections:', formData.sections.map((s: any) => s.name));
+          } else if (formData.sections && typeof formData.sections === 'object') {
+            console.log('Form sections:', Object.values(formData.sections).map((s: any) => s.name));
+          }
+          
           setApplicationForm(formData);
         } else {
           console.error('Failed to load form structure:', formResponse.status);
@@ -160,9 +169,15 @@ const ApplicationDetail = () => {
     );
   };
 
-  const getSortedSections = () => {
+  const getSortedSections = (): FormSection[] => {
     if (!applicationForm?.sections) return [];
-    return [...applicationForm.sections].sort((a, b) => 
+    
+    // Handle both array and object formats
+    const sectionsArray = Array.isArray(applicationForm.sections) 
+      ? applicationForm.sections 
+      : Object.values(applicationForm.sections) as FormSection[];
+    
+    return sectionsArray.sort((a, b) => 
       (a.displayOrder || 0) - (b.displayOrder || 0)
     );
   };
