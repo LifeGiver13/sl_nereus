@@ -347,8 +347,13 @@ const ApplicationDetail = () => {
       const boolValue = typeof value === 'object' && value !== null 
         ? value.value 
         : value;
+
+      console.log("Current Field", field);
+      console.log("Boolean Value:", boolValue);
       
       const isTrue = boolValue === 'true' || boolValue === true;
+
+      console.log("Is it true:", isTrue);
       
       return isTrue ? (
         <div className="flex items-center">
