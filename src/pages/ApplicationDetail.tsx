@@ -342,9 +342,15 @@ const ApplicationDetail = () => {
       );
     }
 
-    if (field.type === 'boolean') {
-      const boolValue = value === 'true' || value?.booleanValue === 'true';
-      return boolValue ? (
+    if (field.type === 'boolean' || field.type === 'checkbox') {
+      // Handle both direct values and object values
+      const boolValue = typeof value === 'object' && value !== null 
+        ? value.value 
+        : value;
+      
+      const isTrue = boolValue === 'true' || boolValue === true;
+      
+      return isTrue ? (
         <div className="flex items-center">
           <Check className="h-5 w-5 text-green-500 mr-1" /> Yes
         </div>
@@ -425,19 +431,50 @@ const ApplicationDetail = () => {
           console.log(`Field "${field.name}":`, fieldValue);
           
           const shouldRender = !field.condition || (() => {
-            const conditionValue = sectionData[field.condition.field];
+            const rawConditionValue = sectionData[field.condition.field];
+            // Extract actual value from object if needed
+            const conditionValue = typeof rawConditionValue === 'object' && rawConditionValue !== null
+              ? rawConditionValue.value
+              : rawConditionValue;
+            
             const targetValue = field.condition.value;
             const operator = field.condition.operator || 'equals';
-            const action = field.condition.action || 'hide';
+            const action = field.condition.action || 'show';
             
             let conditionMet = false;
-            if (operator === 'equals') {
-              conditionMet = conditionValue === targetValue;
-            } else if (operator === 'not_equals') {
-              conditionMet = conditionValue !== targetValue;
+            
+            switch (operator) {
+              case 'equals':
+                conditionMet = conditionValue === targetValue;
+                break;
+              case 'not_equals':
+              case 'does not equal':
+                conditionMet = conditionValue !== targetValue;
+                break;
+              case 'is set':
+                conditionMet = conditionValue !== undefined && conditionValue !== null && conditionValue !== '';
+                break;
+              case 'is not set':
+                conditionMet = conditionValue === undefined || conditionValue === null || conditionValue === '';
+                break;
+              default:
+                conditionMet = conditionValue === targetValue;
             }
             
-            return action === 'hide' ? !conditionMet : conditionMet;
+            // Handle different actions
+            switch (action) {
+              case 'show':
+                return conditionMet;
+              case 'hide':
+                return !conditionMet;
+              case 'set value':
+              case 'clear value':
+              case 'match value':
+                // These actions don't affect visibility, just show the field
+                return true;
+              default:
+                return conditionMet;
+            }
           })();
           
           if (!shouldRender) return null;
