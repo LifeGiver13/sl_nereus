@@ -362,15 +362,15 @@ const ApplicationDetail = () => {
     }
     
     if (field.type === 'file') {
-      return value?.fileKey ? (
+      return value?.value ? (
         <a 
-          href={`${API_BASE_URL}/files/${value.fileKey}`} 
+          href={`${API_BASE_URL}/files/${value.value}`} 
           target="_blank" 
           rel="noopener noreferrer"
           className="text-primary hover:underline flex items-center"
         >
           <FileText className="h-4 w-4 mr-1" /> 
-          {value.fileName || value.fileKey.split('/').pop()}
+          {value.value}
         </a>
       ) : 'No file uploaded';
     }
@@ -396,16 +396,15 @@ const ApplicationDetail = () => {
 
   const renderSectionContent = (section: FormSection) => {
     if (!application?.data) return null;
-    
     // Match form section name with application data keys
     const sectionData = application.data[section.name]?.fields || {};
     
-    console.log('=== Rendering Section ===');
-    console.log('Section name:', section.name);
-    console.log('Section has data?', !!application.data[section.name]);
-    console.log('Field count:', section.fields?.length || 0);
-    console.log('Data keys:', Object.keys(sectionData));
-    console.log('========================');
+    // console.log('=== Rendering Section ===');
+    // console.log('Section name:', section.name);
+    // console.log('Section has data?', !!application.data[section.name]);
+    // console.log('Field count:', section.fields?.length || 0);
+    // console.log('Data keys:', Object.keys(sectionData));
+    // console.log('========================');
     
     if (!section.fields || section.fields.length === 0) {
       return <p className="text-muted-foreground">This section has no fields.</p>;
