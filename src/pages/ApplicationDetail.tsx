@@ -1,19 +1,25 @@
-
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, User, Mail, Phone, Calendar, Check, X, MessageSquare, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import AdminLayout from '../components/AdminLayout';
-import { useAuth } from '../contexts/AuthContext';
-import { API_BASE_URL } from '../config/env';
-import { RemarkSystem, AllRemarks, SectionRemarks, Remark, hasUnresolvedRemarks, getSectionRemarkCount } from '../components/RemarkSystem';
-import ReactMarkdown from 'react-markdown';
-import { apiRequest } from '@/lib/utils';
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, FileText, User, Mail, Phone, Calendar, Check, X, MessageSquare, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import AdminLayout from "../components/AdminLayout";
+import { useAuth } from "../contexts/AuthContext";
+import { API_BASE_URL } from "../config/env";
+import {
+  RemarkSystem,
+  AllRemarks,
+  SectionRemarks,
+  Remark,
+  hasUnresolvedRemarks,
+  getSectionRemarkCount,
+} from "../components/RemarkSystem";
+import ReactMarkdown from "react-markdown";
+import { apiRequest } from "@/lib/utils";
 
 interface User {
   id: number;
@@ -57,7 +63,7 @@ interface Application {
   id: number;
   userId: number;
   formId?: number;
-  status: 'complete' | 'incomplete';
+  status: "complete" | "incomplete";
   data: { [key: string]: any };
   meta: { [key: string]: any };
   user?: User;
@@ -71,7 +77,7 @@ const ApplicationDetail = () => {
   const [applicationForm, setApplicationForm] = useState<ApplicationForm | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
   const [remarks, setRemarks] = useState<AllRemarks>({});
   const [remarksSaving, setRemarksSaving] = useState(false);
   const { token, user } = useAuth();
@@ -85,62 +91,68 @@ const ApplicationDetail = () => {
     const fetchApplicationDetail = async () => {
       try {
         setIsLoading(true);
-        
+
         // Fetch application data
         const response = await fetch(`${API_BASE_URL}/application/${id}`, {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch application details');
+          throw new Error("Failed to fetch application details");
         }
 
         const data = await response.json();
-        console.log('=== APPLICATION DATA LOADED ===');
-        console.log('Full application data:', data);
-        console.log('Data structure keys:', Object.keys(data.data || {}));
-        
+        console.log("=== APPLICATION DATA LOADED ===");
+        console.log("Full application data:", data);
+        console.log("Data structure keys:", Object.keys(data.data || {}));
+
         setApplication(data);
 
         // Always fetch the form structure (use formId from data, or default form)
         const formIdToUse = data.formId || DEFAULT_FORM_ID;
-        console.log('Loading form structure from formId:', formIdToUse);
-        
+        console.log("Loading form structure from formId:", formIdToUse);
+
         const formResponse = await fetch(`${API_BASE_URL}/application-form/${formIdToUse}`, {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
         });
 
         if (formResponse.ok) {
           const formData = await formResponse.json();
-          console.log('Form structure loaded:', formData);
-          console.log('Sections type:', Array.isArray(formData.sections) ? 'array' : typeof formData.sections);
-          console.log('Sections:', formData.sections);
-          
+          console.log("Form structure loaded:", formData);
+          console.log("Sections type:", Array.isArray(formData.sections) ? "array" : typeof formData.sections);
+          console.log("Sections:", formData.sections);
+
           // Log section names whether it's an array or object
           if (Array.isArray(formData.sections)) {
-            console.log('Form sections:', formData.sections.map((s: any) => s.name));
-          } else if (formData.sections && typeof formData.sections === 'object') {
-            console.log('Form sections:', Object.values(formData.sections).map((s: any) => s.name));
+            console.log(
+              "Form sections:",
+              formData.sections.map((s: any) => s.name),
+            );
+          } else if (formData.sections && typeof formData.sections === "object") {
+            console.log(
+              "Form sections:",
+              Object.values(formData.sections).map((s: any) => s.name),
+            );
           }
-          
+
           setApplicationForm(formData);
         } else {
-          console.error('Failed to load form structure:', formResponse.status);
-          throw new Error('Failed to load form structure');
+          console.error("Failed to load form structure:", formResponse.status);
+          throw new Error("Failed to load form structure");
         }
-        
-        console.log('================================');
+
+        console.log("================================");
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error fetching application:', err);
+        setError(err instanceof Error ? err.message : "An error occurred");
+        console.error("Error fetching application:", err);
       } finally {
         setIsLoading(false);
       }
@@ -152,18 +164,18 @@ const ApplicationDetail = () => {
   }, [token, id]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const getStatusBadge = (status: string) => {
     return (
-      <Badge 
-        variant={status === 'complete' ? 'default' : 'secondary'}
-        className={status === 'complete' ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'}
+      <Badge
+        variant={status === "complete" ? "default" : "secondary"}
+        className={status === "complete" ? "bg-green-500 hover:bg-green-600" : "bg-yellow-500 hover:bg-yellow-600"}
       >
         {status}
       </Badge>
@@ -172,15 +184,13 @@ const ApplicationDetail = () => {
 
   const getSortedSections = (): FormSection[] => {
     if (!applicationForm?.sections) return [];
-    
+
     // Handle both array and object formats
-    const sectionsArray = Array.isArray(applicationForm.sections) 
-      ? applicationForm.sections 
-      : Object.values(applicationForm.sections) as FormSection[];
-    
-    return sectionsArray.sort((a, b) => 
-      (a.displayOrder || 0) - (b.displayOrder || 0)
-    );
+    const sectionsArray = Array.isArray(applicationForm.sections)
+      ? applicationForm.sections
+      : (Object.values(applicationForm.sections) as FormSection[]);
+
+    return sectionsArray.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
   };
 
   // Load remarks when application is loaded
@@ -197,39 +207,43 @@ const ApplicationDetail = () => {
     setRemarksSaving(true);
     try {
       const response = await fetch(`${API_BASE_URL}/application/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           ...application,
           meta: {
             ...application.meta,
-            remarks: updatedRemarks
-          }
+            remarks: updatedRemarks,
+          },
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save remarks');
+        throw new Error("Failed to save remarks");
       }
 
-      setApplication(prev => prev ? {
-        ...prev,
-        meta: { ...prev.meta, remarks: updatedRemarks }
-      } : null);
+      setApplication((prev) =>
+        prev
+          ? {
+              ...prev,
+              meta: { ...prev.meta, remarks: updatedRemarks },
+            }
+          : null,
+      );
 
       toast({
         title: "Remarks saved",
         description: "Successfully saved remarks to application",
       });
     } catch (error) {
-      console.error('Error saving remarks:', error);
+      console.error("Error saving remarks:", error);
       toast({
         title: "Error saving remarks",
         description: "Failed to save remarks. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setRemarksSaving(false);
@@ -239,9 +253,9 @@ const ApplicationDetail = () => {
   const handleAddRemark = (sectionId: string, fieldName: string, comment: string) => {
     if (!user) return;
 
-    const firstName = application?.data['personal-info']?.fields?.firstName || '';
-    const lastName = application?.data['personal-info']?.fields?.lastName || '';
-    const userName = `${firstName} ${lastName}`.trim() || user.username || 'Unknown User';
+    const firstName = application?.data["personal-info"]?.fields?.firstName || "";
+    const lastName = application?.data["personal-info"]?.fields?.lastName || "";
+    const userName = `${firstName} ${lastName}`.trim() || user.username || "Unknown User";
 
     const newRemark: Remark = {
       id: Date.now().toString(),
@@ -249,15 +263,15 @@ const ApplicationDetail = () => {
       date: new Date().toISOString(),
       userId: user.id,
       userName,
-      resolved: false
+      resolved: false,
     };
 
     const updatedRemarks = {
       ...remarks,
       [sectionId]: {
         ...remarks[sectionId],
-        [fieldName]: [...(remarks[sectionId]?.[fieldName] || []), newRemark]
-      }
+        [fieldName]: [...(remarks[sectionId]?.[fieldName] || []), newRemark],
+      },
     };
 
     setRemarks(updatedRemarks);
@@ -269,25 +283,26 @@ const ApplicationDetail = () => {
       ...remarks,
       [sectionId]: {
         ...remarks[sectionId],
-        [fieldName]: remarks[sectionId]?.[fieldName]?.map(remark =>
-          remark.id === remarkId ? { ...remark, resolved: !remark.resolved } : remark
-        ) || []
-      }
+        [fieldName]:
+          remarks[sectionId]?.[fieldName]?.map((remark) =>
+            remark.id === remarkId ? { ...remark, resolved: !remark.resolved } : remark,
+          ) || [],
+      },
     };
 
     setRemarks(updatedRemarks);
     saveRemarks(updatedRemarks);
   };
 
-  const handleApplicationDecision = async (decision: 'approve' | 'reject' | 'revise') => {
+  const handleApplicationDecision = async (decision: "approve" | "reject" | "revise") => {
     if (!application || !token) return;
 
     try {
       const response = await fetch(`${API_BASE_URL}/application/${id}/${decision}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -296,31 +311,29 @@ const ApplicationDetail = () => {
       }
 
       toast({
-        title: `Application ${decision === 'revise' ? 'sent for revision' : `${decision}d`}`,
-        description: `Successfully ${decision === 'revise' ? 'requested revision for' : `${decision}d`} application #${application.id}`,
+        title: `Application ${decision === "revise" ? "sent for revision" : `${decision}d`}`,
+        description: `Successfully ${decision === "revise" ? "requested revision for" : `${decision}d`} application #${application.id}`,
       });
 
       // Navigate back to applications list
-      navigate('/applications');
+      navigate("/applications");
     } catch (error) {
       console.error(`Error ${decision}ing application:`, error);
       toast({
-        title: `Error ${decision === 'revise' ? 'requesting revision' : `${decision}ing application`}`,
+        title: `Error ${decision === "revise" ? "requesting revision" : `${decision}ing application`}`,
         description: `Failed to ${decision} application. Please try again.`,
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
   const checkHasUnresolvedRemarks = () => {
-    return Object.values(remarks).some(sectionRemarks => 
-      hasUnresolvedRemarks(sectionRemarks)
-    );
+    return Object.values(remarks).some((sectionRemarks) => hasUnresolvedRemarks(sectionRemarks));
   };
 
   const renderFieldValue = (field: Field, value: any) => {
-    if (field.type === 'declaration') {
-      const content = field.meta?.content || 'No content provided';
+    if (field.type === "declaration") {
+      const content = field.meta?.content || "No content provided";
       return (
         <div className="prose prose-sm max-w-none p-4 bg-muted/50 rounded-md border">
           <ReactMarkdown
@@ -330,7 +343,12 @@ const ApplicationDetail = () => {
               ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
               li: ({ children }) => <li className="ml-2">{children}</li>,
               a: ({ href, children }) => (
-                <a href={href} className="text-primary underline hover:text-primary/80" target="_blank" rel="noopener noreferrer">
+                <a
+                  href={href}
+                  className="text-primary underline hover:text-primary/80"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   {children}
                 </a>
               ),
@@ -343,14 +361,12 @@ const ApplicationDetail = () => {
       );
     }
 
-    if (field.type === 'boolean' || field.type === 'checkbox') {
+    if (field.type === "boolean" || field.type === "checkbox") {
       // Handle both direct values and object values
-      const boolValue = typeof value === 'object' && value !== null 
-        ? value.value 
-        : value;
-      
-      const isTrue = boolValue === 'true' || boolValue === true;
-      
+      const boolValue = typeof value === "object" && value !== null ? value.value : value;
+
+      const isTrue = boolValue === "true" || boolValue === true;
+
       return isTrue ? (
         <div className="flex items-center">
           <Check className="h-5 w-5 text-green-500 mr-1" /> Yes
@@ -361,21 +377,22 @@ const ApplicationDetail = () => {
         </div>
       );
     }
-    
-    if (field.type === 'file') {
-      const fileValue = typeof value === 'object' && value !== null ? value.value : value;
-      
-      if (!fileValue || fileValue === '') {
+
+    if (field.type === "file") {
+      const fileValue = typeof value === "object" && value !== null ? value.value : value;
+
+      if (!fileValue || fileValue === "") {
         return <span className="text-muted-foreground">Not uploaded</span>;
       }
-      
+
       const handleFileClick = async (e: React.MouseEvent) => {
         e.preventDefault();
         try {
           const response = await apiRequest(`/fs/download-url/${encodeURIComponent(fileValue)}`);
           if (response.ok) {
             const data = await response.json();
-            window.open(data.url, '_blank', 'noopener,noreferrer');
+            console.log("Download URL:", data);
+            window.open(data.url, "_blank", "noopener,noreferrer");
           } else {
             toast({
               title: "Error",
@@ -384,7 +401,7 @@ const ApplicationDetail = () => {
             });
           }
         } catch (error) {
-          console.error('Error fetching download URL:', error);
+          console.error("Error fetching download URL:", error);
           toast({
             title: "Error",
             description: "Failed to fetch file",
@@ -392,128 +409,126 @@ const ApplicationDetail = () => {
           });
         }
       };
-      
+
       return (
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-muted-foreground" />
-          <button 
-            onClick={handleFileClick}
-            className="text-primary hover:underline cursor-pointer"
-          >
+          <button onClick={handleFileClick} className="text-primary hover:underline cursor-pointer">
             View Document
           </button>
         </div>
       );
     }
-    
-    if (field.type === 'textArea') {
-      return <div className="whitespace-pre-wrap">{value || 'Not provided'}</div>;
-    }
-    
-    if (field.type === 'select') {
-      return value || 'Not selected';
-    }
-    
-    if (field.type === 'password') {
-      return '••••••••';
+
+    if (field.type === "textArea") {
+      return <div className="whitespace-pre-wrap">{value || "Not provided"}</div>;
     }
 
-    if (field.type === 'agreement') {
-      return value?.value === 'true' || value === 'true' ? 'Agreed' : 'Not agreed';
+    if (field.type === "select") {
+      return value || "Not selected";
     }
-    
-    return value || 'Not provided';
+
+    if (field.type === "password") {
+      return "••••••••";
+    }
+
+    if (field.type === "agreement") {
+      return value?.value === "true" || value === "true" ? "Agreed" : "Not agreed";
+    }
+
+    return value || "Not provided";
   };
 
   const renderSectionContent = (section: FormSection) => {
     if (!application?.data) return null;
     // Match form section name with application data keys
     const sectionData = application.data[section.name]?.fields || {};
-    
+
     // console.log('=== Rendering Section ===');
     // console.log('Section name:', section.name);
     // console.log('Section has data?', !!application.data[section.name]);
     // console.log('Field count:', section.fields?.length || 0);
     // console.log('Data keys:', Object.keys(sectionData));
     // console.log('========================');
-    
+
     if (!section.fields || section.fields.length === 0) {
       return <p className="text-muted-foreground">This section has no fields.</p>;
     }
-    
+
     return (
       <div className="space-y-4">
         {section.fields.map((field) => {
           // For declaration fields, we don't need user input, just display content
-          if (field.type === 'declaration') {
+          if (field.type === "declaration") {
             return (
               <div key={field.name} className="pb-3">
                 <p className="text-sm font-medium mb-2">{field.label}</p>
-                <div className="mt-1">
-                  {renderFieldValue(field, null)}
-                </div>
+                <div className="mt-1">{renderFieldValue(field, null)}</div>
               </div>
             );
           }
 
           const fieldValue = sectionData[field.name];
-          
+
           console.log(`Field "${field.name}":`, fieldValue);
-          
-          const shouldRender = !field.condition || (() => {
-            const rawConditionValue = sectionData[field.condition.field];
-            // Extract actual value from object if needed
-            const conditionValue = typeof rawConditionValue === 'object' && rawConditionValue !== null
-              ? rawConditionValue.value
-              : rawConditionValue;
-            
-            const targetValue = field.condition.value;
-            const operator = field.condition.operator || 'equals';
-            const action = field.condition.action || 'show';
-            
-            let conditionMet = false;
-            
-            switch (operator) {
-              case 'equals':
-                conditionMet = conditionValue === targetValue;
-                break;
-              case 'not_equals':
-              case 'does not equal':
-                conditionMet = conditionValue !== targetValue;
-                break;
-              case 'is set':
-                conditionMet = conditionValue !== undefined && conditionValue !== null && conditionValue !== '';
-                break;
-              case 'is not set':
-                conditionMet = conditionValue === undefined || conditionValue === null || conditionValue === '';
-                break;
-              default:
-                conditionMet = conditionValue === targetValue;
-            }
-            
-            // Handle different actions
-            switch (action) {
-              case 'show':
-                return conditionMet;
-              case 'hide':
-                return !conditionMet;
-              case 'set value':
-              case 'clear value':
-              case 'match value':
-                // These actions don't affect visibility, just show the field
-                return true;
-              default:
-                return conditionMet;
-            }
-          })();
-          
+
+          const shouldRender =
+            !field.condition ||
+            (() => {
+              const rawConditionValue = sectionData[field.condition.field];
+              // Extract actual value from object if needed
+              const conditionValue =
+                typeof rawConditionValue === "object" && rawConditionValue !== null
+                  ? rawConditionValue.value
+                  : rawConditionValue;
+
+              const targetValue = field.condition.value;
+              const operator = field.condition.operator || "equals";
+              const action = field.condition.action || "show";
+
+              let conditionMet = false;
+
+              switch (operator) {
+                case "equals":
+                  conditionMet = conditionValue === targetValue;
+                  break;
+                case "not_equals":
+                case "does not equal":
+                  conditionMet = conditionValue !== targetValue;
+                  break;
+                case "is set":
+                  conditionMet = conditionValue !== undefined && conditionValue !== null && conditionValue !== "";
+                  break;
+                case "is not set":
+                  conditionMet = conditionValue === undefined || conditionValue === null || conditionValue === "";
+                  break;
+                default:
+                  conditionMet = conditionValue === targetValue;
+              }
+
+              // Handle different actions
+              switch (action) {
+                case "show":
+                  return conditionMet;
+                case "hide":
+                  return !conditionMet;
+                case "set value":
+                case "clear value":
+                case "match value":
+                  // These actions don't affect visibility, just show the field
+                  return true;
+                default:
+                  return conditionMet;
+              }
+            })();
+
           if (!shouldRender) return null;
-          
+
           return (
             <div key={field.name} className="border-b pb-3 last:border-b-0">
               <div className="flex items-start justify-between gap-2 mb-1">
                 <p className="text-sm font-medium text-foreground">{field.label}</p>
-                {user && field.type !== 'declaration' && (
+                {user && field.type !== "declaration" && (
                   <RemarkSystem
                     sectionId={section.name}
                     fieldName={field.name}
@@ -524,9 +539,7 @@ const ApplicationDetail = () => {
                   />
                 )}
               </div>
-              <div className="mt-1">
-                {renderFieldValue(field, fieldValue)}
-              </div>
+              <div className="mt-1">{renderFieldValue(field, fieldValue)}</div>
             </div>
           );
         })}
@@ -548,8 +561,8 @@ const ApplicationDetail = () => {
     return (
       <AdminLayout>
         <div className="flex flex-col items-center justify-center h-64">
-          <p className="text-red-500 mb-4">Error: {error || 'Application not found'}</p>
-          <Button onClick={() => navigate('/applications')}>
+          <p className="text-red-500 mb-4">Error: {error || "Application not found"}</p>
+          <Button onClick={() => navigate("/applications")}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to Applications
           </Button>
         </div>
@@ -562,43 +575,37 @@ const ApplicationDetail = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/applications')}
-              className="mb-4"
-            >
+            <Button variant="outline" onClick={() => navigate("/applications")} className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" /> Back to Applications
             </Button>
             <h1 className="text-3xl font-bold text-[#000009]">Application #{application.id}</h1>
             <div className="flex items-center mt-2">
               {getStatusBadge(application.status)}
-              <span className="ml-3 text-gray-500">
-                Submitted {formatDate(application.createdAt)}
-              </span>
+              <span className="ml-3 text-gray-500">Submitted {formatDate(application.createdAt)}</span>
             </div>
           </div>
           <div className="flex space-x-2">
             {checkHasUnresolvedRemarks() ? (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="border-orange-500 text-orange-500 hover:bg-orange-50"
-                onClick={() => handleApplicationDecision('revise')}
+                onClick={() => handleApplicationDecision("revise")}
               >
                 <MessageSquare className="h-4 w-4 mr-2" /> Request Revision
               </Button>
             ) : (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="border-green-500 text-green-500 hover:bg-green-50"
-                onClick={() => handleApplicationDecision('approve')}
+                onClick={() => handleApplicationDecision("approve")}
               >
                 <Check className="h-4 w-4 mr-2" /> Approve
               </Button>
             )}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="border-red-500 text-red-500 hover:bg-red-50"
-              onClick={() => handleApplicationDecision('reject')}
+              onClick={() => handleApplicationDecision("reject")}
             >
               <X className="h-4 w-4 mr-2" /> Reject
             </Button>
@@ -614,30 +621,22 @@ const ApplicationDetail = () => {
                 <CardDescription>Review all submission details</CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs 
-                  orientation="vertical" 
-                  value={activeTab}
-                  onValueChange={setActiveTab}
-                  className="w-full"
-                >
+                <Tabs orientation="vertical" value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="flex flex-col h-auto items-stretch mb-0 bg-transparent p-0 space-y-1">
-                    <TabsTrigger 
-                      value="overview"
-                      className="justify-start text-left w-full"
-                    >
+                    <TabsTrigger value="overview" className="justify-start text-left w-full">
                       <div className="flex items-center justify-between w-full">
                         <span>Overview</span>
                       </div>
                     </TabsTrigger>
                     <Separator className="my-2" />
-                    
+
                     {getSortedSections().map((section) => {
                       const sectionRemarks = remarks[section.name] || {};
                       const hasRemarks = getSectionRemarkCount(sectionRemarks) > 0;
                       const hasUnresolved = hasUnresolvedRemarks(sectionRemarks);
-                      
+
                       return (
-                        <TabsTrigger 
+                        <TabsTrigger
                           key={section.name}
                           value={section.name}
                           className="justify-start text-left w-full whitespace-normal h-auto min-h-[2.5rem] py-2"
@@ -647,9 +646,7 @@ const ApplicationDetail = () => {
                             {hasRemarks && (
                               <div className="flex items-center space-x-1 flex-shrink-0 mt-0.5">
                                 <MessageSquare className="h-3 w-3 text-blue-500" />
-                                {hasUnresolved && (
-                                  <AlertCircle className="h-3 w-3 text-red-500" />
-                                )}
+                                {hasUnresolved && <AlertCircle className="h-3 w-3 text-red-500" />}
                               </div>
                             )}
                           </div>
@@ -706,8 +703,8 @@ const ApplicationDetail = () => {
                         </div>
                         <div>
                           <h3 className="text-md font-medium mb-2">User Account Status</h3>
-                          <Badge variant={application.user?.status === 'active' ? 'default' : 'secondary'}>
-                            {application.user?.status || 'Unknown'}
+                          <Badge variant={application.user?.status === "active" ? "default" : "secondary"}>
+                            {application.user?.status || "Unknown"}
                           </Badge>
                         </div>
                       </div>
@@ -723,13 +720,11 @@ const ApplicationDetail = () => {
                       )}
                     </div>
                   </TabsContent>
-                  
+
                   {getSortedSections().map((section) => (
                     <TabsContent key={section.name} value={section.name} className="mt-0 p-0">
                       <div>
-                        <h2 className="text-xl font-semibold mb-4">
-                          {section.name}
-                        </h2>
+                        <h2 className="text-xl font-semibold mb-4">{section.name}</h2>
                         {renderSectionContent(section)}
                       </div>
                     </TabsContent>
