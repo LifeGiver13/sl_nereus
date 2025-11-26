@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config/env';
 import { RemarkSystem, AllRemarks, SectionRemarks, Remark, hasUnresolvedRemarks, getSectionRemarkCount } from '../components/RemarkSystem';
 import ReactMarkdown from 'react-markdown';
+import { apiRequest } from '@/lib/utils';
 
 interface User {
   id: number;
@@ -347,13 +348,8 @@ const ApplicationDetail = () => {
       const boolValue = typeof value === 'object' && value !== null 
         ? value.value 
         : value;
-
-      console.log("Current Field", field);
-      console.log("Boolean Value:", boolValue);
       
       const isTrue = boolValue === 'true' || boolValue === true;
-
-      console.log("Is it true:", isTrue);
       
       return isTrue ? (
         <div className="flex items-center">
@@ -367,17 +363,47 @@ const ApplicationDetail = () => {
     }
     
     if (field.type === 'file') {
-      return value?.value ? (
-        <a 
-          href={`${API_BASE_URL}/files/${value.value}`} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="text-primary hover:underline flex items-center"
-        >
-          <FileText className="h-4 w-4 mr-1" /> 
-          {value.value}
-        </a>
-      ) : 'No file uploaded';
+      const fileValue = typeof value === 'object' && value !== null ? value.value : value;
+      
+      if (!fileValue || fileValue === '') {
+        return <span className="text-muted-foreground">Not uploaded</span>;
+      }
+      
+      const handleFileClick = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        try {
+          const response = await apiRequest(`/fs/download-url/${encodeURIComponent(fileValue)}`);
+          if (response.ok) {
+            const data = await response.json();
+            window.open(data.url, '_blank', 'noopener,noreferrer');
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to generate download URL",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching download URL:', error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch file",
+            variant: "destructive",
+          });
+        }
+      };
+      
+      return (
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <button 
+            onClick={handleFileClick}
+            className="text-primary hover:underline cursor-pointer"
+          >
+            View Document
+          </button>
+        </div>
+      );
     }
     
     if (field.type === 'textArea') {
