@@ -21,6 +21,88 @@ import {
 import ReactMarkdown from "react-markdown";
 import { apiRequest } from "@/lib/utils";
 
+const FileDownloadLink = ({ fileName }: { fileName: string }) => {
+  const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [timeLeft, setTimeLeft] = React.useState<number | null>(null);
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0) return;
+    
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev ? prev - 1 : null);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  const fetchDownloadUrl = async () => {
+    setLoading(true);
+    try {
+      const response = await apiRequest(`/fs/download-url/${encodeURIComponent(fileName)}`);
+      if (!response.ok) {
+        toast({
+          title: "Error",
+          description: "Failed to generate download link",
+          variant: "destructive",
+        });
+        return;
+      }
+      const data = await response.json();
+      setDownloadUrl(data.url);
+      setTimeLeft(data.expiresIn);
+    } catch (error) {
+      console.error('Error fetching download URL:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch download link",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (downloadUrl && timeLeft) {
+    return (
+      <div className="flex flex-col gap-2">
+        <a
+          href={downloadUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+        >
+          <FileText className="h-4 w-4" />
+          Open Document
+        </a>
+        <span className="text-xs text-muted-foreground">
+          Link expires in {formatTime(timeLeft)}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={fetchDownloadUrl}
+      disabled={loading}
+      className="gap-2"
+    >
+      <FileText className="h-4 w-4" />
+      {loading ? 'Generating link...' : 'Get Download Link'}
+    </Button>
+  );
+};
+
 interface User {
   id: number;
   username: string;
@@ -385,39 +467,7 @@ const ApplicationDetail = () => {
         return <span className="text-muted-foreground">Not uploaded</span>;
       }
 
-      const handleFileClick = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        try {
-          const response = await apiRequest(`/fs/download-url/${encodeURIComponent(fileValue)}`);
-          if (response.ok) {
-            const data = await response.json();
-            console.log("Download URL:", data);
-            window.open(data.url, "_blank", "noopener,noreferrer");
-          } else {
-            toast({
-              title: "Error",
-              description: "Failed to generate download URL",
-              variant: "destructive",
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching download URL:", error);
-          toast({
-            title: "Error",
-            description: "Failed to fetch file",
-            variant: "destructive",
-          });
-        }
-      };
-
-      return (
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <button onClick={handleFileClick} className="text-primary hover:underline cursor-pointer">
-            View Document
-          </button>
-        </div>
-      );
+      return <FileDownloadLink fileName={fileValue} />;
     }
 
     if (field.type === "textArea") {
