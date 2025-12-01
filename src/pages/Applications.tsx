@@ -50,6 +50,7 @@ const STATUS_LABELS: { [key: string]: string } = {
   'pending': 'In Progress',
   'submitted': 'Pending Review',
   'complete': 'Completed',
+  'processed': 'NA',
 };
 
 const Applications = () => {
