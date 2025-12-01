@@ -651,6 +651,10 @@ const ApplicationDetail = () => {
                 variant="outline"
                 className="border-orange-500 text-orange-500 hover:bg-orange-50"
                 onClick={() => handleApplicationDecision("revise")}
+                disabled={
+                  application.meta?.pre_registration !== "submitted" &&
+                  application.meta?.full_registration !== "submitted"
+                }
               >
                 <MessageSquare className="h-4 w-4 mr-2" /> Request Revision
               </Button>
@@ -659,6 +663,10 @@ const ApplicationDetail = () => {
                 variant="outline"
                 className="border-green-500 text-green-500 hover:bg-green-50"
                 onClick={() => handleApplicationDecision("approve")}
+                disabled={
+                  application.meta?.pre_registration !== "submitted" &&
+                  application.meta?.full_registration !== "submitted"
+                }
               >
                 <Check className="h-4 w-4 mr-2" /> Approve
               </Button>
