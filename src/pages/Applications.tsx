@@ -1,17 +1,16 @@
-
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import AdminLayout from '../components/AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight, FileSignature } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { API_BASE_URL } from '../config/env';
-import { PageSizeSelector } from '../components/ui/page-size-selector';
-import { usePreferences } from '../hooks/usePreferences';
-import { DocuSignInviteModal } from '../components/DocuSignInviteModal';
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import AdminLayout from "../components/AdminLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight, FileSignature } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { API_BASE_URL } from "../config/env";
+import { PageSizeSelector } from "../components/ui/page-size-selector";
+import { usePreferences } from "../hooks/usePreferences";
+import { DocuSignInviteModal } from "../components/DocuSignInviteModal";
 
 interface User {
   id: number;
@@ -26,7 +25,7 @@ interface User {
 interface Application {
   id: number;
   userId: number;
-  status: 'complete' | 'incomplete';
+  status: "complete" | "incomplete";
   data: { [key: string]: any };
   meta: { [key: string]: any };
   user?: User;
@@ -41,16 +40,16 @@ interface ApplicationsResponse {
 
 // Label mappings for user-friendly display
 const STAGE_LABELS: { [key: string]: string } = {
-  'pre-registration': 'Pre-Registration',
-  'full-registration': 'Full Registration',
-  'processed': 'Processed',
+  "pre-registration": "Pre-Registration",
+  "full-registration": "Full Registration",
+  processed: "Processed",
 };
 
 const STATUS_LABELS: { [key: string]: string } = {
-  'pending': 'In Progress',
-  'submitted': 'Pending Review',
-  'complete': 'Completed',
-  'processed': 'NA',
+  pending: "In Progress",
+  submitted: "Pending Review",
+  complete: "Completed",
+  processed: "NA",
 };
 
 const Applications = () => {
@@ -69,23 +68,26 @@ const Applications = () => {
   useEffect(() => {
     const fetchApplications = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/applications?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+        const response = await fetch(
+          `${API_BASE_URL}/applications?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
           },
-        });
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to fetch applications');
+          throw new Error("Failed to fetch applications");
         }
 
         const data: ApplicationsResponse = await response.json();
         setApplications(data.results);
         setTotal(data.total);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setIsLoading(false);
       }
@@ -97,50 +99,47 @@ const Applications = () => {
   }, [token, currentPage, pageSize]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const getStageFromMeta = (application: Application): string => {
-    return application.meta?.stage || 'pre-registration';
+    return application.meta?.stage || "pre-registration";
   };
 
   const getStatusFromMeta = (application: Application): string => {
     const stage = getStageFromMeta(application);
-    
-    if (stage === 'pre-registration') {
-      return application.meta?.pre_registration || 'pending';
-    } else if (stage === 'full-registration') {
-      return application.meta?.full_registration || 'pending';
-    } else if (stage === 'processed') {
-      return 'processed';
+
+    if (stage === "pre-registration") {
+      return application.meta?.pre_registration || "pending";
+    } else if (stage === "full-registration") {
+      return application.meta?.full_registration || "pending";
+    } else if (stage === "processed") {
+      return "processed";
     }
-    
+
     return application.status;
   };
 
   const isProcessed = (application: Application): boolean => {
-    return getStageFromMeta(application) === 'processed';
+    return getStageFromMeta(application) === "processed";
   };
 
   const getStatusBadge = (status: string) => {
     const statusColors: { [key: string]: string } = {
-      complete: 'bg-green-500 hover:bg-green-600',
-      submitted: 'bg-blue-500 hover:bg-blue-600',
-      pending: 'bg-yellow-500 hover:bg-yellow-600',
-      incomplete: 'bg-orange-500 hover:bg-orange-600',
-      rejected: 'bg-red-500 hover:bg-red-600',
-      processed: 'bg-gray-400 hover:bg-gray-500',
+      complete: "bg-green-500 hover:bg-green-600",
+      submitted: "bg-blue-500 hover:bg-blue-600",
+      pending: "bg-yellow-500 hover:bg-yellow-600",
+      incomplete: "bg-orange-500 hover:bg-orange-600",
+      rejected: "bg-red-500 hover:bg-red-600",
+      processed: "bg-gray-400 hover:bg-gray-500",
     };
 
     return (
-      <Badge 
-        variant="default"
-        className={statusColors[status] || 'bg-gray-500 hover:bg-gray-600'}
-      >
+      <Badge variant="default" className={statusColors[status] || "bg-gray-500 hover:bg-gray-600"}>
         {STATUS_LABELS[status] || status}
       </Badge>
     );
@@ -149,7 +148,7 @@ const Applications = () => {
   const canSendDocuSignInvite = (application: Application): boolean => {
     const stage = getStageFromMeta(application);
     const status = application.meta?.full_registration;
-    return stage === 'full-registration' && status === 'complete';
+    return stage === "full-registration" && status === "complete";
   };
 
   const handleDocuSignInvite = (application: Application, e: React.MouseEvent) => {
@@ -165,37 +164,37 @@ const Applications = () => {
 
   const hasUnresolvedRemarks = (application: Application): boolean => {
     const remarks = application.meta?.remarks || {};
-    return Object.values(remarks).some((sectionRemarks: any) => 
-      Object.values(sectionRemarks).some((fieldRemarks: any) => 
-        Array.isArray(fieldRemarks) && fieldRemarks.some((remark: any) => !remark.resolved)
-      )
+    return Object.values(remarks).some((sectionRemarks: any) =>
+      Object.values(sectionRemarks).some(
+        (fieldRemarks: any) => Array.isArray(fieldRemarks) && fieldRemarks.some((remark: any) => !remark.resolved),
+      ),
     );
   };
 
-  const handleApplicationAction = async (applicationId: number, action: 'approve' | 'reject') => {
-    const application = applications.find(app => app.id === applicationId);
+  const handleApplicationAction = async (applicationId: number, action: "approve" | "reject") => {
+    const application = applications.find((app) => app.id === applicationId);
     if (!application) return;
 
     // Prevent approval if there are unresolved remarks
-    if (action === 'approve' && hasUnresolvedRemarks(application)) {
+    if (action === "approve" && hasUnresolvedRemarks(application)) {
       return;
     }
 
     // Determine the correct decision endpoint based on stage
     const stage = getStageFromMeta(application);
     let decision: string = action;
-    if (action === 'approve') {
-      decision = stage === 'full-registration' ? 'finalize' : 'approve';
+    if (action === "approve") {
+      decision = stage === "full-registration" ? "finalize" : "approve";
     }
 
     try {
       const response = await fetch(`${API_BASE_URL}/application/${applicationId}/${decision}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ application: selectedApplication }),
+        body: JSON.stringify({ application }),
       });
 
       if (!response.ok) {
@@ -249,7 +248,7 @@ const Applications = () => {
               </div>
             ) : (
               <>
-                  <Table>
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Application ID</TableHead>
@@ -263,9 +262,13 @@ const Applications = () => {
                   </TableHeader>
                   <TableBody>
                     {applications.map((application) => (
-                      <TableRow key={application.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/application/${application.id}`)}>
+                      <TableRow
+                        key={application.id}
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => navigate(`/application/${application.id}`)}
+                      >
                         <TableCell className="font-medium">#{application.id}</TableCell>
-                        <TableCell>{application.user?.username || 'N/A'}</TableCell>
+                        <TableCell>{application.user?.username || "N/A"}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {STAGE_LABELS[getStageFromMeta(application)] || getStageFromMeta(application)}
@@ -322,7 +325,7 @@ const Applications = () => {
                                     size="sm"
                                     className="h-8 w-8 p-0 hover:bg-green-600 hover:text-white"
                                     title="Approve"
-                                    onClick={() => handleApplicationAction(application.id, 'approve')}
+                                    onClick={() => handleApplicationAction(application.id, "approve")}
                                   >
                                     <Check className="h-4 w-4" />
                                   </Button>
@@ -332,7 +335,7 @@ const Applications = () => {
                                   size="sm"
                                   className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white"
                                   title="Reject"
-                                  onClick={() => handleApplicationAction(application.id, 'reject')}
+                                  onClick={() => handleApplicationAction(application.id, "reject")}
                                 >
                                   <X className="h-4 w-4" />
                                 </Button>
@@ -355,7 +358,7 @@ const Applications = () => {
                     ))}
                   </TableBody>
                 </Table>
-                
+
                 {/* Pagination */}
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
