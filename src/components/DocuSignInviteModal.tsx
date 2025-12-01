@@ -13,11 +13,23 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { apiRequest } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
+interface Application {
+  id: number;
+  userId: number;
+  status: string;
+  data: Record<string, unknown>;
+  meta: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    username: string;
+  };
+}
+
 interface DocuSignInviteModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userId: number;
-  applicationId: number;
+  application: Application;
   onSuccess: () => void;
 }
 
@@ -26,8 +38,7 @@ interface DocuSignInviteModalProps {
 export const DocuSignInviteModal: React.FC<DocuSignInviteModalProps> = ({
   isOpen,
   onClose,
-  userId,
-  applicationId,
+  application,
   onSuccess,
 }) => {
   const [envelopes, setEnvelopes] = useState<string[]>([]);
@@ -77,7 +88,7 @@ export const DocuSignInviteModal: React.FC<DocuSignInviteModalProps> = ({
       const response = await apiRequest('/docusign/send-invitation', {
         method: 'POST',
         body: JSON.stringify({
-          userId,
+          userId: application.userId,
           envelopeName: selectedEnvelope,
         }),
       });
@@ -88,11 +99,13 @@ export const DocuSignInviteModal: React.FC<DocuSignInviteModalProps> = ({
 
       const data = await response.json();
 
-      // Update application meta with envelope summary
-      await apiRequest(`/application/${applicationId}`, {
+      // Update application with full object and merged meta
+      await apiRequest(`/application/${application.id}`, {
         method: 'PUT',
         body: JSON.stringify({
+          ...application,
           meta: {
+            ...application.meta,
             docusign: data.envelopesSummary,
           },
         }),
