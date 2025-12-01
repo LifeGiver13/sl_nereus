@@ -386,7 +386,20 @@ const ApplicationDetail = () => {
     if (!application || !token) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/application/${id}/${decision}`, {
+      // Determine the correct endpoint decision based on stage
+      let endpointDecision: string = decision;
+      
+      if (decision === "approve") {
+        const stage = application.meta?.stage;
+        
+        if (stage === "pre-registration" || stage === undefined) {
+          endpointDecision = "submit";
+        } else if (stage === "full-registration") {
+          endpointDecision = "finalize";
+        }
+      }
+
+      const response = await fetch(`${API_BASE_URL}/application/${id}/${endpointDecision}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
