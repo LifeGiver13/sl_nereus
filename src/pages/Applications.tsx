@@ -195,7 +195,7 @@ const Applications = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ application: selectedApplication }),
       });
 
       if (!response.ok) {
