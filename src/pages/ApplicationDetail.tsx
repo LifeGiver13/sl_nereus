@@ -498,7 +498,7 @@ const ApplicationDetail = () => {
     }
 
     // Handle skills arrays (check both by type and by structure)
-    if (field.type === "skills" || (Array.isArray(value) && value.length > 0 && value[0]?.name && value[0]?.category)) {
+    if (field.type === "skillsSelector" || (Array.isArray(value) && value.length > 0 && value[0]?.name && value[0]?.category)) {
       if (!Array.isArray(value) || value.length === 0) {
         return <span className="text-muted-foreground">No skills selected</span>;
       }
