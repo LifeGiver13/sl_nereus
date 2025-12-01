@@ -531,12 +531,65 @@ const ApplicationDetail = () => {
       );
     }
 
+    // Handle employment history arrays
+    if (field.type === "employmentHistory" || (Array.isArray(value) && value.length > 0 && Array.isArray(value[0]))) {
+      return renderEmploymentHistory(value);
+    }
+
     // Safely handle arrays that might contain objects
     if (Array.isArray(value)) {
       return value.join(", ") || "Not provided";
     }
 
     return value || "Not provided";
+  };
+
+  const renderEmploymentHistory = (jobs: any) => {
+    if (!Array.isArray(jobs) || jobs.length === 0) {
+      return <span className="text-muted-foreground">No employment history provided</span>;
+    }
+
+    return (
+      <div className="space-y-4">
+        {jobs.map((job: any, jobIndex: number) => {
+          if (!Array.isArray(job)) return null;
+          
+          return (
+            <div key={jobIndex} className="border rounded-lg p-4 bg-muted/20">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                {job.map((field: any, fieldIndex: number) => {
+                  // Skip description field, we'll render it separately
+                  if (field.name === "jobDescription") return null;
+                  
+                  return (
+                    <div key={fieldIndex} className="space-y-1">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {field.label}
+                      </span>
+                      <p className="text-sm font-medium">
+                        {field.value || (field.checkableExtraValue === "true" ? field.checkableExtraLabel : "Not provided")}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Render description separately if it exists */}
+              {job.find((f: any) => f.name === "jobDescription")?.value && (
+                <div className="mt-3 pt-3 border-t">
+                  <span className="text-xs font-medium text-muted-foreground block mb-1">
+                    Job Description
+                  </span>
+                  <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                    {job.find((f: any) => f.name === "jobDescription").value}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderSectionContent = (section: FormSection) => {
