@@ -497,6 +497,39 @@ const ApplicationDetail = () => {
       return value?.value === "true" || value === "true" ? "Agreed" : "Not agreed";
     }
 
+    if (field.type === "skills") {
+      if (!Array.isArray(value) || value.length === 0) {
+        return <span className="text-muted-foreground">No skills selected</span>;
+      }
+
+      // Group skills by category
+      const groupedSkills = value.reduce((acc: { [key: string]: string[] }, skill: any) => {
+        const category = skill.category || "Other";
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(skill.name);
+        return acc;
+      }, {});
+
+      return (
+        <div className="space-y-3">
+          {Object.entries(groupedSkills).map(([category, skills]) => (
+            <div key={category} className="border rounded-md p-3 bg-muted/30">
+              <h4 className="font-semibold text-sm mb-2 text-primary">{category}</h4>
+              <div className="flex flex-wrap gap-2">
+                {(skills as string[]).map((skill, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     return value || "Not provided";
   };
 
