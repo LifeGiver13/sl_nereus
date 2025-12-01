@@ -497,7 +497,8 @@ const ApplicationDetail = () => {
       return value?.value === "true" || value === "true" ? "Agreed" : "Not agreed";
     }
 
-    if (field.type === "skills") {
+    // Handle skills arrays (check both by type and by structure)
+    if (field.type === "skills" || (Array.isArray(value) && value.length > 0 && value[0]?.name && value[0]?.category)) {
       if (!Array.isArray(value) || value.length === 0) {
         return <span className="text-muted-foreground">No skills selected</span>;
       }
@@ -528,6 +529,11 @@ const ApplicationDetail = () => {
           ))}
         </div>
       );
+    }
+
+    // Safely handle arrays that might contain objects
+    if (Array.isArray(value)) {
+      return value.join(", ") || "Not provided";
     }
 
     return value || "Not provided";
