@@ -21,10 +21,7 @@ interface DocuSignInviteModalProps {
   onSuccess: () => void;
 }
 
-interface Envelope {
-  name: string;
-  id: string;
-}
+// Envelopes are returned as string array from API
 
 export const DocuSignInviteModal: React.FC<DocuSignInviteModalProps> = ({
   isOpen,
@@ -33,7 +30,7 @@ export const DocuSignInviteModal: React.FC<DocuSignInviteModalProps> = ({
   applicationId,
   onSuccess,
 }) => {
-  const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
+  const [envelopes, setEnvelopes] = useState<string[]>([]);
   const [selectedEnvelope, setSelectedEnvelope] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -136,11 +133,11 @@ export const DocuSignInviteModal: React.FC<DocuSignInviteModalProps> = ({
         ) : (
           <div className="space-y-4">
             <RadioGroup value={selectedEnvelope} onValueChange={setSelectedEnvelope}>
-              {envelopes.map((envelope) => (
-                <div key={envelope.id} className="flex items-center space-x-2">
-                  <RadioGroupItem value={envelope.name} id={envelope.id} />
-                  <Label htmlFor={envelope.id} className="cursor-pointer">
-                    {envelope.name}
+              {envelopes.map((envelope, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <RadioGroupItem value={envelope} id={`envelope-${index}`} />
+                  <Label htmlFor={`envelope-${index}`} className="cursor-pointer">
+                    {envelope}
                   </Label>
                 </div>
               ))}
