@@ -166,9 +166,6 @@ const ApplicationDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Default form ID - this should ideally come from config or application data
-  const DEFAULT_FORM_ID = 2;
-
   useEffect(() => {
     const fetchApplicationDetail = async () => {
       try {
@@ -194,9 +191,18 @@ const ApplicationDetail = () => {
 
         setApplication(data);
 
-        // Always fetch the form structure (use formId from data, or default form)
-        const formIdToUse = data.formId || DEFAULT_FORM_ID;
-        console.log("Loading form structure from formId:", formIdToUse);
+        // Determine form ID based on application stage
+        let formIdToUse: number;
+        const stage = data.meta?.stage;
+        
+        if (stage === "pre-registration" || stage === undefined) {
+          formIdToUse = 1; // Pre-registration form
+        } else if (stage === "full-registration" || stage === "processed") {
+          formIdToUse = 2; // Full registration form
+        } else {
+          formIdToUse = data.formId || 2; // Fallback to formId or form 2
+        }
+        console.log("Application stage:", stage, "- Using form ID:", formIdToUse);
 
         const formResponse = await fetch(`${API_BASE_URL}/application-form/${formIdToUse}`, {
           method: "GET",
