@@ -39,6 +39,18 @@ interface ApplicationsResponse {
   results: Application[];
 }
 
+// Label mappings for user-friendly display
+const STAGE_LABELS: { [key: string]: string } = {
+  'pre-registration': 'Pre-Registration',
+  'full-registration': 'Full Registration',
+};
+
+const STATUS_LABELS: { [key: string]: string } = {
+  'pending': 'In Progress',
+  'submitted': 'Pending Review',
+  'complete': 'Completed',
+};
+
 const Applications = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,7 +132,7 @@ const Applications = () => {
         variant="default"
         className={statusColors[status] || 'bg-gray-500 hover:bg-gray-600'}
       >
-        {status}
+        {STATUS_LABELS[status] || status}
       </Badge>
     );
   };
@@ -239,7 +251,7 @@ const Applications = () => {
                         <TableCell>{application.user?.username || 'N/A'}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {getStageFromMeta(application).replace('-', ' ')}
+                            {STAGE_LABELS[getStageFromMeta(application)] || getStageFromMeta(application)}
                           </Badge>
                         </TableCell>
                         <TableCell>
