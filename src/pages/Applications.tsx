@@ -43,6 +43,7 @@ interface ApplicationsResponse {
 const STAGE_LABELS: { [key: string]: string } = {
   'pre-registration': 'Pre-Registration',
   'full-registration': 'Full Registration',
+  'processed': 'Processed',
 };
 
 const STATUS_LABELS: { [key: string]: string } = {
@@ -113,9 +114,15 @@ const Applications = () => {
       return application.meta?.pre_registration || 'pending';
     } else if (stage === 'full-registration') {
       return application.meta?.full_registration || 'pending';
+    } else if (stage === 'processed') {
+      return 'processed';
     }
     
     return application.status;
+  };
+
+  const isProcessed = (application: Application): boolean => {
+    return getStageFromMeta(application) === 'processed';
   };
 
   const getStatusBadge = (status: string) => {
@@ -125,6 +132,7 @@ const Applications = () => {
       pending: 'bg-yellow-500 hover:bg-yellow-600',
       incomplete: 'bg-orange-500 hover:bg-orange-600',
       rejected: 'bg-red-500 hover:bg-red-600',
+      processed: 'bg-gray-400 hover:bg-gray-500',
     };
 
     return (
@@ -172,8 +180,15 @@ const Applications = () => {
       return;
     }
 
+    // Determine the correct decision endpoint based on stage
+    const stage = getStageFromMeta(application);
+    let decision: string = action;
+    if (action === 'approve') {
+      decision = stage === 'full-registration' ? 'finalize' : 'approve';
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/application/${applicationId}/${action}`, {
+      const response = await fetch(`${API_BASE_URL}/application/${applicationId}/${decision}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -279,45 +294,49 @@ const Applications = () => {
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </Link>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 hover:bg-[#712B71] hover:text-white"
-                              title="Comment"
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
-                            {hasUnresolvedRemarks(application) ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-gray-400 cursor-not-allowed"
-                                title="Cannot approve - unresolved remarks"
-                                disabled
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover:bg-green-600 hover:text-white"
-                                title="Approve"
-                                onClick={() => handleApplicationAction(application.id, 'approve')}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
+                            {!isProcessed(application) && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 hover:bg-[#712B71] hover:text-white"
+                                  title="Comment"
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
+                                {hasUnresolvedRemarks(application) ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-gray-400 cursor-not-allowed"
+                                    title="Cannot approve - unresolved remarks"
+                                    disabled
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 hover:bg-green-600 hover:text-white"
+                                    title="Approve"
+                                    onClick={() => handleApplicationAction(application.id, 'approve')}
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white"
+                                  title="Reject"
+                                  onClick={() => handleApplicationAction(application.id, 'reject')}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white"
-                              title="Reject"
-                              onClick={() => handleApplicationAction(application.id, 'reject')}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                            {canSendDocuSignInvite(application) && (
+                            {(canSendDocuSignInvite(application) || isProcessed(application)) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
