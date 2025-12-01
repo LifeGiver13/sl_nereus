@@ -6,11 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight, FileSignature } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
+import { DocuSignInviteModal } from '../components/DocuSignInviteModal';
 
 interface User {
   id: number;
@@ -44,6 +45,8 @@ const Applications = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [docuSignModalOpen, setDocuSignModalOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const { token } = useAuth();
   const { preferences, updateTablePreferences } = usePreferences();
   const navigate = useNavigate();
@@ -87,15 +90,56 @@ const Applications = () => {
     });
   };
 
+  const getStageFromMeta = (application: Application): string => {
+    return application.meta?.stage || 'pre-registration';
+  };
+
+  const getStatusFromMeta = (application: Application): string => {
+    const stage = getStageFromMeta(application);
+    
+    if (stage === 'pre-registration') {
+      return application.meta?.pre_registration || 'pending';
+    } else if (stage === 'full-registration') {
+      return application.meta?.full_registration || 'pending';
+    }
+    
+    return application.status;
+  };
+
   const getStatusBadge = (status: string) => {
+    const statusColors: { [key: string]: string } = {
+      complete: 'bg-green-500 hover:bg-green-600',
+      submitted: 'bg-blue-500 hover:bg-blue-600',
+      pending: 'bg-yellow-500 hover:bg-yellow-600',
+      incomplete: 'bg-orange-500 hover:bg-orange-600',
+      rejected: 'bg-red-500 hover:bg-red-600',
+    };
+
     return (
       <Badge 
-        variant={status === 'complete' ? 'default' : 'secondary'}
-        className={status === 'complete' ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'}
+        variant="default"
+        className={statusColors[status] || 'bg-gray-500 hover:bg-gray-600'}
       >
         {status}
       </Badge>
     );
+  };
+
+  const canSendDocuSignInvite = (application: Application): boolean => {
+    const stage = getStageFromMeta(application);
+    const status = application.meta?.full_registration;
+    return stage === 'full-registration' && status === 'complete';
+  };
+
+  const handleDocuSignInvite = (application: Application, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedApplication(application);
+    setDocuSignModalOpen(true);
+  };
+
+  const handleDocuSignSuccess = () => {
+    // Refresh applications list
+    window.location.reload();
   };
 
   const hasUnresolvedRemarks = (application: Application): boolean => {
@@ -176,11 +220,12 @@ const Applications = () => {
               </div>
             ) : (
               <>
-                <Table>
+                  <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Application ID</TableHead>
                       <TableHead>Username</TableHead>
+                      <TableHead>Stage</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date Created</TableHead>
                       <TableHead>Last Update</TableHead>
@@ -193,8 +238,13 @@ const Applications = () => {
                         <TableCell className="font-medium">#{application.id}</TableCell>
                         <TableCell>{application.user?.username || 'N/A'}</TableCell>
                         <TableCell>
+                          <Badge variant="outline">
+                            {getStageFromMeta(application).replace('-', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center space-x-2">
-                            {getStatusBadge(application.status)}
+                            {getStatusBadge(getStatusFromMeta(application))}
                             {hasUnresolvedRemarks(application) && (
                               <div className="flex items-center space-x-1" title="Unresolved remarks">
                                 <MessageSquare className="h-3 w-3 text-orange-500" />
@@ -255,6 +305,17 @@ const Applications = () => {
                             >
                               <X className="h-4 w-4" />
                             </Button>
+                            {canSendDocuSignInvite(application) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-purple-600 hover:text-white"
+                                title="Send DocuSign Invitation"
+                                onClick={(e) => handleDocuSignInvite(application, e)}
+                              >
+                                <FileSignature className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -296,6 +357,19 @@ const Applications = () => {
           </CardContent>
         </Card>
       </div>
+
+      {selectedApplication && (
+        <DocuSignInviteModal
+          isOpen={docuSignModalOpen}
+          onClose={() => {
+            setDocuSignModalOpen(false);
+            setSelectedApplication(null);
+          }}
+          userId={selectedApplication.userId}
+          applicationId={selectedApplication.id}
+          onSuccess={handleDocuSignSuccess}
+        />
+      )}
     </AdminLayout>
   );
 };
