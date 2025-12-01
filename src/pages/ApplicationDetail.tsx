@@ -29,9 +29,9 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
 
   React.useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;
-    
+
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev ? prev - 1 : null);
+      setTimeLeft((prev) => (prev ? prev - 1 : null));
     }, 1000);
 
     return () => clearInterval(timer);
@@ -53,7 +53,7 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
       setDownloadUrl(data.url);
       setTimeLeft(data.expiresIn);
     } catch (error) {
-      console.error('Error fetching download URL:', error);
+      console.error("Error fetching download URL:", error);
       toast({
         title: "Error",
         description: "Failed to fetch download link",
@@ -67,7 +67,7 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (downloadUrl && timeLeft) {
@@ -82,23 +82,15 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
           <FileText className="h-4 w-4" />
           Open Document
         </a>
-        <span className="text-xs text-muted-foreground">
-          Link expires in {formatTime(timeLeft)}
-        </span>
+        <span className="text-xs text-muted-foreground">Link expires in {formatTime(timeLeft)}</span>
       </div>
     );
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={fetchDownloadUrl}
-      disabled={loading}
-      className="gap-2"
-    >
+    <Button variant="outline" size="sm" onClick={fetchDownloadUrl} disabled={loading} className="gap-2">
       <FileText className="h-4 w-4" />
-      {loading ? 'Generating link...' : 'Get Download Link'}
+      {loading ? "Generating link..." : "Get Download Link"}
     </Button>
   );
 };
@@ -194,7 +186,7 @@ const ApplicationDetail = () => {
         // Determine form ID based on application stage
         let formIdToUse: number;
         const stage = data.meta?.stage;
-        
+
         if (stage === "pre-registration" || stage === undefined) {
           formIdToUse = 1; // Pre-registration form
         } else if (stage === "full-registration" || stage === "processed") {
@@ -388,12 +380,12 @@ const ApplicationDetail = () => {
     try {
       // Determine the correct endpoint decision based on stage
       let endpointDecision: string = decision;
-      
+
       if (decision === "approve") {
         const stage = application.meta?.stage;
-        
+
         if (stage === "pre-registration" || stage === undefined) {
-          endpointDecision = "submit";
+          endpointDecision = "approve";
         } else if (stage === "full-registration") {
           endpointDecision = "finalize";
         }
