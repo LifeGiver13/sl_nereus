@@ -397,8 +397,7 @@ const Applications = () => {
             setDocuSignModalOpen(false);
             setSelectedApplication(null);
           }}
-          userId={selectedApplication.userId}
-          applicationId={selectedApplication.id}
+          application={selectedApplication}
           onSuccess={handleDocuSignSuccess}
         />
       )}
