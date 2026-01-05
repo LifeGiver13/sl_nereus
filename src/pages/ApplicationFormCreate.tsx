@@ -804,6 +804,7 @@ const ApplicationFormCreate = () => {
   });
   const [loading, setLoading] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
+  const [newSectionUrl, setNewSectionUrl] = useState('');
   const [cloneSectionDialog, setCloneSectionDialog] = useState({ open: false, sectionName: '', newName: '' });
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [isSortingSections, setIsSortingSections] = useState(false);
@@ -837,6 +838,8 @@ const ApplicationFormCreate = () => {
   const addSection = () => {
     if (newSectionName.trim()) {
       const existingSectionCount = Object.keys(form.sections).length;
+      // Use custom URL if provided, otherwise generate from name
+      const sectionUrl = newSectionUrl.trim() || generateSectionUrl(newSectionName);
       setForm(prev => ({
         ...prev,
         sections: {
@@ -846,13 +849,30 @@ const ApplicationFormCreate = () => {
             fields: [],
             displayOrder: existingSectionCount,
             meta: {
-              url: generateSectionUrl(newSectionName)
+              url: sectionUrl
             }
           }
         }
       }));
       setNewSectionName('');
+      setNewSectionUrl('');
     }
+  };
+
+  const updateSectionUrl = (sectionName: string, newUrl: string) => {
+    setForm(prev => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        [sectionName]: {
+          ...prev.sections[sectionName],
+          meta: {
+            ...prev.sections[sectionName].meta,
+            url: newUrl
+          }
+        }
+      }
+    }));
   };
 
   const deleteSection = (sectionName: string) => {
@@ -1326,12 +1346,23 @@ const ApplicationFormCreate = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Section name"
-                value={newSectionName}
-                onChange={(e) => setNewSectionName(e.target.value)}
-              />
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">Section Name</Label>
+                <Input
+                  placeholder="Section name"
+                  value={newSectionName}
+                  onChange={(e) => setNewSectionName(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">URL Slug (optional)</Label>
+                <Input
+                  placeholder={newSectionName ? generateSectionUrl(newSectionName) : 'auto-generated'}
+                  value={newSectionUrl}
+                  onChange={(e) => setNewSectionUrl(e.target.value)}
+                />
+              </div>
               <Button onClick={addSection}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Section
@@ -1417,6 +1448,15 @@ const ApplicationFormCreate = () => {
                           )}
                         </div>
                         <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs text-muted-foreground whitespace-nowrap">URL:</Label>
+                            <Input
+                              value={section.meta?.url || ''}
+                              onChange={(e) => updateSectionUrl(sectionName, e.target.value)}
+                              placeholder={generateSectionUrl(sectionName)}
+                              className="w-40 h-8 text-sm"
+                            />
+                          </div>
                           <div className="flex items-center gap-2">
                             <Label className="text-sm font-medium whitespace-nowrap">Section Action:</Label>
                             <Select
