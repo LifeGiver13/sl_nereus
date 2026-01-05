@@ -79,6 +79,16 @@ type ApplicationForm = {
   meta: { [x: string]: any };
 };
 
+// Helper function to generate URL-friendly slug from section name
+const generateSectionUrl = (name: string): string => {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, '-')           // Replace spaces with hyphens
+    .replace(/[^a-z0-9-]/g, '')     // Remove special characters
+    .replace(/-+/g, '-')            // Replace multiple hyphens with single
+    .replace(/^-|-$/g, '');         // Trim leading/trailing hyphens
+};
+
 // Helper function to generate condition descriptions
 const getConditionDescription = (condition: any) => {
   if (!condition) return '';
@@ -834,7 +844,10 @@ const ApplicationFormCreate = () => {
           [newSectionName]: {
             name: newSectionName,
             fields: [],
-            displayOrder: existingSectionCount
+            displayOrder: existingSectionCount,
+            meta: {
+              url: generateSectionUrl(newSectionName)
+            }
           }
         }
       }));
@@ -886,7 +899,11 @@ const ApplicationFormCreate = () => {
     delete newSections[currentName];
     newSections[newName] = {
       ...section,
-      name: newName
+      name: newName,
+      meta: {
+        ...section.meta,
+        url: generateSectionUrl(newName)
+      }
     };
 
     setForm(prev => ({
@@ -928,7 +945,11 @@ const ApplicationFormCreate = () => {
     const clonedSection = {
       ...originalSection,
       name: newName,
-      displayOrder: Object.keys(form.sections).length
+      displayOrder: Object.keys(form.sections).length,
+      meta: {
+        ...originalSection.meta,
+        url: generateSectionUrl(newName)
+      }
     };
 
     setForm(prev => ({
