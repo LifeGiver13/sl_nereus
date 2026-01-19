@@ -35,7 +35,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 export type Field = {
   name: string;
-  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden" | "declaration";
+  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden" | "declaration" | "date" | "number" | "currency";
   label: string;
   required?: boolean;
   readOnly?: boolean;
@@ -58,6 +58,8 @@ export type Field = {
     toUppercase?: boolean;
     stripSpaces?: boolean;
     content?: string;
+    prefix?: string;
+    suffix?: string;
   };
 };
 
@@ -92,7 +94,7 @@ const generateSectionUrl = (name: string): string => {
 // Helper function to generate condition descriptions
 const getConditionDescription = (condition: any) => {
   if (!condition) return '';
-  
+
   switch (condition.operator) {
     case 'equals':
       return `equals "${condition.value || '[empty]'}"`;
@@ -108,16 +110,16 @@ const getConditionDescription = (condition: any) => {
 };
 
 // Pure field editor without any drag-drop functionality
-const FieldEditor = ({ 
-  field, 
-  fieldIndex, 
-  sectionName, 
-  onUpdateField, 
+const FieldEditor = ({
+  field,
+  fieldIndex,
+  sectionName,
+  onUpdateField,
   onDeleteField,
   allFields
-}: { 
-  field: Field; 
-  fieldIndex: number; 
+}: {
+  field: Field;
+  fieldIndex: number;
   sectionName: string;
   onUpdateField: (sectionName: string, fieldIndex: number, field: Partial<Field>) => void;
   onDeleteField: (sectionName: string, fieldIndex: number) => void;
@@ -151,16 +153,16 @@ const FieldEditor = ({
       falseLabel: 'No',
       falseValue: 'false'
     };
-    onUpdateField(sectionName, fieldIndex, { 
-      options: { ...currentOptions, [key]: value } 
+    onUpdateField(sectionName, fieldIndex, {
+      options: { ...currentOptions, [key]: value }
     });
   };
 
   // Helper function to update meta properties
   const updateMeta = (key: string, value: string | number | boolean | '') => {
     const currentMeta = field.meta || {};
-    onUpdateField(sectionName, fieldIndex, { 
-      meta: { ...currentMeta, [key]: value } 
+    onUpdateField(sectionName, fieldIndex, {
+      meta: { ...currentMeta, [key]: value }
     });
   };
 
@@ -194,12 +196,12 @@ const FieldEditor = ({
         </div>
         <div>
           <Label className="text-xs">Type</Label>
-          <Select 
-            value={field.type} 
+          <Select
+            value={field.type}
             onValueChange={(value: any) => {
               // Reset options and meta when changing field type
               const updates: Partial<Field> = { type: value };
-              
+
               // Set default options for specific field types
               if (value === 'boolean') {
                 updates.options = {
@@ -238,7 +240,7 @@ const FieldEditor = ({
                   placeHolder: ''
                 };
               }
-              
+
               onUpdateField(sectionName, fieldIndex, updates);
             }}
           >
@@ -248,6 +250,9 @@ const FieldEditor = ({
             <SelectContent>
               <SelectItem value="text">Text</SelectItem>
               <SelectItem value="email">Email</SelectItem>
+              <SelectItem value="number">Number</SelectItem>
+              <SelectItem value="currency">Currency</SelectItem>
+              <SelectItem value="date">Date</SelectItem>
               <SelectItem value="tel">Phone</SelectItem>
               <SelectItem value="password">Password</SelectItem>
               <SelectItem value="textArea">Text Area</SelectItem>
@@ -299,7 +304,7 @@ const FieldEditor = ({
           <TabsTrigger value="options">Options</TabsTrigger>
           <TabsTrigger value="conditions">Conditions</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="options" className="space-y-4">
           {/* Select field options */}
           {field.type === 'select' && (
@@ -445,14 +450,14 @@ const FieldEditor = ({
 
           {/* Declaration field options */}
           {field.type === 'declaration' && (
-            <DeclarationEditor 
+            <DeclarationEditor
               content={getDefaultMeta().content || ''}
               onChange={(content) => updateMeta('content', content)}
             />
           )}
 
           {/* Standard text-based fields (text, email, tel, password, textArea, checkbox) */}
-          {['text', 'email', 'tel', 'password', 'textArea', 'checkbox'].includes(field.type) && (
+          {['text', 'email', 'tel', 'password', 'textArea', 'checkbox', 'date', 'number', 'currency'].includes(field.type) && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -470,6 +475,28 @@ const FieldEditor = ({
                     placeholder="Placeholder text"
                     value={getDefaultMeta().placeHolder || ''}
                     onChange={(e) => updateMeta('placeHolder', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Prefix and Suffix - available for all field types */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Prefix</Label>
+                  <Input
+                    placeholder="Text to display before the field value"
+                    value={getDefaultMeta().prefix || ''}
+                    onChange={(e) => updateMeta('prefix', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Suffix</Label>
+                  <Input
+                    placeholder="Text to display after the field value"
+                    value={getDefaultMeta().suffix || ''}
+                    onChange={(e) => updateMeta('suffix', e.target.value)}
                     className="mt-1"
                   />
                 </div>
@@ -547,22 +574,22 @@ const FieldEditor = ({
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="conditions" className="space-y-4">
           <div className="space-y-4">
             <div className="grid grid-cols-4 gap-4">
               <div>
                 <Label className="text-xs">Related Field</Label>
-                <Select 
-                  value={field.condition?.field || 'none'} 
-                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: value === 'none' ? undefined : { 
-                      field: value, 
-                      operator: field.condition?.operator || 'equals', 
+                <Select
+                  value={field.condition?.field || 'none'}
+                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, {
+                    condition: value === 'none' ? undefined : {
+                      field: value,
+                      operator: field.condition?.operator || 'equals',
                       action: field.condition?.action || 'hide',
                       value: field.condition?.value || '',
                       validate: field.condition?.validate || false
-                    } 
+                    }
                   })}
                 >
                   <SelectTrigger className="mt-1">
@@ -578,10 +605,10 @@ const FieldEditor = ({
               </div>
               <div>
                 <Label className="text-xs">Comparison</Label>
-                <Select 
-                  value={field.condition?.operator || 'equals'} 
-                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: { ...field.condition, operator: value } 
+                <Select
+                  value={field.condition?.operator || 'equals'}
+                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, {
+                    condition: { ...field.condition, operator: value }
                   })}
                   disabled={!field.condition?.field}
                 >
@@ -601,8 +628,8 @@ const FieldEditor = ({
                 <Input
                   placeholder="Value to compare"
                   value={field.condition?.value || ''}
-                  onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: { ...field.condition, value: e.target.value } 
+                  onChange={(e) => onUpdateField(sectionName, fieldIndex, {
+                    condition: { ...field.condition, value: e.target.value }
                   })}
                   className="mt-1"
                   disabled={!field.condition?.field || ['isSet', 'isNotSet'].includes(field.condition?.operator)}
@@ -610,10 +637,10 @@ const FieldEditor = ({
               </div>
               <div>
                 <Label className="text-xs">Action</Label>
-                <Select 
-                  value={field.condition?.action || 'hide'} 
-                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: { ...field.condition, action: value } 
+                <Select
+                  value={field.condition?.action || 'hide'}
+                  onValueChange={(value) => onUpdateField(sectionName, fieldIndex, {
+                    condition: { ...field.condition, action: value }
                   })}
                   disabled={!field.condition?.field}
                 >
@@ -630,7 +657,7 @@ const FieldEditor = ({
                 </Select>
               </div>
             </div>
-            
+
             {/* Show setValue input when action is setValue */}
             {field.condition?.field && field.condition?.action === 'setValue' && (
               <div>
@@ -638,14 +665,14 @@ const FieldEditor = ({
                 <Input
                   placeholder="Value to set on this field"
                   value={field.condition?.setValue || ''}
-                  onChange={(e) => onUpdateField(sectionName, fieldIndex, { 
-                    condition: { ...field.condition, setValue: e.target.value } 
+                  onChange={(e) => onUpdateField(sectionName, fieldIndex, {
+                    condition: { ...field.condition, setValue: e.target.value }
                   })}
                   className="mt-1"
                 />
               </div>
             )}
-            
+
             {field.condition?.field && (
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-xs text-muted-foreground">
@@ -665,9 +692,9 @@ const FieldEditor = ({
 };
 
 // Compact field card component with expand functionality
-const CompactFieldCard = ({ 
-  field, 
-  fieldIndex, 
+const CompactFieldCard = ({
+  field,
+  fieldIndex,
   sectionName,
   onExpand,
   isExpanded,
@@ -677,9 +704,9 @@ const CompactFieldCard = ({
   onCollapse,
   onSave,
   loading
-}: { 
-  field: Field; 
-  fieldIndex: number; 
+}: {
+  field: Field;
+  fieldIndex: number;
   sectionName: string;
   onExpand: () => void;
   isExpanded: boolean;
@@ -724,7 +751,7 @@ const CompactFieldCard = ({
   }
 
   return (
-    <div 
+    <div
       className="border rounded-lg p-3 bg-card hover:bg-muted/50 cursor-pointer transition-colors"
       onClick={onExpand}
     >
@@ -753,13 +780,13 @@ const CompactFieldCard = ({
 };
 
 // Simplified sortable field for sorting mode
-const SortableFieldSimple = ({ 
-  field, 
-  fieldIndex, 
-  sectionName 
-}: { 
-  field: Field; 
-  fieldIndex: number; 
+const SortableFieldSimple = ({
+  field,
+  fieldIndex,
+  sectionName
+}: {
+  field: Field;
+  fieldIndex: number;
   sectionName: string;
 }) => {
   const {
@@ -1029,7 +1056,7 @@ const ApplicationFormCreate = () => {
         ...prev.sections,
         [sectionName]: {
           ...prev.sections[sectionName],
-          fields: prev.sections[sectionName].fields.map((f, index) => 
+          fields: prev.sections[sectionName].fields.map((f, index) =>
             index === fieldIndex ? { ...f, ...field } : f
           )
         }
@@ -1060,7 +1087,7 @@ const ApplicationFormCreate = () => {
     // Parse field IDs: format is "field-{sectionName}-{fieldIndex}"
     const activeIdParts = active.id.toString().split('-');
     const overIdParts = over.id.toString().split('-');
-    
+
     // Extract section name and field index
     const activeSectionName = activeIdParts.slice(1, -1).join('-'); // Handle section names with hyphens
     const activeFieldIndex = parseInt(activeIdParts[activeIdParts.length - 1]);
@@ -1107,7 +1134,7 @@ const ApplicationFormCreate = () => {
     }
 
     const reorderedSections = arrayMove(sectionEntries, activeIndex, overIndex);
-    
+
     // Update displayOrder for all sections
     const updatedSections = { ...form.sections };
     reorderedSections.forEach(([sectionName], index) => {
@@ -1249,7 +1276,7 @@ const ApplicationFormCreate = () => {
         title: "Success",
         description: `Application form ${formId ? 'updated' : 'created'} successfully`,
       });
-      
+
       // Stay on the edit screen instead of navigating away
     } catch (error) {
       toast({
@@ -1333,7 +1360,7 @@ const ApplicationFormCreate = () => {
                 <CardTitle>Form Sections</CardTitle>
                 <CardDescription>Organize your form fields into logical sections</CardDescription>
               </div>
-              
+
               {Object.keys(form.sections).length > 1 && (
                 <Button
                   variant={isSortingSections ? "default" : "outline"}
@@ -1390,9 +1417,9 @@ const ApplicationFormCreate = () => {
           getSortedSections().map(([sectionName, section], sectionIndex) => {
             const isCollapsed = collapsedSections.has(sectionName);
             const isEditingThisSection = editingSectionName?.sectionIndex === sectionIndex;
-            
+
             return (
-              <Collapsible key={sectionName} open={!isCollapsed} onOpenChange={() => toggleSectionCollapse(sectionName)}>
+              <Collapsible key={sectionName} open={isCollapsed} onOpenChange={() => toggleSectionCollapse(sectionName)}>
                 <Card className="mb-6">
                   <CollapsibleTrigger asChild>
                     <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
@@ -1434,7 +1461,7 @@ const ApplicationFormCreate = () => {
                             </div>
                           ) : (
                             <>
-                              <CardTitle 
+                              <CardTitle
                                 className="text-lg hover:text-primary transition-colors"
                                 onDoubleClick={(e) => {
                                   e.stopPropagation();
@@ -1443,7 +1470,7 @@ const ApplicationFormCreate = () => {
                               >
                                 {section.name}
                               </CardTitle>
-                              {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                              {!isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
                             </>
                           )}
                         </div>
@@ -1507,76 +1534,76 @@ const ApplicationFormCreate = () => {
                     </CardHeader>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                  <CardContent className="space-y-4">
-                    {/* Toggle for field sorting */}
-                    {section.fields.length > 1 && (
-                      <div className="flex justify-end">
-                        <Button
-                          size="sm"
-                          variant={sortingFieldsSection === sectionName ? "default" : "outline"}
-                          onClick={() => {
-                            setSortingFieldsSection(sortingFieldsSection === sectionName ? null : sectionName);
-                            setExpandedField(null); // Collapse any expanded field when sorting
-                          }}
-                        >
-                          <GripVertical className="h-4 w-4 mr-2" />
-                          {sortingFieldsSection === sectionName ? "Done Sorting" : "Sort Fields"}
-                        </Button>
-                      </div>
-                    )}
+                    <CardContent className="space-y-4">
+                      {/* Toggle for field sorting */}
+                      {section.fields.length > 1 && (
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            variant={sortingFieldsSection === sectionName ? "default" : "outline"}
+                            onClick={() => {
+                              setSortingFieldsSection(sortingFieldsSection === sectionName ? null : sectionName);
+                              setExpandedField(null); // Collapse any expanded field when sorting
+                            }}
+                          >
+                            <GripVertical className="h-4 w-4 mr-2" />
+                            {sortingFieldsSection === sectionName ? "Done Sorting" : "Sort Fields"}
+                          </Button>
+                        </div>
+                      )}
 
-                    {sortingFieldsSection === sectionName ? (
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleFieldDragEnd}
-                      >
-                        <SortableContext 
-                          items={section.fields.map((_, index) => `field-${sectionName}-${index}`)} 
-                          strategy={verticalListSortingStrategy}
+                      {sortingFieldsSection === sectionName ? (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleFieldDragEnd}
                         >
-                          <div className="space-y-2">
-                            {section.fields.map((field, fieldIndex) => (
-                              <SortableFieldSimple
-                                key={`sort-${sectionName}-${fieldIndex}`}
-                                field={field}
-                                fieldIndex={fieldIndex}
-                                sectionName={sectionName}
-                              />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
-                    ) : (
-                      <div className="space-y-2">
-                        {section.fields.map((field, fieldIndex) => (
-                          <CompactFieldCard
-                            key={`${sectionName}-field-${fieldIndex}`}
-                            field={field}
-                            fieldIndex={fieldIndex}
-                            sectionName={sectionName}
-                            onExpand={() => setExpandedField({ section: sectionName, index: fieldIndex })}
-                            isExpanded={expandedField?.section === sectionName && expandedField?.index === fieldIndex}
-                            onUpdateField={updateField}
-                            onDeleteField={deleteField}
-                            allFields={allFields}
-                            onCollapse={() => setExpandedField(null)}
-                            onSave={saveForm}
-                            loading={loading}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    
-                    <Button
-                      onClick={() => addField(sectionName)}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Field
-                    </Button>
-                  </CardContent>
+                          <SortableContext
+                            items={section.fields.map((_, index) => `field-${sectionName}-${index}`)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-2">
+                              {section.fields.map((field, fieldIndex) => (
+                                <SortableFieldSimple
+                                  key={`sort-${sectionName}-${fieldIndex}`}
+                                  field={field}
+                                  fieldIndex={fieldIndex}
+                                  sectionName={sectionName}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      ) : (
+                        <div className="space-y-2">
+                          {section.fields.map((field, fieldIndex) => (
+                            <CompactFieldCard
+                              key={`${sectionName}-field-${fieldIndex}`}
+                              field={field}
+                              fieldIndex={fieldIndex}
+                              sectionName={sectionName}
+                              onExpand={() => setExpandedField({ section: sectionName, index: fieldIndex })}
+                              isExpanded={expandedField?.section === sectionName && expandedField?.index === fieldIndex}
+                              onUpdateField={updateField}
+                              onDeleteField={deleteField}
+                              allFields={allFields}
+                              onCollapse={() => setExpandedField(null)}
+                              onSave={saveForm}
+                              loading={loading}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={() => addField(sectionName)}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Field
+                      </Button>
+                    </CardContent>
                   </CollapsibleContent>
                 </Card>
               </Collapsible>
@@ -1616,7 +1643,7 @@ const ApplicationFormCreate = () => {
               <Button variant="outline" onClick={() => setCloneSectionDialog({ open: false, sectionName: '', newName: '' })}>
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   cloneSection(cloneSectionDialog.sectionName, cloneSectionDialog.newName);
                   setCloneSectionDialog({ open: false, sectionName: '', newName: '' });
