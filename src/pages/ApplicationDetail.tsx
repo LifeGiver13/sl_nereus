@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import AdminLayout from "../components/AdminLayout";
 import { useAuth } from "../contexts/AuthContext";
@@ -25,6 +26,7 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
   const [downloadUrl, setDownloadUrl] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [timeLeft, setTimeLeft] = React.useState<number | null>(null);
+  const [showPreview, setShowPreview] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -72,18 +74,49 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
 
   if (downloadUrl && timeLeft) {
     return (
-      <div className="flex flex-col gap-2">
-        <a
-          href={downloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-        >
-          <FileText className="h-4 w-4" />
-          Open Document
-        </a>
-        <span className="text-xs text-muted-foreground">Link expires in {formatTime(timeLeft)}</span>
-      </div>
+      <>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreview(true)}
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Preview Document
+            </Button>
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <FileText className="h-4 w-4" />
+              Open in New Tab
+            </a>
+          </div>
+          <span className="text-xs text-muted-foreground">Link expires in {formatTime(timeLeft)}</span>
+        </div>
+        
+        {showPreview && (
+          <Dialog open={showPreview} onOpenChange={setShowPreview}>
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <DialogTitle>Document Preview: {fileName}</DialogTitle>
+              </DialogHeader>
+              <div className="mt-4 flex-1 min-h-0">
+                <iframe
+                  src={downloadUrl}
+                  className="w-full h-full min-h-[70vh] border rounded"
+                  title={`Preview of ${fileName}`}
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </>
     );
   }
 
