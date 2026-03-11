@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Edit, Power, Search, Plus, Trash2 } from 'lucide-react';
+import { Edit, Power, Search, Plus, Trash2, ChevronDown, ChevronRight, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import SkillFormModal from './SkillFormModal';
 
 interface Skill {
@@ -17,6 +24,7 @@ interface Skill {
   name: string;
   category: string;
   subCategory?: string;
+  active?: boolean;
   meta?: {
     fortunaID: number;
     disabled?: boolean;
@@ -39,7 +47,10 @@ const CandidateSkillsManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [skillToDelete, setSkillToDelete] = useState<Skill | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [categoryToRename, setCategoryToRename] = useState<string | null>(null);
+  const [renameCategoryNewName, setRenameCategoryNewName] = useState('');
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -188,10 +199,74 @@ const CandidateSkillsManagement = () => {
   };
 
   const handleToggleStatus = (skill: Skill) => {
-    const isDisabled = skill.meta?.disabled === true;
-    const action = isDisabled ? 'enable' : 'disable';
+    const isActive = skill.active !== false;
+    const action = isActive ? 'disable' : 'enable';
     toggleStatusMutation.mutate({ id: skill.id, action });
   };
+
+  // Toggle entire category active state (uses category endpoints)
+  const toggleCategoryMutation = useMutation({
+    mutationFn: async ({ category, action }: { category: string; action: 'enable' | 'disable' }) => {
+      const path = `/candidate/skill/category/${encodeURIComponent(category)}/${action}`;
+      const response = await apiRequest(path, { method: 'POST' });
+      if (!response.ok) throw new Error(`Failed to ${action} category`);
+      return response.json();
+    },
+    onSuccess: (_, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-skills'] });
+      toast({
+        title: 'Success',
+        description: `Category ${action}d successfully`,
+      });
+    },
+    onError: (error, { action }) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : `Failed to ${action} category`,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Rename category (uses category rename endpoint)
+  const renameCategoryMutation = useMutation({
+    mutationFn: async ({
+      category,
+      newCategoryName,
+    }: {
+      category: string;
+      newCategoryName: string;
+    }) => {
+      const response = await apiRequest('/candidate/skill/category/rename', {
+        method: 'POST',
+        body: JSON.stringify({ category, newCategoryName }),
+      });
+      if (!response.ok) throw new Error('Failed to rename category');
+      return response.json();
+    },
+    onSuccess: (_, { newCategoryName }) => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-skills'] });
+      toast({
+        title: 'Success',
+        description: `Category renamed to "${newCategoryName}"`,
+      });
+      setCategoryToRename(null);
+      setRenameCategoryNewName('');
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to rename category',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const toggleCategoryExpanded = (category: string) => {
+    setExpandedCategories((prev) => ({ ...prev, [category]: !prev[category] }));
+  };
+  // Default collapsed: only expanded when explicitly true (so first click expands, second collapses)
+  const isCategoryExpanded = (category: string) => expandedCategories[category] === true;
 
   const handleDelete = (skill: Skill) => {
     setSkillToDelete(skill);
@@ -205,6 +280,46 @@ const CandidateSkillsManagement = () => {
   };
 
   const isDeleteDisabled = !skillToDelete || deleteConfirmation !== skillToDelete.name;
+
+  const skills = data ?? [];
+
+  const filteredAndSortedSkills = useMemo(
+    () =>
+      skills
+        .filter((skill) => {
+          const searchLower = searchTerm.toLowerCase();
+          return (
+            skill.name.toLowerCase().includes(searchLower) ||
+            (skill.category || '').toLowerCase().includes(searchLower) ||
+            (skill.subCategory || '').toLowerCase().includes(searchLower)
+          );
+        })
+        .sort((a, b) => {
+          const categoryA = a.category || 'Uncategorized';
+          const categoryB = b.category || 'Uncategorized';
+          const subcategoryA = a.subCategory || 'General';
+          const subcategoryB = b.subCategory || 'General';
+          if (categoryA !== categoryB) return categoryA.localeCompare(categoryB);
+          if (subcategoryA !== subcategoryB) return subcategoryA.localeCompare(subcategoryB);
+          return a.name.localeCompare(b.name);
+        }),
+    [skills, searchTerm]
+  );
+
+  const skillsByCategory = useMemo(() => {
+    const map: Record<string, Skill[]> = {};
+    for (const skill of filteredAndSortedSkills) {
+      const cat = skill.category || 'Uncategorized';
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(skill);
+    }
+    return map;
+  }, [filteredAndSortedSkills]);
+
+  const categoryNames = useMemo(
+    () => Object.keys(skillsByCategory).sort((a, b) => a.localeCompare(b)),
+    [skillsByCategory]
+  );
 
   // Early returns after all hooks have been called
   if (isLoading) {
@@ -224,31 +339,6 @@ const CandidateSkillsManagement = () => {
       </div>
     );
   }
-
-  // Sort and filter skills by category, then subcategory, then name
-  const filteredAndSortedSkills = data?.slice()
-    .filter((skill) => {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        skill.name.toLowerCase().includes(searchLower) ||
-        (skill.category || '').toLowerCase().includes(searchLower) ||
-        (skill.subCategory || '').toLowerCase().includes(searchLower)
-      );
-    })
-    .sort((a, b) => {
-      const categoryA = a.category || 'Uncategorized';
-      const categoryB = b.category || 'Uncategorized';
-      const subcategoryA = a.subCategory || 'General';
-      const subcategoryB = b.subCategory || 'General';
-      
-      if (categoryA !== categoryB) {
-        return categoryA.localeCompare(categoryB);
-      }
-      if (subcategoryA !== subcategoryB) {
-        return subcategoryA.localeCompare(subcategoryB);
-      }
-      return a.name.localeCompare(b.name);
-    }) || [];
 
   return (
     <div className="space-y-6">
@@ -297,61 +387,154 @@ const CandidateSkillsManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedSkills.map((skill) => (
-                  <TableRow key={skill.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {skill.name}
-                        {skill.meta?.disabled && (
-                          <Badge variant="secondary" className="text-xs">
-                            Disabled
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {skill.category || 'Uncategorized'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        {skill.subCategory || 'General'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(skill)}
-                          className="h-8 w-8 p-0"
-                          disabled={updateSkillMutation.isPending}
+                {categoryNames.map((category) => {
+                  const categorySkills = skillsByCategory[category];
+                  const activeCount = categorySkills.filter((s) => s.active !== false).length;
+                  const disabledCount = categorySkills.filter((s) => s.active === false).length;
+                  const allActive = disabledCount === 0;
+                  const allDisabled = activeCount === 0;
+                  const isExpanded = isCategoryExpanded(category);
+                  return (
+                    <React.Fragment key={category}>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableCell
+                          className="cursor-pointer py-3 align-middle"
+                          onClick={() => toggleCategoryExpanded(category)}
                         >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleStatus(skill)}
-                          className="h-8 w-8 p-0"
-                          disabled={toggleStatusMutation.isPending}
-                        >
-                          <Power className={`h-4 w-4 ${skill.meta?.disabled ? 'text-muted-foreground' : 'text-green-600'}`} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(skill)}
-                          className="h-8 w-8 p-0"
-                          disabled={deleteSkillMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          <button
+                            type="button"
+                            className="flex items-center gap-2 text-left font-medium"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleCategoryExpanded(category);
+                            }}
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4 shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 shrink-0" />
+                            )}
+                            <span>{category}</span>
+                            <Badge variant="secondary" className="text-xs font-normal">
+                              {categorySkills.length} skill{categorySkills.length !== 1 ? 's' : ''}
+                            </Badge>
+                            {disabledCount > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                ({disabledCount} disabled)
+                              </span>
+                            )}
+                          </button>
+                        </TableCell>
+                        <TableCell colSpan={2} />
+                        <TableCell className="py-2 text-right align-middle" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs"
+                            disabled={renameCategoryMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCategoryToRename(category);
+                              setRenameCategoryNewName(category);
+                            }}
+                          >
+                            <Pencil className="h-3 w-3 mr-1" />
+                            Rename
+                          </Button>
+                          {!allActive && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs ml-2"
+                              disabled={toggleCategoryMutation.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCategoryMutation.mutate({ category, action: 'enable' });
+                              }}
+                            >
+                              Enable all
+                            </Button>
+                          )}
+                          {!allDisabled && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs ml-2"
+                              disabled={toggleCategoryMutation.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCategoryMutation.mutate({ category, action: 'disable' });
+                              }}
+                            >
+                              Disable all
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <>
+                          {categorySkills.map((skill) => (
+                            <TableRow key={skill.id}>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  {skill.name}
+                                  {skill.active === false && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Disabled
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {skill.category || 'Uncategorized'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="text-xs">
+                                  {skill.subCategory || 'General'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(skill)}
+                                    className="h-8 w-8 p-0"
+                                    disabled={updateSkillMutation.isPending}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleToggleStatus(skill)}
+                                    className="h-8 w-8 p-0"
+                                    disabled={toggleStatusMutation.isPending}
+                                  >
+                                    <Power
+                                      className={`h-4 w-4 ${skill.active === false ? 'text-muted-foreground' : 'text-green-600'}`}
+                                    />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(skill)}
+                                    className="h-8 w-8 p-0"
+                                    disabled={deleteSkillMutation.isPending}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
@@ -377,6 +560,63 @@ const CandidateSkillsManagement = () => {
         skill={selectedSkill}
         isLoading={updateSkillMutation.isPending}
       />
+
+      {/* Rename Category Dialog */}
+      <Dialog
+        open={categoryToRename !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCategoryToRename(null);
+            setRenameCategoryNewName('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Rename category</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="rename-category" className="text-sm font-medium">
+                New category name
+              </label>
+              <Input
+                id="rename-category"
+                value={renameCategoryNewName}
+                onChange={(e) => setRenameCategoryNewName(e.target.value)}
+                placeholder="Category name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCategoryToRename(null);
+                setRenameCategoryNewName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={
+                !renameCategoryNewName.trim() ||
+                renameCategoryNewName.trim() === categoryToRename ||
+                renameCategoryMutation.isPending
+              }
+              onClick={() => {
+                if (!categoryToRename || !renameCategoryNewName.trim()) return;
+                renameCategoryMutation.mutate({
+                  category: categoryToRename,
+                  newCategoryName: renameCategoryNewName.trim(),
+                });
+              }}
+            >
+              {renameCategoryMutation.isPending ? 'Renaming...' : 'Rename'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
