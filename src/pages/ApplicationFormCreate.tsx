@@ -35,7 +35,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 export type Field = {
   name: string;
-  type: "text" | "email" | "tel" | "select" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden" | "declaration" | "date" | "number" | "currency";
+  type: "text" | "email" | "tel" | "select" | "radio" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden" | "declaration" | "warning" | "date" | "number" | "currency";
   label: string;
   required?: boolean;
   readOnly?: boolean;
@@ -58,6 +58,7 @@ export type Field = {
     toUppercase?: boolean;
     stripSpaces?: boolean;
     content?: string;
+    title?: string;
     prefix?: string;
     suffix?: string;
   };
@@ -214,7 +215,7 @@ const FieldEditor = ({
                   defaultValue: '',
                   placeHolder: ''
                 };
-              } else if (value === 'select') {
+              } else if (value === 'select' || value === 'radio') {
                 updates.options = [];
                 updates.meta = {
                   defaultValue: ''
@@ -229,6 +230,14 @@ const FieldEditor = ({
               } else if (value === 'declaration') {
                 updates.options = undefined;
                 updates.meta = {
+                  content: ''
+                };
+                updates.required = false;
+                updates.readOnly = true;
+              } else if (value === 'warning') {
+                updates.options = undefined;
+                updates.meta = {
+                  title: '',
                   content: ''
                 };
                 updates.required = false;
@@ -257,6 +266,7 @@ const FieldEditor = ({
               <SelectItem value="password">Password</SelectItem>
               <SelectItem value="textArea">Text Area</SelectItem>
               <SelectItem value="select">Select</SelectItem>
+              <SelectItem value="radio">Radio Button (radio)</SelectItem>
               <SelectItem value="checkbox">Checkbox</SelectItem>
               <SelectItem value="boolean">Boolean</SelectItem>
               <SelectItem value="file">File Upload</SelectItem>
@@ -266,6 +276,7 @@ const FieldEditor = ({
               <SelectItem value="referees">Referees</SelectItem>
               <SelectItem value="hidden">Hidden</SelectItem>
               <SelectItem value="declaration">Declaration (Formatted Text Display)</SelectItem>
+              <SelectItem value="warning">Warning (Title + Body, Read Only)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -306,11 +317,11 @@ const FieldEditor = ({
         </TabsList>
 
         <TabsContent value="options" className="space-y-4">
-          {/* Select field options */}
-          {field.type === 'select' && (
+          {/* Select / Radio field options (same settings) */}
+          {(field.type === 'select' || field.type === 'radio') && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-xs">Dropdown Options</Label>
+                <Label className="text-xs">{field.type === 'radio' ? 'Radio options' : 'Dropdown Options'}</Label>
                 <Button size="sm" variant="outline" onClick={addSelectOption}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Option
@@ -454,6 +465,30 @@ const FieldEditor = ({
               content={getDefaultMeta().content || ''}
               onChange={(content) => updateMeta('content', content)}
             />
+          )}
+
+          {/* Warning field options (title + body, read-only display) */}
+          {field.type === 'warning' && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs">Title</Label>
+                <Input
+                  placeholder="Warning title"
+                  value={getDefaultMeta().title || ''}
+                  onChange={(e) => updateMeta('title', e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Body</Label>
+                <Textarea
+                  placeholder="Warning body text (supports markdown)"
+                  value={getDefaultMeta().content || ''}
+                  onChange={(e) => updateMeta('content', e.target.value)}
+                  className="mt-1 min-h-[120px]"
+                />
+              </div>
+            </div>
           )}
 
           {/* Standard text-based fields (text, email, tel, password, textArea, checkbox) */}
