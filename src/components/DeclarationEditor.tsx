@@ -5,13 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Bold, List, ListOrdered, Type } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 
 interface DeclarationEditorProps {
   content: string;
   onChange: (content: string) => void;
+  /** Optional label for the content field (default: "Content") */
+  label?: string;
 }
 
-export const DeclarationEditor: React.FC<DeclarationEditorProps> = ({ content, onChange }) => {
+export const DeclarationEditor: React.FC<DeclarationEditorProps> = ({ content, onChange, label = 'Content' }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const insertFormatting = (prefix: string, suffix: string = '', placeholder: string = '') => {
@@ -101,7 +104,7 @@ export const DeclarationEditor: React.FC<DeclarationEditorProps> = ({ content, o
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-xs">Content</Label>
+        <Label className="text-xs">{label}</Label>
         <div className="flex gap-2 mt-2 mb-2">
           <Button
             type="button"
@@ -172,6 +175,7 @@ export const DeclarationEditor: React.FC<DeclarationEditorProps> = ({ content, o
         <Label className="text-xs">Preview</Label>
         <Card className="p-4 mt-2 prose prose-sm max-w-none">
           <ReactMarkdown
+            rehypePlugins={[rehypeRaw]}
             components={{
               // Allow HTML in markdown for colored text
               p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,

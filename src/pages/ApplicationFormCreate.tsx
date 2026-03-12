@@ -479,15 +479,11 @@ const FieldEditor = ({
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label className="text-xs">Body</Label>
-                <Textarea
-                  placeholder="Warning body text (supports markdown)"
-                  value={getDefaultMeta().content || ''}
-                  onChange={(e) => updateMeta('content', e.target.value)}
-                  className="mt-1 min-h-[120px]"
-                />
-              </div>
+              <DeclarationEditor
+                label="Body"
+                content={getDefaultMeta().content || ''}
+                onChange={(content) => updateMeta('content', content)}
+              />
             </div>
           )}
 
