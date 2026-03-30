@@ -11,6 +11,7 @@ import { API_BASE_URL } from "../config/env";
 import { PageSizeSelector } from "../components/ui/page-size-selector";
 import { usePreferences } from "../hooks/usePreferences";
 import { DocuSignInviteModal } from "../components/DocuSignInviteModal";
+import { IconActionButton, IconActionTooltip } from "@/components/IconActionTooltip";
 
 interface User {
   id: number;
@@ -288,69 +289,77 @@ const Applications = () => {
                         <TableCell>{formatDate(application.createdAt)}</TableCell>
                         <TableCell>{formatDate(application.updatedAt)}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <div className="flex space-x-2">
-                            <Link to={`/application/${application.id}`}>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover:bg-[#712B71] hover:text-white"
-                                title="Review"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            {!isProcessed(application) && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 hover:bg-[#712B71] hover:text-white"
-                                  title="Comment"
-                                >
-                                  <MessageSquare className="h-4 w-4" />
-                                </Button>
-                                {hasUnresolvedRemarks(application) ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <IconActionTooltip label="Review application">
+                              <span className="inline-flex">
+                                <Link to={`/application/${application.id}`}>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 w-8 p-0 text-gray-400 cursor-not-allowed"
-                                    title="Cannot approve - unresolved remarks"
+                                    className="h-9 w-9 p-0 hover:bg-[#712B71] hover:text-white"
+                                    aria-label="Review application"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              </span>
+                            </IconActionTooltip>
+                            {!isProcessed(application) && (
+                              <>
+                                <IconActionTooltip label="Comment on application">
+                                  <span className="inline-flex">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-9 w-9 p-0 hover:bg-[#712B71] hover:text-white"
+                                      aria-label="Comment on application"
+                                    >
+                                      <MessageSquare className="h-4 w-4" />
+                                    </Button>
+                                  </span>
+                                </IconActionTooltip>
+                                {hasUnresolvedRemarks(application) ? (
+                                  <IconActionButton
+                                    label="Cannot approve — unresolved remarks"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-9 p-0 text-gray-400 cursor-not-allowed"
                                     disabled
                                   >
                                     <Check className="h-4 w-4" />
-                                  </Button>
+                                  </IconActionButton>
                                 ) : (
-                                  <Button
+                                  <IconActionButton
+                                    label="Approve application"
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 w-8 p-0 hover:bg-green-600 hover:text-white"
-                                    title="Approve"
+                                    className="h-9 w-9 p-0 hover:bg-green-600 hover:text-white"
                                     onClick={() => handleApplicationAction(application.id, "approve")}
                                   >
                                     <Check className="h-4 w-4" />
-                                  </Button>
+                                  </IconActionButton>
                                 )}
-                                <Button
+                                <IconActionButton
+                                  label="Reject application"
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0 hover:bg-red-600 hover:text-white"
-                                  title="Reject"
+                                  className="h-9 w-9 p-0 hover:bg-red-600 hover:text-white"
                                   onClick={() => handleApplicationAction(application.id, "reject")}
                                 >
                                   <X className="h-4 w-4" />
-                                </Button>
+                                </IconActionButton>
                               </>
                             )}
                             {(canSendDocuSignInvite(application) || isProcessed(application)) && (
-                              <Button
+                              <IconActionButton
+                                label="Send DocuSign invitation"
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 hover:bg-purple-600 hover:text-white"
-                                title="Send DocuSign Invitation"
+                                className="h-9 w-9 p-0 hover:bg-purple-600 hover:text-white"
                                 onClick={(e) => handleDocuSignInvite(application, e)}
                               >
                                 <FileSignature className="h-4 w-4" />
-                              </Button>
+                              </IconActionButton>
                             )}
                           </div>
                         </TableCell>

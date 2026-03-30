@@ -15,6 +15,7 @@ import { API_BASE_URL } from '../config/env';
 import { DateRangePicker } from '../components/DateRangePicker';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
+import { IconActionButton, IconActionTooltip } from '@/components/IconActionTooltip';
 
 interface Job {
   id: number;
@@ -437,25 +438,58 @@ const Jobs = () => {
                         </div>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex space-x-2">
-                          <Link to={`/job/${job.id}`}>
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Link to={`/jobs/edit/${job.id}`}>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Link to={`/job/${job.id}/fill`}>
-                            <Button variant="ghost" size="sm">
-                              <UserPlus className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button variant="ghost" size="sm">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <IconActionTooltip label="View job">
+                            <span className="inline-flex">
+                              <Link to={`/job/${job.id}`}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-9 w-9 p-0"
+                                  aria-label="View job"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            </span>
+                          </IconActionTooltip>
+                          <IconActionTooltip label="Edit job">
+                            <span className="inline-flex">
+                              <Link to={`/jobs/edit/${job.id}`}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-9 w-9 p-0"
+                                  aria-label="Edit job"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            </span>
+                          </IconActionTooltip>
+                          <IconActionTooltip label="Fill job placements">
+                            <span className="inline-flex">
+                              <Link to={`/job/${job.id}/fill`}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-9 w-9 p-0"
+                                  aria-label="Fill job placements"
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            </span>
+                          </IconActionTooltip>
+                          <IconActionButton
+                            label="Remove job (not available)"
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 w-9 p-0 opacity-40"
+                            disabled
+                          >
                             <X className="h-4 w-4" />
-                          </Button>
+                          </IconActionButton>
                         </div>
                       </TableCell>
                     </TableRow>

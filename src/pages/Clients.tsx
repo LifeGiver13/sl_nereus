@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
+import { IconActionTooltip } from '@/components/IconActionTooltip';
 
 interface Client {
   id: number;
@@ -335,11 +336,20 @@ const Clients = () => {
                               Post Job
                             </Button>
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
+                              <IconActionTooltip label="More actions">
+                                <span className="inline-flex">
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-9 w-9 p-0"
+                                      aria-label="More actions"
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                </span>
+                              </IconActionTooltip>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild>
                                   <Link to={`/client/${client.id}/shifts`}>

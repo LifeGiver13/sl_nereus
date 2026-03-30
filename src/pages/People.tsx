@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
+import { IconActionButton, IconActionTooltip } from '@/components/IconActionTooltip';
 
 interface User {
   id: number;
@@ -294,22 +295,34 @@ const People = () => {
                         <TableCell>{formatDate(user.createdAt)}</TableCell>
                         <TableCell>{formatDate(user.updatedAt)}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" asChild>
-                              <Link to={`/user/${user.id}`}>
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button 
-                              variant="outline" 
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <IconActionTooltip label="View user">
+                              <span className="inline-flex">
+                                <Button variant="outline" size="sm" className="h-9 w-9 p-0" asChild>
+                                  <Link to={`/user/${user.id}`} aria-label="View user">
+                                    <Eye className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                              </span>
+                            </IconActionTooltip>
+                            <IconActionButton
+                              label="Edit user"
+                              variant="outline"
                               size="sm"
+                              className="h-9 w-9 p-0"
                               onClick={() => handleEditUser(user)}
                             >
                               <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="sm">
+                            </IconActionButton>
+                            <IconActionButton
+                              label="Placements"
+                              variant="outline"
+                              size="sm"
+                              className="h-9 w-9 p-0"
+                              disabled
+                            >
                               <Briefcase className="h-4 w-4" />
-                            </Button>
+                            </IconActionButton>
                           </div>
                         </TableCell>
                       </TableRow>

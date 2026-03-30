@@ -2,6 +2,7 @@ import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { IconActionButton } from '@/components/IconActionTooltip';
 import { Check } from 'lucide-react';
 
 interface PageSizeSelectorProps {
@@ -68,14 +69,15 @@ export const PageSizeSelector: React.FC<PageSizeSelectorProps> = ({
             max="1000"
             autoFocus
           />
-          <Button
+          <IconActionButton
+            label="Apply custom page size"
             size="sm"
             variant="ghost"
             onClick={handleCustomSubmit}
             className="h-8 w-8 p-0"
           >
             <Check className="h-3 w-3" />
-          </Button>
+          </IconActionButton>
         </div>
       ) : (
         <Select 

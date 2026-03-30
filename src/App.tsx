@@ -21,6 +21,8 @@ import JobCreate from "./pages/JobCreate";
 import JobEdit from "./pages/JobEdit";
 import JobFill from "./pages/JobFill";
 import Settings from "./pages/Settings";
+import SkillsManagement from "./pages/SkillsManagement";
+import CategorySkillsPage from "./pages/CategorySkillsPage";
 import ApplicationFormCreate from "./pages/ApplicationFormCreate";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -146,6 +148,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <JobFill />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/skills"
+              element={
+                <ProtectedRoute>
+                  <SkillsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/skills/category/:categoryId"
+              element={
+                <ProtectedRoute>
+                  <CategorySkillsPage />
                 </ProtectedRoute>
               }
             />

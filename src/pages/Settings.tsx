@@ -1,12 +1,11 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import DepartmentManagement from '../components/DepartmentManagement';
 import ViewManagement from '../components/ViewManagement';
 import ApplicationFormsManager from '../components/ApplicationFormsManager';
-import CandidateSkillsManagement from '../components/CandidateSkillsManagement';
 
 const Settings = () => {
   return (
@@ -51,14 +50,6 @@ const Settings = () => {
                 </AccordionContent>
               </AccordionItem>
               
-              <AccordionItem value="candidate-skills">
-                <AccordionTrigger className="text-lg font-semibold">
-                  Candidate Skills Management
-                </AccordionTrigger>
-                <AccordionContent>
-                  <CandidateSkillsManagement />
-                </AccordionContent>
-              </AccordionItem>
             </Accordion>
           </CardContent>
         </Card>

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Plus, Edit2, Save, X, Eye, GripVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { IconActionButton } from '@/components/IconActionTooltip';
 import { API_BASE_URL } from '../config/env';
 import {
   DndContext,
@@ -303,21 +304,23 @@ const ViewManagement = () => {
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg">{sectionName}</CardTitle>
             </div>
-            <div className="flex gap-2">
-              <Button
+            <div className="flex gap-1.5">
+              <IconActionButton
+                label="Add field to section"
                 size="sm"
                 variant="outline"
                 onClick={() => addField(sectionName)}
               >
                 <Plus className="h-4 w-4" />
-              </Button>
-              <Button
+              </IconActionButton>
+              <IconActionButton
+                label="Delete section"
                 size="sm"
                 variant="destructive"
                 onClick={() => deleteSection(sectionName)}
               >
                 <Trash2 className="h-4 w-4" />
-              </Button>
+              </IconActionButton>
             </div>
           </div>
         </CardHeader>
@@ -414,13 +417,14 @@ const ViewManagement = () => {
           </div>
         </div>
         <div className="flex items-end">
-          <Button
+          <IconActionButton
+            label="Delete field"
             size="sm"
             variant="destructive"
             onClick={() => deleteField(sectionName, fieldIndex)}
           >
             <Trash2 className="h-4 w-4" />
-          </Button>
+          </IconActionButton>
         </div>
       </div>
     );
@@ -451,21 +455,23 @@ const ViewManagement = () => {
               </div>
               <CardTitle className="text-lg">{sectionName}</CardTitle>
             </div>
-            <div className="flex gap-2">
-              <Button
+            <div className="flex gap-1.5">
+              <IconActionButton
+                label="Add field to section"
                 size="sm"
                 variant="outline"
                 onClick={() => addField(sectionName)}
               >
                 <Plus className="h-4 w-4" />
-              </Button>
-              <Button
+              </IconActionButton>
+              <IconActionButton
+                label="Delete section"
                 size="sm"
                 variant="destructive"
                 onClick={() => deleteSection(sectionName)}
               >
                 <Trash2 className="h-4 w-4" />
-              </Button>
+              </IconActionButton>
             </div>
           </div>
         </CardHeader>
@@ -606,13 +612,14 @@ const ViewManagement = () => {
           </div>
         </div>
         <div className="flex items-end">
-          <Button
+          <IconActionButton
+            label="Delete field"
             size="sm"
             variant="destructive"
             onClick={() => onDeleteField(sectionName, fieldIndex)}
           >
             <Trash2 className="h-4 w-4" />
-          </Button>
+          </IconActionButton>
         </div>
       </div>
     );

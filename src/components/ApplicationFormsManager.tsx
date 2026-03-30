@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useApplicationForms } from '@/hooks/useApplicationForms';
 import { format } from 'date-fns';
+import { IconActionTooltip } from '@/components/IconActionTooltip';
 
 const ApplicationFormsManager = () => {
   const [newFormName, setNewFormName] = useState('');
@@ -295,15 +296,27 @@ const ApplicationFormsManager = () => {
                           </Button>
                           
                           <Dialog open={editingForm?.id === form.id} onOpenChange={(open) => !open && setEditingForm(null)}>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditingForm({ id: form.id, name: form.name, description: form.description || '' })}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
+                            <IconActionTooltip label="Edit form name and description">
+                              <span className="inline-flex">
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 w-9 p-0"
+                                    onClick={() =>
+                                      setEditingForm({
+                                        id: form.id,
+                                        name: form.name,
+                                        description: form.description || '',
+                                      })
+                                    }
+                                    aria-label="Edit form name and description"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                              </span>
+                            </IconActionTooltip>
                             <DialogContent>
                               <DialogHeader>
                                 <DialogTitle>Edit Application Form</DialogTitle>
@@ -345,11 +358,20 @@ const ApplicationFormsManager = () => {
                           </Dialog>
 
                           <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                            <IconActionTooltip label="Delete application form">
+                              <span className="inline-flex">
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 w-9 p-0"
+                                    aria-label="Delete application form"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </span>
+                            </IconActionTooltip>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Application Form</AlertDialogTitle>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MessageSquare, Check, X, Plus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { IconActionButton } from '@/components/IconActionTooltip';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -133,9 +134,11 @@ export const RemarkSystem: React.FC<RemarkSystemProps> = ({
                             <Badge variant={remark.resolved ? 'default' : 'secondary'}>
                               {remark.resolved ? 'Resolved' : 'Open'}
                             </Badge>
-                            <Button
+                            <IconActionButton
+                              label={remark.resolved ? 'Mark remark open' : 'Mark remark resolved'}
                               size="sm"
                               variant="ghost"
+                              className="h-8 w-8 p-0"
                               onClick={() => onToggleResolve(sectionId, fieldName, remark.id)}
                             >
                               {remark.resolved ? (
@@ -143,7 +146,7 @@ export const RemarkSystem: React.FC<RemarkSystemProps> = ({
                               ) : (
                                 <Check className="h-3 w-3" />
                               )}
-                            </Button>
+                            </IconActionButton>
                           </div>
                         </div>
                       </div>

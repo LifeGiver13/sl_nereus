@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { X, Save, Edit, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { IconActionButton } from '@/components/IconActionTooltip';
 import { apiRequest } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -219,23 +220,25 @@ const PlacementsTable: React.FC<PlacementsTableProps> = ({
                   </Button>
                 )}
               </div>
-              <div className="flex items-center space-x-2">
-                <Button
+              <div className="flex items-center gap-1.5">
+                <IconActionButton
+                  label={expandedRows.has(placement.userId) ? 'Collapse row' : 'Expand row'}
                   variant="ghost"
                   size="sm"
                   onClick={() => toggleRowExpansion(placement.userId)}
-                  className="h-7 w-7 p-0"
+                  className="h-7 w-7 p-0 font-medium text-base leading-none"
                 >
                   {expandedRows.has(placement.userId) ? '−' : '+'}
-                </Button>
-                <Button
+                </IconActionButton>
+                <IconActionButton
+                  label="Remove candidate from list"
                   variant="ghost"
                   size="sm"
                   onClick={() => onRemoveUser(placement.userId)}
                   className="h-7 w-7 p-0"
                 >
                   <X className="h-3 w-3" />
-                </Button>
+                </IconActionButton>
               </div>
             </div>
 
@@ -469,15 +472,15 @@ const AvailabilitySection: React.FC<{
                   return dates;
                 })}
             />
-            <Button
-              type="button"
+            <IconActionButton
+              label="Remove availability window"
               variant="ghost"
               size="sm"
               onClick={() => removeAvailabilityWindow(index)}
               className="h-8 w-8 p-0"
             >
               <Trash2 className="h-3 w-3" />
-            </Button>
+            </IconActionButton>
           </div>
         ))}
 

@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import SkillFormModal from './SkillFormModal';
+import { IconActionButton } from '@/components/IconActionTooltip';
 
 interface Skill {
   id: number;
@@ -495,37 +496,44 @@ const CandidateSkillsManagement = () => {
                                   {skill.subCategory || 'General'}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
+                              <TableCell className="text-right align-middle p-2">
+                                <div className="flex justify-end items-center gap-1.5 flex-nowrap">
+                                  <IconActionButton
+                                    label={`Edit ${skill.name}`}
                                     variant="ghost"
                                     size="sm"
+                                    className="h-9 w-9 shrink-0 p-0"
                                     onClick={() => handleEdit(skill)}
-                                    className="h-8 w-8 p-0"
                                     disabled={updateSkillMutation.isPending}
                                   >
                                     <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
+                                  </IconActionButton>
+                                  <IconActionButton
+                                    label={
+                                      skill.active === false
+                                        ? `Enable ${skill.name}`
+                                        : `Disable ${skill.name}`
+                                    }
                                     variant="ghost"
                                     size="sm"
+                                    className="h-9 w-9 shrink-0 p-0"
                                     onClick={() => handleToggleStatus(skill)}
-                                    className="h-8 w-8 p-0"
                                     disabled={toggleStatusMutation.isPending}
                                   >
                                     <Power
                                       className={`h-4 w-4 ${skill.active === false ? 'text-muted-foreground' : 'text-green-600'}`}
                                     />
-                                  </Button>
-                                  <Button
+                                  </IconActionButton>
+                                  <IconActionButton
+                                    label={`Delete ${skill.name}`}
                                     variant="ghost"
                                     size="sm"
+                                    className="h-9 w-9 shrink-0 p-0 text-destructive hover:text-destructive"
                                     onClick={() => handleDelete(skill)}
-                                    className="h-8 w-8 p-0"
                                     disabled={deleteSkillMutation.isPending}
                                   >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
+                                    <Trash2 className="h-4 w-4" />
+                                  </IconActionButton>
                                 </div>
                               </TableCell>
                             </TableRow>

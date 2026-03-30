@@ -35,14 +35,25 @@ interface SkillFormModalProps {
   onSubmit: (data: SkillFormData) => Promise<void>;
   skill?: Skill | null;
   isLoading: boolean;
+  /** When set, category is fixed and cannot be edited (e.g. category-scoped skills view). */
+  fixedCategory?: string;
 }
 
-const SkillFormModal = ({ isOpen, onClose, onSubmit, skill, isLoading }: SkillFormModalProps) => {
+const SkillFormModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  skill,
+  isLoading,
+  fixedCategory,
+}: SkillFormModalProps) => {
+  const categoryDefault = fixedCategory ?? skill?.category ?? '';
+
   const form = useForm<SkillFormData>({
     resolver: zodResolver(skillSchema),
     defaultValues: {
       name: skill?.name || '',
-      category: skill?.category || '',
+      category: categoryDefault,
       subCategory: skill?.subCategory || '',
     },
   });
@@ -51,17 +62,17 @@ const SkillFormModal = ({ isOpen, onClose, onSubmit, skill, isLoading }: SkillFo
     if (skill) {
       form.reset({
         name: skill.name,
-        category: skill.category,
+        category: fixedCategory ?? skill.category,
         subCategory: skill.subCategory || '',
       });
     } else {
       form.reset({
         name: '',
-        category: '',
+        category: fixedCategory ?? '',
         subCategory: '',
       });
     }
-  }, [skill]);
+  }, [skill, fixedCategory]);
 
   const handleSubmit = async (data: SkillFormData) => {
     try {
@@ -101,7 +112,12 @@ const SkillFormModal = ({ isOpen, onClose, onSubmit, skill, isLoading }: SkillFo
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter category" {...field} />
+                    <Input
+                      placeholder="Enter category"
+                      {...field}
+                      disabled={!!fixedCategory}
+                      readOnly={!!fixedCategory}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

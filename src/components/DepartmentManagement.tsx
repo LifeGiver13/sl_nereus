@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Check, X, Trash2 } from 'lucide-react';
+import { IconActionButton } from '@/components/IconActionTooltip';
 
 interface Department {
   id: number;
@@ -182,22 +183,24 @@ const DepartmentManagement = () => {
                 <Badge variant="secondary">Active</Badge>
               </TableCell>
               <TableCell>
-                <div className="flex space-x-2">
-                  <Button
+                <div className="flex items-center gap-1.5">
+                  <IconActionButton
+                    label="Save new department"
                     size="sm"
                     onClick={handleCreate}
                     disabled={!newDepartmentName.trim() || createMutation.isPending}
                   >
                     <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
+                  </IconActionButton>
+                  <IconActionButton
+                    label="Cancel"
                     size="sm"
                     variant="outline"
                     onClick={handleCancelAdd}
                     disabled={createMutation.isPending}
                   >
                     <X className="h-4 w-4" />
-                  </Button>
+                  </IconActionButton>
                 </div>
               </TableCell>
             </TableRow>
@@ -223,31 +226,34 @@ const DepartmentManagement = () => {
               </TableCell>
               <TableCell>
                 {editingId === department.id ? (
-                  <div className="flex space-x-2">
-                    <Button
+                  <div className="flex items-center gap-1.5">
+                    <IconActionButton
+                      label="Save department name"
                       size="sm"
                       onClick={handleSave}
                       disabled={!editName.trim() || updateMutation.isPending}
                     >
                       <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
+                    </IconActionButton>
+                    <IconActionButton
+                      label="Cancel editing"
                       size="sm"
                       variant="outline"
                       onClick={handleCancel}
                       disabled={updateMutation.isPending}
                     >
                       <X className="h-4 w-4" />
-                    </Button>
+                    </IconActionButton>
                   </div>
                 ) : (
-                  <Button
+                  <IconActionButton
+                    label="Edit department"
                     size="sm"
                     variant="outline"
                     onClick={() => handleEdit(department)}
                   >
                     <Edit className="h-4 w-4" />
-                  </Button>
+                  </IconActionButton>
                 )}
               </TableCell>
             </TableRow>

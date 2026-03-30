@@ -12,9 +12,11 @@ import {
   Settings,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Tags,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { IconActionButton } from '@/components/IconActionTooltip';
 import { NEREUS_LOGO_URL } from '../config/env';
 
 interface AdminSidebarProps {
@@ -28,6 +30,7 @@ const menuItems = [
   { icon: Building2, label: 'Clients', href: '/clients' },
   { icon: Briefcase, label: 'Jobs', href: '/jobs' },
   { icon: Users, label: 'People', href: '/people' },
+  { icon: Tags, label: 'Skills', href: '/skills' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
@@ -53,14 +56,15 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
               <span className="text-white font-bold text-xl">Nereus</span>
             </div>
           )}
-          <Button
+          <IconActionButton
+            label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             variant="ghost"
             size="sm"
             onClick={onToggle}
-            className="text-[#45f0df] hover:bg-[#712B71] p-1"
+            className="text-[#45f0df] hover:bg-[#712B71] h-8 w-8 p-0 shrink-0"
           >
             {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </Button>
+          </IconActionButton>
         </div>
       </div>
 

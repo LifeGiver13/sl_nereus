@@ -15,6 +15,7 @@ import { useApplicationForms } from '@/hooks/useApplicationForms';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DeclarationEditor } from '@/components/DeclarationEditor';
+import { IconActionButton } from '@/components/IconActionTooltip';
 import {
   DndContext,
   closestCenter,
@@ -35,7 +36,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 export type Field = {
   name: string;
-  type: "text" | "email" | "tel" | "select" | "radio" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden" | "declaration" | "warning" | "date" | "number" | "currency";
+  type: "text" | "email" | "tel" | "select" | "radio" | "boolean" | "file" | "textArea" | "password" | "checkbox" | "skillsSelector" | "countryList" | "employmentHistory" | "referees" | "hidden" | "declaration" | "warning" | "date" | "number" | "currency" | "ukSortCode" | "ukAccountNumber";
   label: string;
   required?: boolean;
   readOnly?: boolean;
@@ -262,6 +263,8 @@ const FieldEditor = ({
               <SelectItem value="number">Number</SelectItem>
               <SelectItem value="currency">Currency</SelectItem>
               <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="ukSortCode">UK sort code</SelectItem>
+              <SelectItem value="ukAccountNumber">UK account number</SelectItem>
               <SelectItem value="tel">Phone</SelectItem>
               <SelectItem value="password">Password</SelectItem>
               <SelectItem value="textArea">Text Area</SelectItem>
@@ -299,13 +302,14 @@ const FieldEditor = ({
               <Label htmlFor={`readonly-${sectionName}-${fieldIndex}`} className="text-xs">Read Only</Label>
             </div>
           </div>
-          <Button
+          <IconActionButton
+            label="Remove field"
             size="sm"
             variant="destructive"
             onClick={() => onDeleteField(sectionName, fieldIndex)}
           >
             <Trash2 className="h-4 w-4" />
-          </Button>
+          </IconActionButton>
         </div>
       </div>
 
@@ -335,13 +339,14 @@ const FieldEditor = ({
                       value={option}
                       onChange={(e) => updateSelectOption(optionIndex, e.target.value)}
                     />
-                    <Button
+                    <IconActionButton
+                      label="Remove option"
                       size="sm"
                       variant="outline"
                       onClick={() => removeSelectOption(optionIndex)}
                     >
                       <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </IconActionButton>
                   </div>
                 ))}
                 {(!Array.isArray(field.options) || field.options.length === 0) && (
@@ -488,7 +493,7 @@ const FieldEditor = ({
           )}
 
           {/* Standard text-based fields (text, email, tel, password, textArea, checkbox) */}
-          {['text', 'email', 'tel', 'password', 'textArea', 'checkbox', 'date', 'number', 'currency'].includes(field.type) && (
+          {['text', 'email', 'tel', 'password', 'textArea', 'checkbox', 'date', 'number', 'currency', 'ukSortCode', 'ukAccountNumber'].includes(field.type) && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -1475,20 +1480,28 @@ const ApplicationFormCreate = () => {
                                 className="text-lg font-semibold"
                                 autoFocus
                               />
-                              <Button
+                              <IconActionButton
+                                label="Save section name"
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => updateSectionName(sectionIndex, editingSectionName.currentName, editingSectionName.newName)}
+                                onClick={() =>
+                                  updateSectionName(
+                                    sectionIndex,
+                                    editingSectionName.currentName,
+                                    editingSectionName.newName
+                                  )
+                                }
                               >
                                 <Save className="h-4 w-4" />
-                              </Button>
-                              <Button
+                              </IconActionButton>
+                              <IconActionButton
+                                label="Cancel rename"
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => setEditingSectionName(null)}
                               >
                                 <X className="h-4 w-4" />
-                              </Button>
+                              </IconActionButton>
                             </div>
                           ) : (
                             <>
@@ -1546,20 +1559,28 @@ const ApplicationFormCreate = () => {
                               </SelectContent>
                             </Select>
                           </div>
-                          <Button
+                          <IconActionButton
+                            label="Clone section"
                             size="sm"
                             variant="outline"
-                            onClick={() => setCloneSectionDialog({ open: true, sectionName, newName: `${section.name} Copy` })}
+                            onClick={() =>
+                              setCloneSectionDialog({
+                                open: true,
+                                sectionName,
+                                newName: `${section.name} Copy`,
+                              })
+                            }
                           >
                             <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
+                          </IconActionButton>
+                          <IconActionButton
+                            label="Delete section"
                             size="sm"
                             variant="destructive"
                             onClick={() => deleteSection(sectionName)}
                           >
                             <Trash2 className="h-4 w-4" />
-                          </Button>
+                          </IconActionButton>
                         </div>
                       </div>
                     </CardHeader>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { IconActionButton } from '@/components/IconActionTooltip';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Check, X } from 'lucide-react';
@@ -110,11 +111,12 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
                 required
                 className="pr-10"
               />
-              <Button
+              <IconActionButton
+                label={showPassword ? 'Hide password' : 'Show password'}
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent rounded-none"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
@@ -122,7 +124,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
                 ) : (
                   <Eye className="h-4 w-4" />
                 )}
-              </Button>
+              </IconActionButton>
             </div>
             
             {/* Password requirements */}
@@ -158,11 +160,12 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
                 required
                 className="pr-10"
               />
-              <Button
+              <IconActionButton
+                label={showConfirmPassword ? 'Hide password' : 'Show password'}
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent rounded-none"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               >
                 {showConfirmPassword ? (
@@ -170,7 +173,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
                 ) : (
                   <Eye className="h-4 w-4" />
                 )}
-              </Button>
+              </IconActionButton>
             </div>
             
             {/* Password match indicator */}
