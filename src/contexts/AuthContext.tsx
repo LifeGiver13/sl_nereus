@@ -60,18 +60,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(errorData.message || 'Login failed');
       }
 
-      const userData = await response.json();
-      const authToken = response.headers.get('X-Service-User');
+      const body = (await response.json()) as Record<string, unknown> & {
+        serviceUserToken?: string;
+      };
+      const authToken =
+        response.headers.get("X-Service-User") ??
+        (typeof body.serviceUserToken === "string" ? body.serviceUserToken : null);
 
       if (!authToken) {
-        throw new Error('No auth token received');
+        throw new Error("No auth token received");
       }
 
-      setUser(userData);
+      const { serviceUserToken: _t, ...userData } = body;
+      void _t;
+      setUser(userData as unknown as User);
       setToken(authToken);
-      
-      localStorage.setItem('session_user', JSON.stringify(userData));
-      localStorage.setItem('session_token', authToken);
+
+      localStorage.setItem("session_user", JSON.stringify(userData));
+      localStorage.setItem("session_token", authToken);
     } catch (error) {
       throw error;
     } finally {
