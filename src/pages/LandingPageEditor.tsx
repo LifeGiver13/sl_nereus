@@ -37,7 +37,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowLeft, GripVertical, Loader2, Plus, Trash2, Upload } from "lucide-react";
 import type { PageManagerRecord } from "@/components/PageManagersPanel";
 import { urlForPublicFsObject } from "@/config/env";
-import { SECTOR_BUILTIN_ICONS, getSectorBuiltinIconSrc } from "@web/config/sectorBuiltinIcons";
+import { SECTOR_BUILTIN_ICONS, getSectorBuiltinIconSrc } from "@/config/sectorBuiltinIcons";
 import {
   ABOUT_US_DEFAULT_CTA,
   ABOUT_US_DEFAULT_TITLE,

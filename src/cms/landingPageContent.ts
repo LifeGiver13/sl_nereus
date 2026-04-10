@@ -211,7 +211,7 @@ export function ensureProcessFlowFieldsInSection(section: PageManagerSection): P
   };
 }
 
-/** Known built-in sector icon ids (must match `web/src/config/sectorBuiltinIcons.ts`). */
+/** Known built-in sector icon ids (must match this app’s `src/config/sectorBuiltinIcons.ts`). */
 export const SECTOR_BUILTIN_ICON_IDS = [
   "people_alt",
   "insert_drive_file",
@@ -265,7 +265,7 @@ export type SectorsContentPayload = {
   sectors: SectorEntry[];
 };
 
-/** Initial sectors — keep in sync with `web/src/config/landingSectorsDefaults.ts`. */
+/** Initial sectors — keep in sync with the web app’s `src/config/landingSectorsDefaults.ts`. */
 export const DEFAULT_SECTORS_CONTENT: SectorsContentPayload = {
   kind: "sectors",
   title: SECTORS_SECTION_DEFAULT_TITLE,

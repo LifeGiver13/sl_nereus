@@ -14,7 +14,7 @@ export const START_PAGE_SECTION_BLUEPRINT = [{ name: "Intro", displayOrder: 0 }]
 
 export const START_PAGE_SLUG = "start-page" as const;
 
-/** Defaults match `web/src/pages/RegistrationWizard.tsx` (pre-CMS copy). */
+/** Default copy for the public `/register` intro (keep in sync with the web app’s RegistrationWizard fallbacks). */
 export const START_INTRO_DEFAULT_TITLE = "Get Started With Us";
 
 export const START_INTRO_DEFAULT_BODY =

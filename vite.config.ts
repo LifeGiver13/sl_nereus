@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     fs: {
-      allow: [path.resolve(__dirname, "..")],
+      allow: [path.resolve(__dirname, ".")],
     },
   },
   plugins: [
@@ -20,7 +20,6 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@web": path.resolve(__dirname, "../web/src"),
     },
   },
 }));
