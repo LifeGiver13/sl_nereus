@@ -25,7 +25,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@web/*": ["../web/src/*"],
-      "@shared/*": ["../shared/*"]
+      "@/cms/*": ["./src/cms/*"]
     }
   },
   "include": ["src"]

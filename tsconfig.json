@@ -9,7 +9,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@web/*": ["../web/src/*"],
-      "@shared/*": ["../shared/*"]
+      "@/cms/*": ["./src/cms/*"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,

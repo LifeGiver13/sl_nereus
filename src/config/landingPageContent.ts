@@ -1,2 +1,2 @@
-/** Re-export shared landing page model (single source of truth with the web app). */
-export * from "../../../shared/landingPageContent";
+/** Re-export local CMS schema (`src/cms` — duplicate in web repo). */
+export * from "../cms/landingPageContent";
