@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { IconActionButton } from '@/components/IconActionTooltip';
-import { NEREUS_LOGO_URL } from '../config/env';
+import { NEREUS_LOGO_MARK_URL } from '../config/env';
 
 interface AdminSidebarProps {
   isCollapsed: boolean;
@@ -53,21 +53,22 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
   const { logout, user } = useAuth();
 
   return (
-    <div className={cn(
-      "bg-[#000009] border-r border-[#712B71] transition-all duration-300 flex flex-col min-h-screen",
-      isCollapsed ? "w-16" : "w-64"
-    )}>
+    <div
+      className={cn(
+        "bg-[#000009] border-r border-[#712B71] transition-all duration-300 flex flex-col h-screen shrink-0",
+        isCollapsed ? "w-16" : "w-64"
+      )}
+    >
       {/* Header */}
       <div className="p-4 border-b border-[#712B71]">
         <div className="flex items-center justify-between">
           {!isCollapsed && (
-            <div className="flex items-center space-x-3">
-              <img 
-                src={NEREUS_LOGO_URL} 
-                alt="Nereus" 
-                className="h-12 w-12"
+            <div className="flex min-w-0 flex-1 items-center pr-2">
+              <img
+                src={NEREUS_LOGO_MARK_URL}
+                alt="Nereus"
+                className="h-10 w-auto max-w-[calc(100%-0.5rem)] object-contain object-left"
               />
-              <span className="text-white font-bold text-xl">Nereus</span>
             </div>
           )}
           <IconActionButton
@@ -91,7 +92,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 p-2">
+      <nav className="flex-1 min-h-0 overflow-y-auto p-2">
         <ul className="space-y-2">
           {coreNavItems.map((item) => {
             const Icon = item.icon;
@@ -120,7 +121,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
 
           {!isCollapsed && (
             <li className="px-3 pt-4 pb-1 list-none">
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#45f0df]/80">
                 Content
               </span>
             </li>
@@ -176,10 +177,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
       {isCollapsed && (
         <div className="p-2 border-t border-[#712B71] mt-auto">
           <div className="flex justify-center">
-            <img 
-              src={NEREUS_LOGO_URL} 
-              alt="Nereus" 
-              className="h-8 w-8"
+            <img
+              src={NEREUS_LOGO_MARK_URL}
+              alt="Nereus"
+              className="h-8 w-8 object-contain"
             />
           </div>
         </div>

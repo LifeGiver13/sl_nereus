@@ -1,3 +1,5 @@
+import nereusLogoLightPng from "../assets/nereus-logo-light.png";
+
 function normalizeApiBaseUrl(raw: string | undefined): string | null {
   if (raw == null) return null;
   const t = raw.trim();
@@ -39,4 +41,11 @@ export function urlForPublicFsObject(objectKey: string): string | null {
   return `${FS_BUCKET_PUBLIC_URL}/${path}`;
 }
 
-export const NEREUS_LOGO_URL = "/lovable-uploads/d26ca3e0-8182-4d69-acf2-f8657ee29f14.png";
+/** Admin panel logo (`src/assets/nereus-logo-light.png`, bundled for any host). */
+export const NEREUS_LOGO_WORDMARK_URL = nereusLogoLightPng;
+
+/** Same asset in the sidebar (compact layout via `object-contain`). */
+export const NEREUS_LOGO_MARK_URL = nereusLogoLightPng;
+
+/** @deprecated Use NEREUS_LOGO_WORDMARK_URL or NEREUS_LOGO_MARK_URL */
+export const NEREUS_LOGO_URL = NEREUS_LOGO_WORDMARK_URL;

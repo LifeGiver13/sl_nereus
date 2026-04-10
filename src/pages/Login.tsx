@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff } from 'lucide-react';
-import { NEREUS_LOGO_URL } from '../config/env';
+import { NEREUS_LOGO_WORDMARK_URL } from '../config/env';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -40,10 +40,10 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#000009] to-[#712B71] p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img 
-            src={NEREUS_LOGO_URL} 
-            alt="Nereus Logo" 
-            className="mx-auto h-24 w-auto mb-6 drop-shadow-2xl"
+          <img
+            src={NEREUS_LOGO_WORDMARK_URL}
+            alt="Nereus Logo"
+            className="mx-auto h-24 w-auto max-w-[280px] mb-6 drop-shadow-2xl object-contain"
           />
           <h1 className="text-4xl font-bold text-white mb-3">Welcome to Nereus</h1>
           <p className="text-[#45f0df] text-lg">Admin Panel Login</p>
