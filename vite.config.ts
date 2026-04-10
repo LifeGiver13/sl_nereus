@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    fs: {
+      allow: [path.resolve(__dirname, "..")],
+    },
   },
   plugins: [
     react(),
@@ -17,6 +20,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@web": path.resolve(__dirname, "../web/src"),
+      "@shared": path.resolve(__dirname, "../shared"),
     },
   },
 }));

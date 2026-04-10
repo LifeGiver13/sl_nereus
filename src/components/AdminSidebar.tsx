@@ -3,17 +3,18 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  Building2, 
-  Briefcase, 
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  Building2,
+  Briefcase,
   Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Tags,
+  LayoutTemplate,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { IconActionButton } from '@/components/IconActionTooltip';
@@ -24,15 +25,28 @@ interface AdminSidebarProps {
   onToggle: () => void;
 }
 
-const menuItems = [
+const coreNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: FileText, label: 'Applications', href: '/applications' },
   { icon: Building2, label: 'Clients', href: '/clients' },
   { icon: Briefcase, label: 'Jobs', href: '/jobs' },
   { icon: Users, label: 'People', href: '/people' },
   { icon: Tags, label: 'Skills', href: '/skills' },
-  { icon: Settings, label: 'Settings', href: '/settings' },
 ];
+
+const contentNavItems = [
+  { icon: LayoutTemplate, label: 'Pages', href: '/content/pages' },
+];
+
+const settingsNavItem = { icon: Settings, label: 'Settings', href: '/settings' };
+const SettingsNavIcon = settingsNavItem.icon;
+
+function isNavActive(pathname: string, href: string): boolean {
+  if (href === '/content/pages') {
+    return pathname.startsWith('/content');
+  }
+  return pathname === href;
+}
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) => {
   const location = useLocation();
@@ -79,10 +93,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
       {/* Navigation */}
       <nav className="flex-1 p-2">
         <ul className="space-y-2">
-          {menuItems.map((item) => {
+          {coreNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.href;
-            
+            const isActive = isNavActive(location.pathname, item.href);
+
             return (
               <li key={item.href}>
                 <Link to={item.href}>
@@ -90,8 +104,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
                     variant="ghost"
                     className={cn(
                       "w-full justify-start text-left hover:bg-[#712B71] hover:text-white transition-colors",
-                      isActive 
-                        ? "bg-[#712B71] text-white" 
+                      isActive
+                        ? "bg-[#712B71] text-white"
                         : "text-gray-300",
                       isCollapsed ? "px-2" : "px-3"
                     )}
@@ -103,6 +117,58 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isCollapsed, onToggle }) =>
               </li>
             );
           })}
+
+          {!isCollapsed && (
+            <li className="px-3 pt-4 pb-1 list-none">
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Content
+              </span>
+            </li>
+          )}
+
+          {contentNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = isNavActive(location.pathname, item.href);
+
+            return (
+              <li key={item.href}>
+                <Link to={item.href}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start text-left hover:bg-[#712B71] hover:text-white transition-colors",
+                      isActive
+                        ? "bg-[#712B71] text-white"
+                        : "text-gray-300",
+                      isCollapsed ? "px-2" : "px-3"
+                    )}
+                    title={isCollapsed ? "Content: Pages" : undefined}
+                  >
+                    <Icon size={20} className={cn(isCollapsed ? "" : "mr-3")} />
+                    {!isCollapsed && <span>{item.label}</span>}
+                  </Button>
+                </Link>
+              </li>
+            );
+          })}
+
+          <li key={settingsNavItem.href} className="pt-2 border-t border-[#712B71]/50 mt-2">
+            <Link to={settingsNavItem.href}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start text-left hover:bg-[#712B71] hover:text-white transition-colors",
+                  isNavActive(location.pathname, settingsNavItem.href)
+                    ? "bg-[#712B71] text-white"
+                    : "text-gray-300",
+                  isCollapsed ? "px-2" : "px-3"
+                )}
+              >
+                <SettingsNavIcon size={20} className={cn(isCollapsed ? "" : "mr-3")} />
+                {!isCollapsed && <span>{settingsNavItem.label}</span>}
+              </Button>
+            </Link>
+          </li>
         </ul>
       </nav>
 

@@ -24,6 +24,9 @@ import Settings from "./pages/Settings";
 import SkillsManagement from "./pages/SkillsManagement";
 import CategorySkillsPage from "./pages/CategorySkillsPage";
 import ApplicationFormCreate from "./pages/ApplicationFormCreate";
+import ContentPages from "./pages/ContentPages";
+import LandingPageEditor from "./pages/LandingPageEditor";
+import StartPageEditor from "./pages/StartPageEditor";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -164,6 +167,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <CategorySkillsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/content/pages"
+              element={
+                <ProtectedRoute>
+                  <ContentPages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/content/pages/landing-page"
+              element={
+                <ProtectedRoute>
+                  <LandingPageEditor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/content/pages/start-page"
+              element={
+                <ProtectedRoute>
+                  <StartPageEditor />
                 </ProtectedRoute>
               }
             />
