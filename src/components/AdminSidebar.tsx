@@ -9,6 +9,7 @@ import {
   Users,
   Building2,
   Briefcase,
+  ClipboardCheck,
   Settings,
   LogOut,
   ChevronLeft,
@@ -30,6 +31,7 @@ const coreNavItems = [
   { icon: FileText, label: 'Applications', href: '/applications' },
   { icon: Building2, label: 'Clients', href: '/clients' },
   { icon: Briefcase, label: 'Jobs', href: '/jobs' },
+  { icon: ClipboardCheck, label: 'Timesheets', href: '/timesheets' },
   { icon: Users, label: 'People', href: '/people' },
   { icon: Tags, label: 'Skills', href: '/skills' },
 ];

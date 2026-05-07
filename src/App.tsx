@@ -22,6 +22,7 @@ import JobEdit from "./pages/JobEdit";
 import JobFill from "./pages/JobFill";
 import Settings from "./pages/Settings";
 import SkillsManagement from "./pages/SkillsManagement";
+import Timesheets from "./pages/Timesheets";
 import CategorySkillsPage from "./pages/CategorySkillsPage";
 import ApplicationFormCreate from "./pages/ApplicationFormCreate";
 import ContentPages from "./pages/ContentPages";
@@ -151,6 +152,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <JobFill />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/timesheets"
+              element={
+                <ProtectedRoute>
+                  <Timesheets />
                 </ProtectedRoute>
               }
             />

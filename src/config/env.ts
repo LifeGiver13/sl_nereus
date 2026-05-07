@@ -13,9 +13,9 @@ let apiBaseUrl: string;
 if (fromEnv) {
   apiBaseUrl = fromEnv;
 } else if (import.meta.env.DEV) {
-  apiBaseUrl = "http://localhost:4000";
+  apiBaseUrl = "https://nereus-api.vercel.app";
 } else {
-  apiBaseUrl = "https://exm323qtc6.execute-api.eu-west-2.amazonaws.com";
+  apiBaseUrl = "https://nereus-api.vercel.app";
 }
 
 /** Base origin of the Nereus API — from `VITE_API_BASE_URL` in `.env`, or `http://localhost:4000` in dev when unset. */
