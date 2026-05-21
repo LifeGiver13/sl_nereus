@@ -12,6 +12,8 @@ import { API_BASE_URL } from "../config/env";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import RejecteTimesheetModal from "@/components/RejectTimesheetModal";
+
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected";
 
@@ -126,6 +128,10 @@ const Timesheets = () => {
   const [signaturePreview, setSignaturePreview] = useState<{ url: string; label: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [selectedRejectId, setSelectedRejectedId] = useState<number | null>(null)
+
+
   const { token } = useAuth();
   const { toast } = useToast();
 
@@ -206,13 +212,13 @@ const Timesheets = () => {
   const totalPages = Math.max(1, Math.ceil(totalTimesheets / pageSize));
   const allVisibleSelected = filtered.length > 0 && filtered.every((row) => selectedIds.includes(row.id));
 
-  const updateStatus = async (timesheetId: number, status: TimesheetStatus) => {
+  const updateStatus = async (timesheetId: number, status: TimesheetStatus, rejectionReason?: string) => {
     try {
       setIsSaving(true);
       const response = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}`, {
         method: "PUT",
         headers: authHeaders,
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, rejectionReason }),
       });
       if (!response.ok) {
         throw new Error("Failed to update timesheet status");
@@ -285,7 +291,7 @@ const Timesheets = () => {
       }
       toast({
         title: "Updated",
-      description: `${selectedIds.length} timesheet(s) marked ${bulkStatus}`,
+        description: `${selectedIds.length} timesheet(s) marked ${bulkStatus}`,
       });
       await fetchTimesheets();
     } catch (error) {
@@ -477,7 +483,11 @@ const Timesheets = () => {
                                 <Button
                                   size="sm"
                                   variant="destructive"
-                                  onClick={() => updateStatus(row.id, "rejected")}
+                                  onClick={() => {
+                                    setSelectedRejectedId(row.id)
+                                    setRejectModalOpen(true)
+                                  }
+                                  }
                                   disabled={isSaving}
                                 >
                                   Reject
@@ -622,6 +632,27 @@ const Timesheets = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <RejecteTimesheetModal
+        open={rejectModalOpen}
+        onClose={() => {
+          setRejectModalOpen(false)
+          setSelectedRejectedId(null)
+        }}
+        timesheetId={selectedRejectId}
+        isLoading={isSaving}
+        onConfirm={async (reason) => {
+          if (!selectedRejectId) return;
+
+          await updateStatus(
+            selectedRejectId,
+            'rejected',
+            reason
+          );
+        }}
+
+
+      />
     </AdminLayout>
   );
 };
