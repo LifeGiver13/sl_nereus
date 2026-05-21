@@ -27,15 +27,17 @@ type TimesheetEntry = {
 type TimesheetMeta = {
   signature?: string;
   signedAt?: string;
-  managerName?: string;
+  signedBy?: string;
+  signerName?: string;
+
   managerRole?: string;
   managerNote?: string;
-  selfCert?: {
-    username?: string;
-    certifiedAt?: string;
-    infoVerified?: boolean;
-    certificationReason?: string;
-  };
+
+  infoVerified?: boolean;
+  certificationReason?: string;
+
+  rejectionReason?: string;
+  rejectedAt?: string;
 };
 
 type Timesheet = {
@@ -102,12 +104,12 @@ function calculateTotalHours(timesheet: Timesheet): number {
 }
 
 function getSignerLabel(timesheet: Timesheet): string {
-  if (timesheet.meta?.managerName) {
+  if (timesheet.meta?.signerName) {
     const role = timesheet.meta.managerRole ? ` (${timesheet.meta.managerRole})` : "";
-    return `${timesheet.meta.managerName}${role}`;
+    return `${timesheet.meta.signerName}${role}`;
   }
-  if (timesheet.meta?.selfCert?.username) {
-    return `${timesheet.meta.selfCert.username} (self-certified)`;
+  if (timesheet.meta?.signerName) {
+    return `${timesheet.meta.signedBy} (self-certified)`;
   }
   return "Not provided";
 }
@@ -559,11 +561,39 @@ const Timesheets = () => {
                                     {row.meta?.signedAt && (
                                       <p><strong>Signed at:</strong> {new Date(row.meta.signedAt).toLocaleString()}</p>
                                     )}
-                                    {row.meta?.selfCert?.certificationReason && (
-                                      <p><strong>Reason:</strong> {row.meta.selfCert.certificationReason}</p>
+                                    {typeof row.meta?.infoVerified === "boolean" && (
+                                      <p>
+                                        <strong>Info verified:</strong>{" "}
+                                        {row.meta.infoVerified ? "Yes" : "No"}
+                                      </p>
                                     )}
+
+                                    {row.meta?.certificationReason && (
+                                      <p>
+                                        <strong>Certification reason:</strong>{" "}
+                                        {row.meta.certificationReason}
+                                      </p>
+                                    )}
+
                                     {row.meta?.managerNote && (
-                                      <p><strong>Manager note:</strong> {row.meta.managerNote}</p>
+                                      <p>
+                                        <strong>Manager note:</strong>{" "}
+                                        {row.meta.managerNote}
+                                      </p>
+                                    )}
+
+                                    {row.meta?.rejectionReason && (
+                                      <p className="text-red-600">
+                                        <strong>Rejection reason:</strong>{" "}
+                                        {row.meta.rejectionReason}
+                                      </p>
+                                    )}
+
+                                    {row.meta?.rejectedAt && (
+                                      <p className="text-red-500">
+                                        <strong>Rejected at:</strong>{" "}
+                                        {new Date(row.meta.rejectedAt).toLocaleString()}
+                                      </p>
                                     )}
                                     {row.meta?.signature ? (
                                       <Button
