@@ -9,6 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import UserDocuments from '@/components/UserDocuments';
+import UploadUserDocumentModal from '@/components/UploadUserDocumentModal';
+
 
 type ViewField = {
   property: string;
@@ -48,6 +51,9 @@ const UserDetail = () => {
   const [isViewLoading, setIsViewLoading] = useState(false);
   const { toast } = useToast();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+
 
   useEffect(() => {
     const fetchUserDetail = async () => {
@@ -115,7 +121,7 @@ const UserDetail = () => {
       'pending': 'bg-yellow-100 text-yellow-800',
       'suspended': 'bg-red-100 text-red-800',
     };
-    
+
     return (
       <Badge className={statusColors[status] || 'bg-gray-100 text-gray-800'}>
         {status}
@@ -131,7 +137,7 @@ const UserDetail = () => {
       'admin': 'bg-orange-100 text-orange-800',
       'super_admin': 'bg-red-100 text-red-800',
     };
-    
+
     return (
       <Badge className={roleColors[role] || 'bg-gray-100 text-gray-800'}>
         {role}
@@ -291,7 +297,7 @@ const UserDetail = () => {
             <h1 className="text-3xl font-bold text-[#000009]">{user.username}</h1>
             <p className="text-gray-600 mt-1">User Details</p>
           </div>
-          <Button 
+          <Button
             onClick={handleEditUser}
             className="bg-[#712B71] hover:bg-[#712B71]/90"
           >
@@ -362,7 +368,7 @@ const UserDetail = () => {
                         </TabsTrigger>
                       ))}
                     </TabsList>
-                    
+
                     {Object.entries(viewManager.sections).map(([sectionName, fields]) => (
                       <TabsContent key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
                         <div className="space-y-2">
@@ -402,12 +408,54 @@ const UserDetail = () => {
           )}
         </div>
 
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-[#000009]">
+                User Documents
+              </CardTitle>
+
+              <CardDescription>
+                User uploaded compliance documents
+              </CardDescription>
+            </div>
+
+            <Button
+              onClick={() =>
+                setIsUploadModalOpen(true)
+              }
+              className="bg-[#712B71] hover:bg-[#712B71]/90"
+            >
+              Upload Document
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {user && (
+              <UserDocuments
+                bucket={user.meta?.userBucket || user.username}
+              />
+            )}
+          </CardContent>
+        </Card>
+
         <EditUserModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           user={user}
           onUserUpdated={handleUserUpdated}
         />
+
+        {user && (
+          <UploadUserDocumentModal
+            isOpen={isUploadModalOpen}
+            onClose={() =>
+              setIsUploadModalOpen(false)
+            }
+            user={user}
+            onSuccess={handleUserUpdated}
+          />
+        )}
+
       </div>
     </AdminLayout>
   );

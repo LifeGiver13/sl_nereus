@@ -7,6 +7,7 @@ interface User {
   username: string;
   email?: string;
   role?: string;
+  meta?: any; // for any additional user metadata, e.g. userBucket
 }
 
 interface AuthContextType {
