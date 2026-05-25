@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import EditUserModal from '../components/EditUserModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,8 +43,21 @@ interface User {
   meta: { [key: string]: any };
 }
 
+const USER_DETAIL_TABS = ['basic', 'profile', 'documents'] as const;
+type UserDetailTab = (typeof USER_DETAIL_TABS)[number];
+
 const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab: UserDetailTab = USER_DETAIL_TABS.includes(tabParam as UserDetailTab)
+    ? (tabParam as UserDetailTab)
+    : 'basic';
+
+  const setActiveTab = (value: string) => {
+    setSearchParams(value === 'basic' ? {} : { tab: value }, { replace: true });
+  };
+
   const [user, setUser] = useState<User | null>(null);
   const [viewManager, setViewManager] = useState<ViewManager | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -306,79 +319,116 @@ const UserDetail = () => {
           </Button>
         </div>
 
-        <div className="grid gap-6">
-          {/* Basic Information */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-[#000009]">Basic Information</CardTitle>
-              <CardDescription>Core user information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                  <div className="font-medium text-gray-700">ID</div>
-                  <div className="md:col-span-2 text-gray-900">{user.id}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                  <div className="font-medium text-gray-700">Username</div>
-                  <div className="md:col-span-2 text-gray-900">{user.username}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                  <div className="font-medium text-gray-700">Status</div>
-                  <div className="md:col-span-2">{getStatusBadge(user.status)}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                  <div className="font-medium text-gray-700">Role</div>
-                  <div className="md:col-span-2">{getRoleBadge(user.role)}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                  <div className="font-medium text-gray-700">Last Login</div>
-                  <div className="md:col-span-2 text-gray-900">{formatDate(user.lastLogin)}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                  <div className="font-medium text-gray-700">Created At</div>
-                  <div className="md:col-span-2 text-gray-900">{formatDate(user.createdAt)}</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2">
-                  <div className="font-medium text-gray-700">Updated At</div>
-                  <div className="md:col-span-2 text-gray-900">{formatDate(user.updatedAt)}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+            <TabsList className="grid h-auto w-full grid-cols-3 gap-0 rounded-none border-b border-gray-200 bg-gray-100 p-0">
+              <TabsTrigger
+                value="basic"
+                className="rounded-none border-b-[3px] border-transparent px-4 py-4 text-base font-semibold text-gray-600 shadow-none transition-colors hover:bg-gray-50 hover:text-[#000009] data-[state=active]:-mb-px data-[state=active]:border-[#712B71] data-[state=active]:bg-white data-[state=active]:font-bold data-[state=active]:text-[#712B71]"
+              >
+                Basic Information
+              </TabsTrigger>
+              <TabsTrigger
+                value="profile"
+                className="rounded-none border-b-[3px] border-transparent px-4 py-4 text-base font-semibold text-gray-600 shadow-none transition-colors hover:bg-gray-50 hover:text-[#000009] data-[state=active]:-mb-px data-[state=active]:border-[#712B71] data-[state=active]:bg-white data-[state=active]:font-bold data-[state=active]:text-[#712B71]"
+              >
+                Profile Information
+              </TabsTrigger>
+              <TabsTrigger
+                value="documents"
+                className="rounded-none border-b-[3px] border-transparent px-4 py-4 text-base font-semibold text-gray-600 shadow-none transition-colors hover:bg-gray-50 hover:text-[#000009] data-[state=active]:-mb-px data-[state=active]:border-[#712B71] data-[state=active]:bg-white data-[state=active]:font-bold data-[state=active]:text-[#712B71]"
+              >
+                Documents
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Profile Information */}
-          {user.profile && (
-            <Card className="border-0 shadow-lg">
+          <TabsContent value="basic" className="mt-0 focus-visible:outline-none">
+            <Card className="rounded-none border-0 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-[#000009]">Basic Information</CardTitle>
+                <CardDescription>Core user information</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                    <div className="font-medium text-gray-700">ID</div>
+                    <div className="md:col-span-2 text-gray-900">{user.id}</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                    <div className="font-medium text-gray-700">Username</div>
+                    <div className="md:col-span-2 text-gray-900">{user.username}</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                    <div className="font-medium text-gray-700">Status</div>
+                    <div className="md:col-span-2">{getStatusBadge(user.status)}</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                    <div className="font-medium text-gray-700">Role</div>
+                    <div className="md:col-span-2">{getRoleBadge(user.role)}</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                    <div className="font-medium text-gray-700">Last Login</div>
+                    <div className="md:col-span-2 text-gray-900">{formatDate(user.lastLogin)}</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                    <div className="font-medium text-gray-700">Created At</div>
+                    <div className="md:col-span-2 text-gray-900">{formatDate(user.createdAt)}</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2">
+                    <div className="font-medium text-gray-700">Updated At</div>
+                    <div className="md:col-span-2 text-gray-900">{formatDate(user.updatedAt)}</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="profile" className="mt-0 focus-visible:outline-none">
+            <Card className="rounded-none border-0 shadow-none">
               <CardHeader>
                 <CardTitle className="text-[#000009]">Profile Information</CardTitle>
                 <CardDescription>User profile details organized by sections</CardDescription>
               </CardHeader>
               <CardContent>
-                {isViewLoading ? (
+                {!user.profile ? (
+                  <div className="text-sm text-gray-500">No profile data available</div>
+                ) : isViewLoading ? (
                   <div className="text-center py-8">
                     <p className="text-gray-500">Loading view configuration...</p>
                   </div>
                 ) : viewManager ? (
-                  <Tabs defaultValue={Object.keys(viewManager.sections)[0]?.toLowerCase().replace(/\s+/g, '-')} className="space-y-4">
-                    <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Object.keys(viewManager.sections).length}, 1fr)` }}>
-                      {Object.keys(viewManager.sections).map(sectionName => (
-                        <TabsTrigger key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
+                  <Tabs
+                    defaultValue={Object.keys(viewManager.sections)[0]?.toLowerCase().replace(/\s+/g, '-')}
+                    className="space-y-4"
+                  >
+                    <TabsList
+                      className="grid w-full"
+                      style={{ gridTemplateColumns: `repeat(${Object.keys(viewManager.sections).length}, 1fr)` }}
+                    >
+                      {Object.keys(viewManager.sections).map((sectionName) => (
+                        <TabsTrigger
+                          key={sectionName}
+                          value={sectionName.toLowerCase().replace(/\s+/g, '-')}
+                        >
                           {sectionName}
                         </TabsTrigger>
                       ))}
                     </TabsList>
 
                     {Object.entries(viewManager.sections).map(([sectionName, fields]) => (
-                      <TabsContent key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
+                      <TabsContent
+                        key={sectionName}
+                        value={sectionName.toLowerCase().replace(/\s+/g, '-')}
+                      >
                         <div className="space-y-2">
                           {fields.map((field) => {
                             const value = user.profile[field.property];
                             return (
-                              <div key={field.property} className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100 last:border-b-0">
-                                <div className="font-medium text-gray-700">
-                                  {field.label}
-                                </div>
+                              <div
+                                key={field.property}
+                                className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-gray-700">{field.label}</div>
                                 <div className="md:col-span-2 text-gray-900">
                                   {typeof value === 'object' ? (
                                     <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
@@ -405,38 +455,29 @@ const UserDetail = () => {
                 )}
               </CardContent>
             </Card>
-          )}
-        </div>
+          </TabsContent>
 
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-[#000009]">
-                User Documents
-              </CardTitle>
-
-              <CardDescription>
-                User uploaded compliance documents
-              </CardDescription>
-            </div>
-
-            <Button
-              onClick={() =>
-                setIsUploadModalOpen(true)
-              }
-              className="bg-[#712B71] hover:bg-[#712B71]/90"
-            >
-              Upload Document
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {user && (
-              <UserDocuments
-                bucket={user.meta?.userBucket || user.username}
-              />
-            )}
-          </CardContent>
-        </Card>
+          <TabsContent value="documents" className="mt-0 focus-visible:outline-none">
+            <Card className="rounded-none border-0 shadow-none">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-[#000009]">User Documents</CardTitle>
+                  <CardDescription>User uploaded compliance documents</CardDescription>
+                </div>
+                <Button
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="bg-[#712B71] hover:bg-[#712B71]/90"
+                >
+                  Upload Document
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <UserDocuments bucket={user.meta?.userBucket || user.username} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          </div>
+        </Tabs>
 
         <EditUserModal
           isOpen={isEditModalOpen}

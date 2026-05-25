@@ -34,15 +34,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on app load
-    const savedUser = localStorage.getItem('session_user');
-    const savedToken = localStorage.getItem('session_token');
-    
-    if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser));
-      setToken(savedToken);
-    }
-    setIsLoading(false);
+    const clearSession = () => {
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('session_user');
+      localStorage.removeItem('session_token');
+    };
+
+    const initializeAuth = async () => {
+      const savedToken = localStorage.getItem('session_token');
+
+      if (!savedToken) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/session`, {
+          method: 'GET',
+          headers: { 'X-SERVICE-USER': savedToken },
+        });
+
+        if (!response.ok) {
+          clearSession();
+          return;
+        }
+
+        const body = (await response.json()) as Record<string, unknown> & {
+          serviceUserToken?: string;
+        };
+        const authToken =
+          response.headers.get('X-Service-User') ??
+          response.headers.get('X-SERVICE-USER') ??
+          (typeof body.serviceUserToken === 'string' ? body.serviceUserToken : savedToken);
+
+        const { serviceUserToken: _t, ...userData } = body;
+        void _t;
+
+        setUser(userData as unknown as User);
+        setToken(authToken);
+        localStorage.setItem('session_user', JSON.stringify(userData));
+        localStorage.setItem('session_token', authToken);
+      } catch (error) {
+        console.error('Session verification error:', error);
+        clearSession();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (username: string, password: string) => {
