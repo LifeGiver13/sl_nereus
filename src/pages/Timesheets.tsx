@@ -119,9 +119,10 @@ const Timesheets = () => {
   const [totalTimesheets, setTotalTimesheets] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [userFilter, setUserFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("pending");
   const [sortBy, setSortBy] = useState<"period" | "client">("period");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [date, setDate] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [expandedTimesheetId, setExpandedTimesheetId] = useState<number | null>(null);
@@ -200,16 +201,76 @@ const Timesheets = () => {
     }
   }, [token, fetchTimesheets]);
 
+
+  function parseLocalDate(dateStr: string) {
+    const d = new Date(dateStr);
+
+    return new Date(
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate()
+    );
+  }
+
+  const selectedWeek = useMemo(() => {
+    if (!date) return null;
+
+    const { monday, sunday } = getWeekRange(date);
+
+    return {
+      monday: monday.toLocaleDateString(),
+      sunday: sunday.toLocaleDateString(),
+    };
+  }, [date]);
+
+
+
   const filtered = useMemo(() => {
     return timesheets.filter((row) => {
       const userTerm = userFilter.trim().toLowerCase();
-      return (
+      const matchesUser =
         !userTerm ||
         String(row.userId).includes(userTerm) ||
-        getDisplayName(row).toLowerCase().includes(userTerm)
-      );
+        getDisplayName(row).toLowerCase().includes(userTerm);
+
+      let matchesWeek = true;
+
+      if (date) {
+        const { monday, sunday } = getWeekRange(date);
+
+        const rowStart = parseLocalDate(row.startDate);
+        const rowEnd = parseLocalDate(row.endDate);
+
+
+        // normalize times
+        monday.setHours(0, 0, 0, 0);
+        sunday.setHours(23, 59, 59, 999);
+        rowStart.setHours(0, 0, 0, 0);
+        rowEnd.setHours(23, 59, 59, 999);
+
+        // overlap check
+        matchesWeek =
+          rowStart <= sunday &&
+          rowEnd >= monday;
+
+        console.log({
+          selected: date,
+          monday,
+          sunday,
+          rowStart,
+          rowEnd,
+          matchesWeek,
+        });
+      }
+
+
+
+
+      return matchesUser && matchesWeek;
+
+
     });
-  }, [timesheets, userFilter]);
+  }, [timesheets, userFilter, date]);
 
   const totalPages = Math.max(1, Math.ceil(totalTimesheets / pageSize));
   const allVisibleSelected = filtered.length > 0 && filtered.every((row) => selectedIds.includes(row.id));
@@ -307,6 +368,30 @@ const Timesheets = () => {
     }
   };
 
+  function getWeekRange(selectedDate: string) {
+    const current = parseLocalDate(selectedDate);
+    // get day index
+    // sunday = 0
+    // monday = 1
+    const day = current.getDay();
+
+    // convert sunday handling
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+
+    // monday
+    const monday = new Date(current);
+    monday.setDate(current.getDate() + diffToMonday);
+
+    // sunday
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    return {
+      monday,
+      sunday,
+    };
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -318,7 +403,7 @@ const Timesheets = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-[#000009]">Filters</CardTitle>
-            <CardDescription>Refine by user name/id and status</CardDescription>
+            <CardDescription>Refine by user name/id , date and status</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -332,9 +417,9 @@ const Timesheets = () => {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
@@ -357,14 +442,33 @@ const Timesheets = () => {
                   <SelectItem value="asc">Ascending</SelectItem>
                 </SelectContent>
               </Select>
+
+              <div className="flex flex-col gap-1">
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    setPage(1);
+                  }}
+                />
+
+                {selectedWeek && (
+                  <p className="text-xs text-gray-500">
+                    Week: {selectedWeek.monday} → {selectedWeek.sunday}
+                  </p>
+                )}
+              </div>
+
               <Button
                 variant="outline"
                 onClick={() => {
                   setUserFilter("");
-                  setStatusFilter("all");
+                  setStatusFilter("pending");
                   setSortBy("period");
                   setSortDir("desc");
                   setPage(1);
+                  setDate("")
                 }}
               >
                 Clear filters

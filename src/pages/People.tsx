@@ -40,6 +40,8 @@ const People = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchFullName, setSearchFullName] = useState('');
+
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -54,13 +56,16 @@ const People = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      
+
       let url = `${API_BASE_URL}/users?page=${currentPage}&limit=${itemsPerPage}`;
-      
+
       // Build search object
       const searchObj: any = {};
       if (searchTerm) {
         searchObj.username = { "like": `%${searchTerm}%` };
+      }
+      if (searchFullName) {
+        searchObj["profile.fullName"] = { "like": `%${searchFullName}%` };
       }
       if (selectedRoles.length > 0) {
         searchObj.role = selectedRoles;
@@ -68,7 +73,7 @@ const People = () => {
       if (selectedStatuses.length > 0) {
         searchObj.status = selectedStatuses;
       }
-      
+
       if (Object.keys(searchObj).length > 0) {
         url += `&search=${encodeURIComponent(JSON.stringify(searchObj))}`;
       }
@@ -102,10 +107,15 @@ const People = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchTerm, selectedRoles, selectedStatuses, itemsPerPage]);
+  }, [currentPage, searchTerm, searchFullName, selectedRoles, selectedStatuses, itemsPerPage]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleFullName = (value: string) => {
+    setSearchFullName(value);
     setCurrentPage(1);
   };
 
@@ -155,7 +165,7 @@ const People = () => {
       'pending': 'bg-yellow-100 text-yellow-800',
       'suspended': 'bg-red-100 text-red-800',
     };
-    
+
     return (
       <Badge className={statusColors[status] || 'bg-gray-100 text-gray-800'}>
         {status}
@@ -171,7 +181,7 @@ const People = () => {
       'admin': 'bg-orange-100 text-orange-800',
       'super_admin': 'bg-red-100 text-red-800',
     };
-    
+
     return (
       <Badge className={roleColors[role] || 'bg-gray-100 text-gray-800'}>
         {role}
@@ -192,7 +202,7 @@ const People = () => {
             <h1 className="text-3xl font-bold text-[#000009]">People</h1>
             <p className="text-gray-600 mt-1">Manage user accounts and profiles</p>
           </div>
-          <Button 
+          <Button
             onClick={() => setIsCreateModalOpen(true)}
             className="bg-[#712B71] hover:bg-[#712B71]/90"
           >
@@ -228,8 +238,19 @@ const People = () => {
                   onChange={(e) => handleSearch(e.target.value)}
                   className="max-w-sm"
                 />
+
+
+                <Input
+                  placeholder="Search by Full Name..."
+                  value={searchFullName}
+                  onChange={(e) => handleFullName(e.target.value)}
+                  className="max-w-sm"
+                />
+
               </div>
-              
+
+
+
               <div className="flex gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium">Role Filter:</label>
@@ -246,7 +267,7 @@ const People = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium">Status Filter:</label>
                   <div className="flex gap-2 flex-wrap">
@@ -276,6 +297,7 @@ const People = () => {
                     <TableRow>
                       <TableHead>ID</TableHead>
                       <TableHead>Username</TableHead>
+                      <TableHead>Full Name</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Last Login</TableHead>
@@ -288,7 +310,8 @@ const People = () => {
                     {users.map((user) => (
                       <TableRow key={user.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/user/${user.id}`}>
                         <TableCell>{user.id}</TableCell>
-                        <TableCell className="font-medium">{user.username}</TableCell>
+                        <TableCell className="font-medium"> {user.username}</TableCell>
+                        <TableCell className="font-medium">{user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastname || "-"}</TableCell>
                         <TableCell>{getStatusBadge(user.status)}</TableCell>
                         <TableCell>{getRoleBadge(user.role)}</TableCell>
                         <TableCell>{formatDate(user.lastLogin)}</TableCell>
