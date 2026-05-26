@@ -14,6 +14,8 @@ import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
 import { IconActionButton, IconActionTooltip } from '@/components/IconActionTooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
+
 
 interface User {
   id: number;
@@ -40,10 +42,9 @@ const People = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchFullName, setSearchFullName] = useState('');
 
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedRole, setSelectedRole] = useState<string>('worker');
+  const [selectedStatus, setSelectedStatus] = useState<string>('active');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -61,17 +62,21 @@ const People = () => {
 
       // Build search object
       const searchObj: any = {};
-      if (searchTerm) {
-        searchObj.username = { "like": `%${searchTerm}%` };
+
+      const searchFeilds = ['username', 'profile.fullName', 'profile.firstName', 'profile.lastName', 'profile.middleNames', 'profile.MiddleNames', 'profile.ForeName', 'profile.Surename']; // fields to search in
+
+      if (searchTerm.trim() !== '') {
+        searchObj.or = searchFeilds.map((feild) => ({
+          [feild]: { like: `%${searchTerm}%` }
+        }))
+
       }
-      if (searchFullName) {
-        searchObj["profile.fullName"] = { "like": `%${searchFullName}%` };
+
+      if (selectedRole && selectedRole !== 'all') {
+        searchObj.role = selectedRole;
       }
-      if (selectedRoles.length > 0) {
-        searchObj.role = selectedRoles;
-      }
-      if (selectedStatuses.length > 0) {
-        searchObj.status = selectedStatuses;
+      if (selectedStatus && selectedStatus !== 'all') {
+        searchObj.status = selectedStatus;
       }
 
       if (Object.keys(searchObj).length > 0) {
@@ -107,35 +112,14 @@ const People = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchTerm, searchFullName, selectedRoles, selectedStatuses, itemsPerPage]);
+  }, [currentPage, searchTerm, selectedRole, selectedStatus, itemsPerPage]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
   };
 
-  const handleFullName = (value: string) => {
-    setSearchFullName(value);
-    setCurrentPage(1);
-  };
 
-  const handleRoleFilter = (role: string) => {
-    if (selectedRoles.includes(role)) {
-      setSelectedRoles(selectedRoles.filter(r => r !== role));
-    } else {
-      setSelectedRoles([...selectedRoles, role]);
-    }
-    setCurrentPage(1);
-  };
-
-  const handleStatusFilter = (status: string) => {
-    if (selectedStatuses.includes(status)) {
-      setSelectedStatuses(selectedStatuses.filter(s => s !== status));
-    } else {
-      setSelectedStatuses([...selectedStatuses, status]);
-    }
-    setCurrentPage(1);
-  };
 
   const handleUserCreated = () => {
     fetchUsers(); // Refresh the user list
@@ -233,55 +217,67 @@ const People = () => {
             <div className="flex flex-col gap-4 mb-6">
               <div className="flex gap-4">
                 <Input
-                  placeholder="Search by username..."
+                  placeholder="Search by Username, First Name, Last Name, or Middle Name(s)..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="max-w-sm"
+                  className="w-full max-w-xl"
                 />
 
-
-                <Input
-                  placeholder="Search by Full Name..."
-                  value={searchFullName}
-                  onChange={(e) => handleFullName(e.target.value)}
-                  className="max-w-sm"
-                />
 
               </div>
 
 
 
-              <div className="flex gap-4">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">Role Filter:</label>
-                  <div className="flex gap-2 flex-wrap">
-                    {['applicant', 'worker', 'client', 'admin', 'super_admin'].map(role => (
-                      <Button
-                        key={role}
-                        variant={selectedRoles.includes(role) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleRoleFilter(role)}
-                      >
-                        {role}
-                      </Button>
-                    ))}
-                  </div>
+              <div className="flex gap-4 flex-wrap">
+                {/* Role Filter */}
+                <div className="flex flex-col gap-2 min-w-[220px]">
+                  <label className="text-sm font-medium">Role Filter</label>
+
+                  <Select
+                    value={selectedRole}
+                    onValueChange={(value) => {
+                      setSelectedRole(value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="worker">Worker</SelectItem>
+                      <SelectItem value="applicant">Applicant</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium">Status Filter:</label>
-                  <div className="flex gap-2 flex-wrap">
-                    {['active', 'inactive', 'pending', 'suspended'].map(status => (
-                      <Button
-                        key={status}
-                        variant={selectedStatuses.includes(status) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleStatusFilter(status)}
-                      >
-                        {status}
-                      </Button>
-                    ))}
-                  </div>
+                {/* Status Filter */}
+                <div className="flex flex-col gap-2 min-w-[220px]">
+                  <label className="text-sm font-medium">Status Filter</label>
+
+                  <Select
+                    value={selectedStatus}
+                    onValueChange={(value) => {
+                      setSelectedStatus(value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -296,8 +292,8 @@ const People = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
-                      <TableHead>Username</TableHead>
                       <TableHead>Full Name</TableHead>
+                      <TableHead>Username</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Last Login</TableHead>
@@ -310,8 +306,8 @@ const People = () => {
                     {users.map((user) => (
                       <TableRow key={user.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/user/${user.id}`}>
                         <TableCell>{user.id}</TableCell>
+                        <TableCell className="font-medium">{user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"}</TableCell>
                         <TableCell className="font-medium"> {user.username}</TableCell>
-                        <TableCell className="font-medium">{user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastname || "-"}</TableCell>
                         <TableCell>{getStatusBadge(user.status)}</TableCell>
                         <TableCell>{getRoleBadge(user.role)}</TableCell>
                         <TableCell>{formatDate(user.lastLogin)}</TableCell>
