@@ -11,9 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { API_BASE_URL } from "../config/env";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Download } from "lucide-react";
 import RejecteTimesheetModal from "@/components/RejectTimesheetModal";
-
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected";
 
@@ -50,7 +49,7 @@ type Timesheet = {
   status: TimesheetStatus;
   entries: TimesheetEntry[];
   meta?: TimesheetMeta;
-  user?: { id: number; username?: string; profile?: { firstName?: string; surname?: string } };
+  user?: { id: number; username?: string; profile?: { firstName?: string; surname?: string; fullName?: string; } };
   client?: { id: number; name?: string };
   position?: { id: number; title?: string };
 };
@@ -79,7 +78,7 @@ function formatDate(value: string) {
 function getDisplayName(row: Timesheet) {
   const firstName = row.user?.profile?.firstName ?? "";
   const surname = row.user?.profile?.surname ?? "";
-  const fullName = `${firstName} ${surname}`.trim();
+  const fullName = row.user?.profile?.fullName || `${firstName} ${surname}`.trim();
   if (fullName) return fullName;
   return row.user?.username || `User #${row.userId}`;
 }
@@ -113,6 +112,7 @@ function getSignerLabel(timesheet: Timesheet): string {
   }
   return "Not provided";
 }
+
 
 const Timesheets = () => {
   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
@@ -201,6 +201,271 @@ const Timesheets = () => {
     }
   }, [token, fetchTimesheets]);
 
+  const exportTimesheetToCSV = (timesheet: Timesheet) => {
+    try {
+      const NA = "N/A";
+
+      const safeValue = (value: any) => {
+        if (
+          value === undefined ||
+          value === null ||
+          value === "" ||
+          (typeof value === "number" && Number.isNaN(value))
+        ) {
+          return NA;
+        }
+
+        return String(value);
+      };
+
+      const formatDateTime = (value?: string) => {
+        if (!value) return NA;
+
+        const d = new Date(value);
+
+        if (Number.isNaN(d.getTime())) {
+          return NA;
+        }
+
+        return d.toLocaleString();
+      };
+
+      const formatDateOnly = (value?: string) => {
+        if (!value) return NA;
+
+        const d = new Date(value);
+
+        if (Number.isNaN(d.getTime())) {
+          return NA;
+        }
+
+        return d.toLocaleDateString();
+      };
+
+      const totalHours = calculateTotalHours(timesheet);
+
+      const baseData = {
+        TimesheetID: safeValue(timesheet.id),
+
+        UserID: safeValue(timesheet.userId),
+
+        User: safeValue(getDisplayName(timesheet)),
+
+        Client: safeValue(
+          timesheet.client?.name
+        ),
+
+        Position: safeValue(
+          timesheet.position?.title
+        ),
+
+        PeriodStart: formatDateOnly(
+          timesheet.startDate
+        ),
+
+        PeriodEnd: formatDateOnly(
+          timesheet.endDate
+        ),
+
+        Status: safeValue(
+          timesheet.status
+        ),
+
+        TotalHours: `${totalHours.toFixed(2)}h`,
+
+        SignedBy: safeValue(
+          timesheet.meta?.signedBy
+        ),
+
+        SignerName: safeValue(
+          timesheet.meta?.signerName
+        ),
+
+        SignedAt: formatDateTime(
+          timesheet.meta?.signedAt
+        ),
+
+        ManagerRole: safeValue(
+          timesheet.meta?.managerRole
+        ),
+
+        ManagerNote: safeValue(
+          timesheet.meta?.managerNote
+        ),
+
+        InfoVerified:
+          typeof timesheet.meta?.infoVerified === "boolean"
+            ? timesheet.meta.infoVerified
+              ? "Yes"
+              : "No"
+            : NA,
+
+        CertificationReason: safeValue(
+          timesheet.meta?.certificationReason
+        ),
+
+        RejectionReason: safeValue(
+          timesheet.meta?.rejectionReason
+        ),
+
+        RejectedAt: formatDateTime(
+          timesheet.meta?.rejectedAt
+        ),
+      };
+
+      const rows: Record<string, string>[] = [];
+
+      // summary rows
+      rows.push({
+        RowType: "SUMMARY",
+
+        ...baseData,
+
+        EntryDate: NA,
+        EntryDay: NA,
+        EntryStart: NA,
+        EntryEnd: NA,
+        EntryBreakMinutes: NA,
+        EntryHours: NA,
+      });
+
+      // entry rows
+      if (Array.isArray(timesheet.entries) && timesheet.entries.length > 0) {
+        timesheet.entries.forEach((entry) => {
+          const entryDate = new Date(entry.date);
+
+          const weekday = Number.isNaN(entryDate.getTime())
+            ? NA
+            : dayFormatter.format(entryDate);
+
+          rows.push({
+            RowType: "ENTRY",
+
+            ...baseData,
+
+            EntryDate: formatDateOnly(entry.date),
+
+            EntryDay: weekday,
+
+            EntryStart: safeValue(
+              entry.startTime
+            ),
+
+            EntryEnd: safeValue(
+              entry.endTime
+            ),
+
+            EntryBreakMinutes:
+              typeof entry.break === "number"
+                ? `${entry.break} min`
+                : NA,
+
+            EntryHours: `${calculateEntryHours(entry).toFixed(2)}h`,
+          });
+        });
+      }
+
+      const headers = [
+        "RowType",
+
+        "TimesheetID",
+        "UserID",
+        "User",
+
+        "Client",
+        "Position",
+
+        "PeriodStart",
+        "PeriodEnd",
+
+        "Status",
+        "TotalHours",
+
+        "SignedBy",
+        "SignerName",
+        "SignedAt",
+
+        "ManagerRole",
+        "ManagerNote",
+
+        "InfoVerified",
+        "CertificationReason",
+
+        "RejectionReason",
+        "RejectedAt",
+
+        "EntryDate",
+        "EntryDay",
+        "EntryStart",
+        "EntryEnd",
+        "EntryBreakMinutes",
+        "EntryHours",
+      ];
+
+      const csvRows = rows.map((row) =>
+        headers
+          .map((header) => {
+            const rawValue = safeValue(row[header]);
+
+            // escape quotes
+            const escaped = rawValue.replace(/"/g, '""');
+
+            return `"${escaped}"`;
+          })
+          .join(",")
+      );
+
+      const csvContent = [
+        headers.join(","),
+        ...csvRows,
+      ].join("\n");
+
+      // UTF-8 BOM for Excel compatibility
+      const blob = new Blob(
+        ["\uFEFF" + csvContent],
+        {
+          type: "text/csv;charset=utf-8;",
+        }
+      );
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = url;
+
+      const safeUserName = getDisplayName(timesheet)
+        .replace(/[^a-z0-9]/gi, "_")
+        .toLowerCase();
+
+      link.setAttribute(
+        "download",
+        `timesheet_${timesheet.id}_${safeUserName}.csv`
+      );
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      document.body.removeChild(link);
+
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: `Timesheet #${timesheet.id} exported successfully`,
+      });
+    } catch (error) {
+      console.error(error);
+
+      toast({
+        title: "Export Failed",
+        description:
+          "Something went wrong while exporting the CSV",
+        variant: "destructive",
+      });
+    }
+  };
 
   function parseLocalDate(dateStr: string) {
     const d = new Date(dateStr);
@@ -574,6 +839,14 @@ const Timesheets = () => {
                               >
                                 {isExpanded ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
                                 {isExpanded ? "Hide" : "View"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => exportTimesheetToCSV(row)}
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Export
                               </Button>
                               {row.status !== "approved" && (
                                 <Button
