@@ -68,7 +68,9 @@ const People = () => {
       if (searchTerm.trim() !== '') {
         searchObj.or = searchFeilds.map((feild) => ({
           [feild]: { like: `%${searchTerm}%` }
-        }))
+        }
+        )
+        )
 
       }
 
@@ -118,6 +120,60 @@ const People = () => {
     setSearchTerm(value);
     setCurrentPage(1);
   };
+
+  const getMatchingFields = () => {
+    if (!searchTerm.trim()) return [];
+
+    const term = searchTerm.toLowerCase(); //convert search term to lowercase for case-insensitive comparison
+
+    const matchedCounts: Record<string, number> = {};
+
+    users.forEach((user) => {
+      const fieldsToCheck = [
+        {
+          label: 'Username',
+          value: user.username,
+        },
+        {
+          label: 'Full Name',
+          value: user?.profile?.fullName
+        },
+        {
+          label: 'First Name',
+          value: user?.profile?.firstName
+        },
+        {
+          label: 'Last Name',
+          value: user?.profile?.lastName
+        },
+        {
+          label: 'Middle Name(s)',
+          value: user?.profile?.middleNames || user?.profile?.MiddleNames
+        },
+        {
+          label: 'Fore Name',
+          value: user?.profile?.ForeName
+        },
+        {
+          label: 'Surename',
+          value: user?.profile?.Surename
+        },
+      ]
+
+      fieldsToCheck.forEach((field) => {
+        if (
+          typeof field.value === 'string' &&
+          field.value.toLowerCase().includes(term)
+        ) {
+          matchedCounts[field.label] =
+            (matchedCounts[field.label] || 0) + 1;
+        }
+      });
+
+    });
+
+    return matchedCounts;
+  }
 
 
 
@@ -178,6 +234,8 @@ const People = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const matchedFields = getMatchingFields();
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -215,13 +273,25 @@ const People = () => {
           <CardContent>
             {/* Search and Filter Controls */}
             <div className="flex flex-col gap-4 mb-6">
-              <div className="flex gap-4">
+              <div className="flex gap-4 items-center">
                 <Input
                   placeholder="Search by Username, First Name, Last Name, or Middle Name(s)..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="w-full max-w-xl"
                 />
+                <p className='text-sm text-muted-foreground  whitespace-nowrap'>
+                  {searchTerm.trim()
+                    ? `${total} match${total !== 1 ? 'es' : ""} 
+                      found${Object.keys(matchedFields).length
+                      ? ` in ${Object.entries(matchedFields)
+                        .map(([field, count]) => `${field} (${count})`)
+                        .join(", ")}`
+                      : ""}`
+                    : `${total} users found`
+                  }
+                </p>
+
 
 
               </div>
