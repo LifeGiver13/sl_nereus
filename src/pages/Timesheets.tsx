@@ -204,251 +204,90 @@ const Timesheets = () => {
   const exportTimesheetToCSV = (timesheet: Timesheet) => {
     try {
       const NA = "N/A";
-
       const safeValue = (value: any) => {
-        if (
-          value === undefined ||
-          value === null ||
-          value === "" ||
-          (typeof value === "number" && Number.isNaN(value))
-        ) {
+        if (value === undefined || value === null || value === "" ||
+          (typeof value === "number" && Number.isNaN(value))) {
           return NA;
         }
-
-        return String(value);
-      };
-
-      const formatDateTime = (value?: string) => {
-        if (!value) return NA;
-
-        const d = new Date(value);
-
-        if (Number.isNaN(d.getTime())) {
-          return NA;
-        }
-
-        return d.toLocaleString();
+        return String(value).trim();
       };
 
       const formatDateOnly = (value?: string) => {
         if (!value) return NA;
-
         const d = new Date(value);
-
-        if (Number.isNaN(d.getTime())) {
-          return NA;
-        }
-
-        return d.toLocaleDateString();
+        return Number.isNaN(d.getTime()) ? NA : d.toLocaleDateString();
       };
 
       const totalHours = calculateTotalHours(timesheet);
 
-      const baseData = {
-        TimesheetID: safeValue(timesheet.id),
-
-        UserID: safeValue(timesheet.userId),
-
-        User: safeValue(getDisplayName(timesheet)),
-
-        Client: safeValue(
-          timesheet.client?.name
-        ),
-
-        Position: safeValue(
-          timesheet.position?.title
-        ),
-
-        PeriodStart: formatDateOnly(
-          timesheet.startDate
-        ),
-
-        PeriodEnd: formatDateOnly(
-          timesheet.endDate
-        ),
-
-        Status: safeValue(
-          timesheet.status
-        ),
-
-        TotalHours: `${totalHours.toFixed(2)}h`,
-
-        SignedBy: safeValue(
-          timesheet.meta?.signedBy
-        ),
-
-        SignerName: safeValue(
-          timesheet.meta?.signerName
-        ),
-
-        SignedAt: formatDateTime(
-          timesheet.meta?.signedAt
-        ),
-
-        ManagerRole: safeValue(
-          timesheet.meta?.managerRole
-        ),
-
-        ManagerNote: safeValue(
-          timesheet.meta?.managerNote
-        ),
-
-        InfoVerified:
-          typeof timesheet.meta?.infoVerified === "boolean"
-            ? timesheet.meta.infoVerified
-              ? "Yes"
-              : "No"
-            : NA,
-
-        CertificationReason: safeValue(
-          timesheet.meta?.certificationReason
-        ),
-
-        RejectionReason: safeValue(
-          timesheet.meta?.rejectionReason
-        ),
-
-        RejectedAt: formatDateTime(
-          timesheet.meta?.rejectedAt
-        ),
+      // Calculate hours per day of the week
+      const dayHours: Record<string, number> = {
+        Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0,
+        Friday: 0, Saturday: 0, Sunday: 0
       };
 
-      const rows: Record<string, string>[] = [];
-
-      // summary rows
-      rows.push({
-        RowType: "SUMMARY",
-
-        ...baseData,
-
-        EntryDate: NA,
-        EntryDay: NA,
-        EntryStart: NA,
-        EntryEnd: NA,
-        EntryBreakMinutes: NA,
-        EntryHours: NA,
-      });
-
-      // entry rows
-      if (Array.isArray(timesheet.entries) && timesheet.entries.length > 0) {
+      if (Array.isArray(timesheet.entries)) {
         timesheet.entries.forEach((entry) => {
-          const entryDate = new Date(entry.date);
+          const date = new Date(entry.date);
+          if (Number.isNaN(date.getTime())) return;
 
-          const weekday = Number.isNaN(entryDate.getTime())
-            ? NA
-            : dayFormatter.format(entryDate);
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }) as keyof typeof dayHours;
 
-          rows.push({
-            RowType: "ENTRY",
-
-            ...baseData,
-
-            EntryDate: formatDateOnly(entry.date),
-
-            EntryDay: weekday,
-
-            EntryStart: safeValue(
-              entry.startTime
-            ),
-
-            EntryEnd: safeValue(
-              entry.endTime
-            ),
-
-            EntryBreakMinutes:
-              typeof entry.break === "number"
-                ? `${entry.break} min`
-                : NA,
-
-            EntryHours: `${calculateEntryHours(entry).toFixed(2)}h`,
-          });
+          if (dayHours.hasOwnProperty(dayName)) {
+            dayHours[dayName] += calculateEntryHours(entry);
+          }
         });
       }
 
-      const headers = [
-        "RowType",
+      const candidateName = getDisplayName(timesheet);
+      const dateRange = `${formatDateOnly(timesheet.startDate)} - ${formatDateOnly(timesheet.endDate)}`;
+      const signedBy = timesheet.meta?.signerName || timesheet.meta?.signedBy || NA;
 
-        "TimesheetID",
-        "UserID",
-        "User",
+      const rowData = {
+        "Candidate Name": safeValue(candidateName),
+        "Date Range": dateRange,
+        "Hours Worked": totalHours.toFixed(2),
+        "Status": safeValue(timesheet.status).toUpperCase(),
+        "Signed By": safeValue(signedBy),
+        "Monday": `${dayHours.Monday.toFixed(2)} h`,
+        "Tuesday": `${dayHours.Tuesday.toFixed(2)} h`,
+        "Wednesday": `${dayHours.Wednesday.toFixed(2)} h`,
+        "Thursday": `${dayHours.Thursday.toFixed(2)} h`,
+        "Friday": `${dayHours.Friday.toFixed(2)} h`,
+        "Saturday": `${dayHours.Saturday.toFixed(2)} h`,
+        "Sunday": `${dayHours.Sunday.toFixed(2)} h`,
+      };
 
-        "Client",
-        "Position",
-
-        "PeriodStart",
-        "PeriodEnd",
-
-        "Status",
-        "TotalHours",
-
-        "SignedBy",
-        "SignerName",
-        "SignedAt",
-
-        "ManagerRole",
-        "ManagerNote",
-
-        "InfoVerified",
-        "CertificationReason",
-
-        "RejectionReason",
-        "RejectedAt",
-
-        "EntryDate",
-        "EntryDay",
-        "EntryStart",
-        "EntryEnd",
-        "EntryBreakMinutes",
-        "EntryHours",
-      ];
-
-      const csvRows = rows.map((row) =>
-        headers
-          .map((header) => {
-            const rawValue = safeValue(row[header]);
-
-            // escape quotes
-            const escaped = rawValue.replace(/"/g, '""');
-
-            return `"${escaped}"`;
-          })
-          .join(",")
-      );
+      const headers = Object.keys(rowData);
+      const values = headers.map(header => {
+        const val = rowData[header as keyof typeof rowData];
+        const escaped = String(val).replace(/"/g, '""');
+        return `"${escaped}"`;
+      });
 
       const csvContent = [
         headers.join(","),
-        ...csvRows,
+        values.join(",")
       ].join("\n");
 
-      // UTF-8 BOM for Excel compatibility
-      const blob = new Blob(
-        ["\uFEFF" + csvContent],
-        {
-          type: "text/csv;charset=utf-8;",
-        }
-      );
+      // UTF-8 BOM for better Excel compatibility
+      const blob = new Blob(["\uFEFF" + csvContent], {
+        type: "text/csv;charset=utf-8;"
+      });
 
       const url = window.URL.createObjectURL(blob);
-
       const link = document.createElement("a");
-
       link.href = url;
 
-      const safeUserName = getDisplayName(timesheet)
+      const safeUserName = candidateName
         .replace(/[^a-z0-9]/gi, "_")
         .toLowerCase();
 
-      link.setAttribute(
-        "download",
-        `timesheet_${timesheet.id}_${safeUserName}.csv`
-      );
+      link.setAttribute("download", `timesheet_${timesheet.id}_${safeUserName}.csv`);
 
       document.body.appendChild(link);
-
       link.click();
-
       document.body.removeChild(link);
-
       window.URL.revokeObjectURL(url);
 
       toast({
@@ -457,11 +296,9 @@ const Timesheets = () => {
       });
     } catch (error) {
       console.error(error);
-
       toast({
         title: "Export Failed",
-        description:
-          "Something went wrong while exporting the CSV",
+        description: "Something went wrong while exporting the CSV",
         variant: "destructive",
       });
     }
