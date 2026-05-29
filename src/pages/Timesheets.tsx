@@ -272,23 +272,23 @@ const Timesheets = () => {
 
       // UTF-8 BOM for better Excel compatibility
       const blob = new Blob(["\uFEFF" + csvContent], {
-        type: "text/csv;charset=utf-8;"
+        type: "text/csv;charset=utf-8;" //essential for Excel to recognize UTF-8 encoding (compatibility with older versions)
       });
 
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
+      const url = window.URL.createObjectURL(blob); // create a temporary browser file URL to trigger download
+      const link = document.createElement("a"); //creates the invisible download link and clicks it to start download
+      link.href = url; //sets the download source
 
-      const safeUserName = candidateName
+      const safeUserName = candidateName  //safe file name
         .replace(/[^a-z0-9]/gi, "_")
         .toLowerCase();
 
-      link.setAttribute("download", `timesheet_${timesheet.id}_${safeUserName}.csv`);
+      link.setAttribute("download", `timesheet_${timesheet.id}_${safeUserName}.csv`); //sets the default file name with timesheet ID and candidate name for better organization
 
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      document.body.appendChild(link); //adds link to page
+      link.click(); //actuall download trigger
+      document.body.removeChild(link); //removing of invisible link
+      window.URL.revokeObjectURL(url); //importanat cause it frees memepry
 
       toast({
         title: "Export Successful",
@@ -299,6 +299,185 @@ const Timesheets = () => {
       toast({
         title: "Export Failed",
         description: "Something went wrong while exporting the CSV",
+        variant: "destructive",
+      });
+    }
+  };
+
+
+  const exportSelectedTimesheetsToCSV = () => {
+    try {
+      if (selectedIds.length === 0) { //no export if nothing selected
+        toast({
+          title: "No Selection",
+          description: "Please select at least one timesheet",
+          variant: "destructive",
+        });
+
+        return;
+      }
+
+      const NA = "N/A";
+
+      const safeValue = (value: any) => {
+        if (
+          value === undefined ||
+          value === null ||
+          value === "" ||
+          (typeof value === "number" && Number.isNaN(value))
+        ) {
+          return NA;
+        }
+
+        return String(value).trim();
+      };
+
+      const formatDateOnly = (value?: string) => {
+        if (!value) return NA;
+
+        const d = new Date(value);
+
+        return Number.isNaN(d.getTime())
+          ? NA
+          : d.toLocaleDateString();
+      };
+
+      // ONLY selected rows are created by looping through filtered (not all timesheets) to ensure that export respects filters and only contains what user sees
+      const selectedTimesheets = filtered.filter((row) =>
+        selectedIds.includes(row.id)
+      );
+
+      const csvRows: string[] = [];
+
+      // CSV headers
+      const headers = [
+        "Timesheet ID",
+        "Candidate Name",
+        "Client",
+        "Position",
+        "Date Range",
+        "Hours Worked",
+        "Status",
+        "Signed By",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ];
+
+      csvRows.push(headers.join(","));
+
+      selectedTimesheets.forEach((timesheet) => {
+        const totalHours = calculateTotalHours(timesheet);
+
+        const dayHours: Record<string, number> = {
+          Monday: 0,
+          Tuesday: 0,
+          Wednesday: 0,
+          Thursday: 0,
+          Friday: 0,
+          Saturday: 0,
+          Sunday: 0,
+        };
+
+        if (Array.isArray(timesheet.entries)) {
+          timesheet.entries.forEach((entry) => {
+            const date = new Date(entry.date);
+
+            if (Number.isNaN(date.getTime())) return;
+
+            const dayName = date.toLocaleDateString("en-US", {
+              weekday: "long",
+            });
+
+            if (dayHours.hasOwnProperty(dayName)) {
+              dayHours[dayName] += calculateEntryHours(entry);
+            }
+          });
+        }
+
+        const candidateName = getDisplayName(timesheet);
+
+        const dateRange = `${formatDateOnly(
+          timesheet.startDate
+        )} - ${formatDateOnly(timesheet.endDate)}`;
+
+        const signedBy =
+          timesheet.meta?.signerName ||
+          timesheet.meta?.signedBy ||
+          NA;
+
+        const rowData = [
+          safeValue(timesheet.id),
+          safeValue(candidateName),
+          safeValue(timesheet.client?.name),
+          safeValue(timesheet.position?.title),
+          safeValue(dateRange),
+          totalHours.toFixed(2),
+          safeValue(timesheet.status).toUpperCase(),
+          safeValue(signedBy),
+
+          `${dayHours.Monday.toFixed(2)} h`,
+          `${dayHours.Tuesday.toFixed(2)} h`,
+          `${dayHours.Wednesday.toFixed(2)} h`,
+          `${dayHours.Thursday.toFixed(2)} h`,
+          `${dayHours.Friday.toFixed(2)} h`,
+          `${dayHours.Saturday.toFixed(2)} h`,
+          `${dayHours.Sunday.toFixed(2)} h`,
+        ];
+
+        const escapedRow = rowData.map((value) => {
+          const escaped = String(value).replace(/"/g, '""'); //escapes quotes by doubling them, which is the standard way to include literal quotes in CSV
+
+          return `"${escaped}"`;
+        });
+
+        csvRows.push(escapedRow.join(",")); //CSV line created
+      });
+
+      const csvContent = csvRows.join("\n"); //final multi row creation
+
+      const blob = new Blob(
+        ["\uFEFF" + csvContent],
+        {
+          type: "text/csv;charset=utf-8;",
+        }
+      );
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = url;
+
+      const now = new Date();
+
+      link.setAttribute(
+        "download",
+        `bulk_timesheets_${now.getTime()}.csv`
+      );
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      document.body.removeChild(link);
+
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: `${selectedTimesheets.length} timesheets exported`,
+      });
+    } catch (error) {
+      console.error(error);
+
+      toast({
+        title: "Export Failed",
+        description: "Something went wrong while exporting",
         variant: "destructive",
       });
     }
@@ -591,6 +770,14 @@ const Timesheets = () => {
               </Select>
               <Button onClick={runBulkStatusUpdate} disabled={bulkStatus === "none" || selectedIds.length === 0 || isSaving}>
                 Apply to selected ({selectedIds.length})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={exportSelectedTimesheetsToCSV}
+                disabled={selectedIds.length === 0}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Export Selected ({selectedIds.length})
               </Button>
               <Select
                 value={String(pageSize)}
