@@ -13,7 +13,7 @@ let apiBaseUrl: string;
 if (fromEnv) {
   apiBaseUrl = fromEnv;
 } else if (import.meta.env.DEV) {
-  apiBaseUrl = "http://localhost:4000";
+  apiBaseUrl = "https://nereus-api.vercel.app";//"http://localhost:4000";
 } else {
   apiBaseUrl = "https://nereus-api.vercel.app";
 }
