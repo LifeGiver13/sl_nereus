@@ -50,6 +50,10 @@ type Timesheet = {
   status: TimesheetStatus;
   entries: TimesheetEntry[];
   meta?: TimesheetMeta;
+
+  custom?: Record<string, any>;
+
+
   user?: { id: number; username?: string; profile?: { firstName?: string; surname?: string; fullName?: string; } };
   client?: { id: number; name?: string };
   position?: { id: number; title?: string };
@@ -149,6 +153,45 @@ const Timesheets = () => {
     [token]
   );
 
+  const splitName = (timesheet: Timesheet) => {
+    const profile = timesheet.user?.profile;
+
+    if (profile?.firstName || profile?.surname) {
+      return {
+        firstName: profile.firstName || "",
+        lastName: profile.surname || "",
+      };
+    }
+
+    const fullName = profile?.fullName || "";
+
+    const parts = fullName.trim().split(/\s+/);
+
+    return {
+      firstName: parts.slice(0, -1).join(" "),
+      lastName: parts[parts.length - 1] || "",
+    };
+  };
+
+  const getCustomFieldHeaders = (
+    timesheets: Timesheet[]
+  ): string[] => {
+    const fields = new Set<string>();
+
+    fields.add("Rate");
+    fields.add("SR Number");
+
+    timesheets.forEach((ts) => {
+      if (!ts.custom) return;
+
+      Object.keys(ts.custom).forEach((key) => {
+        fields.add(key);
+      });
+    });
+
+    return Array.from(fields);
+  };
+
   const fetchTimesheets = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -204,94 +247,107 @@ const Timesheets = () => {
     }
   }, [token, fetchTimesheets]);
 
+
+  function buildExportRow(timesheet: Timesheet) {
+    const NA = "N/A";
+
+    const safe = (v: any) =>
+      v === undefined || v === null || v === "" || Number.isNaN(v)
+        ? NA
+        : String(v);
+
+    const formatDateOnly = (value?: string) => {
+      if (!value) return NA;
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? NA : d.toLocaleDateString();
+    };
+
+    const totalHours = calculateTotalHours(timesheet);
+
+    const dayHours: Record<string, number> = {
+      Monday: 0,
+      Tuesday: 0,
+      Wednesday: 0,
+      Thursday: 0,
+      Friday: 0,
+      Saturday: 0,
+      Sunday: 0,
+    };
+
+    if (Array.isArray(timesheet.entries)) {
+      timesheet.entries.forEach((entry) => {
+        const date = new Date(entry.date);
+        if (Number.isNaN(date.getTime())) return;
+
+        const day = date.toLocaleDateString("en-US", {
+          weekday: "long",
+        }) as keyof typeof dayHours;
+
+        if (dayHours[day] !== undefined) {
+          dayHours[day] += calculateEntryHours(entry);
+        }
+      });
+    }
+
+    const custom = timesheet.custom || {};
+
+    return {
+      "Timesheet ID": timesheet.id,
+      "Candidate Name": getDisplayName(timesheet),
+      "Client": timesheet.client?.name || NA,
+      "Position": timesheet.position?.title || NA,
+      "Date Range": `${formatDateOnly(timesheet.startDate)} - ${formatDateOnly(timesheet.endDate)}`,
+      "Status": timesheet.status.toUpperCase(),
+      "Hours Worked": totalHours.toFixed(2),
+      "Signed By": timesheet.meta?.signerName || timesheet.meta?.signedBy || NA,
+
+      "Monday": `${dayHours.Monday.toFixed(2)} h`,
+      "Tuesday": `${dayHours.Tuesday.toFixed(2)} h`,
+      "Wednesday": `${dayHours.Wednesday.toFixed(2)} h`,
+      "Thursday": `${dayHours.Thursday.toFixed(2)} h`,
+      "Friday": `${dayHours.Friday.toFixed(2)} h`,
+      "Saturday": `${dayHours.Saturday.toFixed(2)} h`,
+      "Sunday": `${dayHours.Sunday.toFixed(2)} h`,
+
+      ...custom,
+    };
+  }
+
   const exportTimesheetToCSV = (timesheet: Timesheet) => {
     try {
-      const NA = "N/A";
-      const safeValue = (value: any) => {
-        if (value === undefined || value === null || value === "" ||
-          (typeof value === "number" && Number.isNaN(value))) {
-          return NA;
-        }
-        return String(value).trim();
-      };
+      const row = buildExportRow(timesheet);
 
-      const formatDateOnly = (value?: string) => {
-        if (!value) return NA;
-        const d = new Date(value);
-        return Number.isNaN(d.getTime()) ? NA : d.toLocaleDateString();
-      };
-
-      const totalHours = calculateTotalHours(timesheet);
-
-      // Calculate hours per day of the week
-      const dayHours: Record<string, number> = {
-        Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0,
-        Friday: 0, Saturday: 0, Sunday: 0
-      };
-
-      if (Array.isArray(timesheet.entries)) {
-        timesheet.entries.forEach((entry) => {
-          const date = new Date(entry.date);
-          if (Number.isNaN(date.getTime())) return;
-
-          const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }) as keyof typeof dayHours;
-
-          if (dayHours.hasOwnProperty(dayName)) {
-            dayHours[dayName] += calculateEntryHours(entry);
-          }
-        });
-      }
-
-      const candidateName = getDisplayName(timesheet);
-      const dateRange = `${formatDateOnly(timesheet.startDate)} - ${formatDateOnly(timesheet.endDate)}`;
-      const signedBy = timesheet.meta?.signerName || timesheet.meta?.signedBy || NA;
-
-      const rowData = {
-        "Candidate Name": safeValue(candidateName),
-        "Date Range": dateRange,
-        "Hours Worked": totalHours.toFixed(2),
-        "Status": safeValue(timesheet.status).toUpperCase(),
-        "Signed By": safeValue(signedBy),
-        "Monday": `${dayHours.Monday.toFixed(2)} h`,
-        "Tuesday": `${dayHours.Tuesday.toFixed(2)} h`,
-        "Wednesday": `${dayHours.Wednesday.toFixed(2)} h`,
-        "Thursday": `${dayHours.Thursday.toFixed(2)} h`,
-        "Friday": `${dayHours.Friday.toFixed(2)} h`,
-        "Saturday": `${dayHours.Saturday.toFixed(2)} h`,
-        "Sunday": `${dayHours.Sunday.toFixed(2)} h`,
-      };
-
-      const headers = Object.keys(rowData);
-      const values = headers.map(header => {
-        const val = rowData[header as keyof typeof rowData];
-        const escaped = String(val).replace(/"/g, '""');
-        return `"${escaped}"`;
-      });
+      const headers = Object.keys(row);
+      const values = Object.values(row).map((v) =>
+        `"${String(v).replace(/"/g, '""')}"`
+      );
 
       const csvContent = [
         headers.join(","),
-        values.join(",")
+        values.join(","),
       ].join("\n");
 
-      // UTF-8 BOM for better Excel compatibility
       const blob = new Blob(["\uFEFF" + csvContent], {
-        type: "text/csv;charset=utf-8;" //essential for Excel to recognize UTF-8 encoding (compatibility with older versions)
+        type: "text/csv;charset=utf-8;",
       });
 
-      const url = window.URL.createObjectURL(blob); // create a temporary browser file URL to trigger download
-      const link = document.createElement("a"); //creates the invisible download link and clicks it to start download
-      link.href = url; //sets the download source
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
 
-      const safeUserName = candidateName  //safe file name
+      const safeUserName = getDisplayName(timesheet)
         .replace(/[^a-z0-9]/gi, "_")
         .toLowerCase();
 
-      link.setAttribute("download", `timesheet_${timesheet.id}_${safeUserName}.csv`); //sets the default file name with timesheet ID and candidate name for better organization
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `timesheet_${timesheet.id}_${safeUserName}.csv`
+      );
 
-      document.body.appendChild(link); //adds link to page
-      link.click(); //actuall download trigger
-      document.body.removeChild(link); //removing of invisible link
-      window.URL.revokeObjectURL(url); //importanat cause it frees memepry
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
       toast({
         title: "Export Successful",
@@ -308,183 +364,74 @@ const Timesheets = () => {
   };
 
 
-  const exportSelectedTimesheetsToCSV = () => {
-    try {
-      if (selectedIds.length === 0) { //no export if nothing selected
-        toast({
-          title: "No Selection",
-          description: "Please select at least one timesheet",
-          variant: "destructive",
-        });
-
-        return;
-      }
-
-      const NA = "N/A";
-
-      const safeValue = (value: any) => {
-        if (
-          value === undefined ||
-          value === null ||
-          value === "" ||
-          (typeof value === "number" && Number.isNaN(value))
-        ) {
-          return NA;
-        }
-
-        return String(value).trim();
-      };
-
-      const formatDateOnly = (value?: string) => {
-        if (!value) return NA;
-
-        const d = new Date(value);
-
-        return Number.isNaN(d.getTime())
-          ? NA
-          : d.toLocaleDateString();
-      };
-
-      // ONLY selected rows are created by looping through filtered (not all timesheets) to ensure that export respects filters and only contains what user sees
-      const selectedTimesheets = filtered.filter((row) =>
-        selectedIds.includes(row.id)
-      );
-
-      const csvRows: string[] = [];
-
-      // CSV headers
-      const headers = [
-        "Timesheet ID",
-        "Candidate Name",
-        "Client",
-        "Position",
-        "Date Range",
-        "Hours Worked",
-        "Status",
-        "Signed By",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday",
-      ];
-
-      csvRows.push(headers.join(","));
-
-      selectedTimesheets.forEach((timesheet) => {
-        const totalHours = calculateTotalHours(timesheet);
-
-        const dayHours: Record<string, number> = {
-          Monday: 0,
-          Tuesday: 0,
-          Wednesday: 0,
-          Thursday: 0,
-          Friday: 0,
-          Saturday: 0,
-          Sunday: 0,
-        };
-
-        if (Array.isArray(timesheet.entries)) {
-          timesheet.entries.forEach((entry) => {
-            const date = new Date(entry.date);
-
-            if (Number.isNaN(date.getTime())) return;
-
-            const dayName = date.toLocaleDateString("en-US", {
-              weekday: "long",
-            });
-
-            if (dayHours.hasOwnProperty(dayName)) {
-              dayHours[dayName] += calculateEntryHours(entry);
-            }
-          });
-        }
-
-        const candidateName = getDisplayName(timesheet);
-
-        const dateRange = `${formatDateOnly(
-          timesheet.startDate
-        )} - ${formatDateOnly(timesheet.endDate)}`;
-
-        const signedBy =
-          timesheet.meta?.signerName ||
-          timesheet.meta?.signedBy ||
-          NA;
-
-        const rowData = [
-          safeValue(timesheet.id),
-          safeValue(candidateName),
-          safeValue(timesheet.client?.name),
-          safeValue(timesheet.position?.title),
-          safeValue(dateRange),
-          totalHours.toFixed(2),
-          safeValue(timesheet.status).toUpperCase(),
-          safeValue(signedBy),
-
-          `${dayHours.Monday.toFixed(2)} h`,
-          `${dayHours.Tuesday.toFixed(2)} h`,
-          `${dayHours.Wednesday.toFixed(2)} h`,
-          `${dayHours.Thursday.toFixed(2)} h`,
-          `${dayHours.Friday.toFixed(2)} h`,
-          `${dayHours.Saturday.toFixed(2)} h`,
-          `${dayHours.Sunday.toFixed(2)} h`,
-        ];
-
-        const escapedRow = rowData.map((value) => {
-          const escaped = String(value).replace(/"/g, '""'); //escapes quotes by doubling them, which is the standard way to include literal quotes in CSV
-
-          return `"${escaped}"`;
-        });
-
-        csvRows.push(escapedRow.join(",")); //CSV line created
-      });
-
-      const csvContent = csvRows.join("\n"); //final multi row creation
-
-      const blob = new Blob(
-        ["\uFEFF" + csvContent],
-        {
-          type: "text/csv;charset=utf-8;",
-        }
-      );
-
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-
-      link.href = url;
-
-      const now = new Date();
-
-      link.setAttribute(
-        "download",
-        `bulk_timesheets_${now.getTime()}.csv`
-      );
-
-      document.body.appendChild(link);
-
-      link.click();
-
-      document.body.removeChild(link);
-
-      window.URL.revokeObjectURL(url);
-
+const exportSelectedTimesheetsToCSV = () => {
+  try {
+    if (selectedIds.length === 0) {
       toast({
-        title: "Export Successful",
-        description: `${selectedTimesheets.length} timesheets exported`,
-      });
-    } catch (error) {
-      console.error(error);
-
-      toast({
-        title: "Export Failed",
-        description: "Something went wrong while exporting",
+        title: "No Selection",
+        description: "Please select at least one timesheet",
         variant: "destructive",
       });
+      return;
     }
-  };
+
+    const selectedTimesheets = filtered.filter((t) =>
+      selectedIds.includes(t.id)
+    );
+
+    if (selectedTimesheets.length === 0) return;
+
+    const rows = selectedTimesheets.map(buildExportRow);
+
+    // headers from first row (stable schema)
+    const headers = Object.keys(rows[0]);
+
+    const csvRows: string[] = [];
+
+    csvRows.push(headers.join(","));
+
+    rows.forEach((row) => {
+      const values = headers.map((h) =>
+        `"${String(row[h] ?? "").replace(/"/g, '""')}"`
+      );
+
+      csvRows.push(values.join(","));
+    });
+
+    const csvContent = csvRows.join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    link.setAttribute(
+      "download",
+      `bulk_timesheets_${Date.now()}.csv`
+    );
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Successful",
+      description: `${selectedTimesheets.length} timesheets exported`,
+    });
+  } catch (error) {
+    console.error(error);
+    toast({
+      title: "Export Failed",
+      description: "Something went wrong while exporting",
+      variant: "destructive",
+    });
+  }
+};
 
   function parseLocalDate(dateStr: string) {
     const d = new Date(dateStr);
