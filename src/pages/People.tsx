@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import CreateUserModal from '../components/CreateUserModal';
-import EditUserModal from '../components/EditUserModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Edit, Briefcase, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
@@ -38,6 +37,7 @@ interface UsersResponse {
 }
 
 const People = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -47,8 +47,6 @@ const People = () => {
   const [selectedRole, setSelectedRole] = useState<string>('worker');
   const [selectedStatus, setSelectedStatus] = useState<string>('active');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { toast } = useToast();
 
   const { preferences, updateTablePreferences } = usePreferences();
@@ -183,19 +181,6 @@ const People = () => {
     toast({
       title: "Success",
       description: "User created successfully and list refreshed",
-    });
-  };
-
-  const handleEditUser = (user: User) => {
-    setSelectedUser(user);
-    setIsEditModalOpen(true);
-  };
-
-  const handleUserUpdated = () => {
-    fetchUsers(); // Refresh the user list
-    toast({
-      title: "Success",
-      description: "User updated successfully and list refreshed",
     });
   };
 
@@ -497,7 +482,9 @@ const People = () => {
                               variant="outline"
                               size="sm"
                               className="h-9 w-9 p-0"
-                              onClick={() => handleEditUser(user)}
+                              onClick={() => {
+                                navigate(`/user/${user.id}/edit`);
+                              }}
                             >
                               <Edit className="h-4 w-4" />
                             </IconActionButton>
@@ -557,13 +544,6 @@ const People = () => {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onUserCreated={handleUserCreated}
-        />
-
-        <EditUserModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          user={selectedUser}
-          onUserUpdated={handleUserUpdated}
         />
       </div>
     </AdminLayout>

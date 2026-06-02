@@ -11,6 +11,7 @@ import Applications from "./pages/Applications";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import People from "./pages/People";
 import UserDetail from "./pages/UserDetail";
+import UserEdit from "./pages/UserEdit";
 import Clients from "./pages/Clients";
 import ClientDetail from "./pages/ClientDetail";
 import ShiftManagement from "./pages/ShiftManagement";
@@ -82,6 +83,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <UserDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/user/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <UserEdit />
                   </ProtectedRoute>
                 }
               />

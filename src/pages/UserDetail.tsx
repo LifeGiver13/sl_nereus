@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
-import EditUserModal from '../components/EditUserModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,7 +62,6 @@ const UserDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isViewLoading, setIsViewLoading] = useState(false);
   const { toast } = useToast();
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
 
@@ -203,10 +201,6 @@ const UserDetail = () => {
     );
   };
 
-  const handleEditUser = () => {
-    setIsEditModalOpen(true);
-  };
-
   const handleUserUpdated = () => {
     // Refresh user data
     if (id) {
@@ -311,11 +305,13 @@ const UserDetail = () => {
             <p className="text-gray-600 mt-1">User Details</p>
           </div>
           <Button
-            onClick={handleEditUser}
+            asChild
             className="bg-[#712B71] hover:bg-[#712B71]/90"
           >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit User
+            <Link to={`/user/${user.id}/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit User
+            </Link>
           </Button>
         </div>
 
@@ -478,13 +474,6 @@ const UserDetail = () => {
           </TabsContent>
           </div>
         </Tabs>
-
-        <EditUserModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          user={user}
-          onUserUpdated={handleUserUpdated}
-        />
 
         {user && (
           <UploadUserDocumentModal
