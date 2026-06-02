@@ -15,6 +15,7 @@ import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
 import { IconActionButton, IconActionTooltip } from '@/components/IconActionTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 
 interface User {
@@ -236,6 +237,103 @@ const People = () => {
 
   const matchedFields = getMatchingFields();
 
+
+  //pagination
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(
+      1,
+      currentPage - Math.floor(maxVisiblePages / 2)
+    );
+
+    let endPage = Math.min(
+      totalPages,
+      startPage + maxVisiblePages - 1
+    );
+
+    // Shift window left if near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(
+        1,
+        endPage - maxVisiblePages + 1
+      );
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <PaginationItem key={i}>
+          <PaginationLink
+            href="#"
+            isActive={i === currentPage}
+            onClick={(e) => {
+              e.preventDefault();
+              setCurrentPage(i);
+            }}
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+        <div className="text-sm text-muted-foreground">
+          Showing {(currentPage - 1) * itemsPerPage + 1}
+          {" - "}
+          {Math.min(currentPage * itemsPerPage, total)}
+          {" of "}
+          {total} users
+        </div>
+
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+
+                  if (currentPage > 1) {
+                    setCurrentPage(currentPage - 1);
+                  }
+                }}
+                className={
+                  currentPage === 1
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              />
+            </PaginationItem>
+
+            {pages}
+
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+
+                  if (currentPage < totalPages) {
+                    setCurrentPage(currentPage + 1);
+                  }
+                }}
+                className={
+                  currentPage === totalPages
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    );
+  };
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -420,7 +518,9 @@ const People = () => {
                 </Table>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
+
+                {renderPagination()}
+                {/* <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-gray-500">
                     Showing {users.length} of {total} results
                   </div>
@@ -447,7 +547,7 @@ const People = () => {
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
+                </div> */}
               </>
             )}
           </CardContent>

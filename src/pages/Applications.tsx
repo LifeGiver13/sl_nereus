@@ -12,6 +12,7 @@ import { PageSizeSelector } from "../components/ui/page-size-selector";
 import { usePreferences } from "../hooks/usePreferences";
 import { DocuSignInviteModal } from "../components/DocuSignInviteModal";
 import { IconActionButton, IconActionTooltip } from "@/components/IconActionTooltip";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 interface User {
   id: number;
@@ -65,6 +66,7 @@ const Applications = () => {
   const { preferences, updateTablePreferences } = usePreferences();
   const navigate = useNavigate();
   const pageSize = preferences.table.pageSize;
+
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -207,6 +209,75 @@ const Applications = () => {
     } catch (error) {
       console.error(`Error ${action}ing application:`, error);
     }
+  };
+
+  const renderPagination = () => {
+    const totalPages = Math.ceil(total / pageSize);
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(
+      1,
+      currentPage - Math.floor(maxVisiblePages / 2)
+    );
+
+    let endPage = Math.min(
+      totalPages,
+      startPage + maxVisiblePages - 1
+    );
+
+    // Shift nav btns left if we're near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(
+        1,
+        endPage - maxVisiblePages + 1
+      );
+    }
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <PaginationItem key={i}>
+          <PaginationLink
+            href="#"
+            isActive={i === currentPage}
+            onClick={(e) => {
+              e.preventDefault();
+              setCurrentPage(i);
+            }}
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+
+    return (
+      <Pagination className="mt-6">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                if (currentPage > 1) setCurrentPage(currentPage - 1);
+              }}
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+            />
+          </PaginationItem>
+          {pages}
+          <PaginationItem>
+            <PaginationNext
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+              }}
+              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
   };
 
   return (
@@ -369,7 +440,9 @@ const Applications = () => {
                 </Table>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between mt-4">
+                {renderPagination()}
+
+                {/* <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
                     Showing {applications.length} of {total} results
                   </div>
@@ -396,7 +469,7 @@ const Applications = () => {
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
+                </div> */}
               </>
             )}
           </CardContent>

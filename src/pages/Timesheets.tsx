@@ -13,6 +13,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronDown, ChevronUp, Trash2, Download } from "lucide-react";
 import RejecteTimesheetModal from "@/components/RejectTimesheetModal";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { usePreferences } from "@/hooks/usePreferences";
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected";
 
@@ -124,12 +126,15 @@ const Timesheets = () => {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [date, setDate] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
   const [expandedTimesheetId, setExpandedTimesheetId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState<TimesheetStatus | "none">("none");
   const [signaturePreview, setSignaturePreview] = useState<{ url: string; label: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+
+  const { preferences, updateTablePreferences } = usePreferences();
+  const pageSize = preferences.table.pageSize;
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [selectedRejectId, setSelectedRejectedId] = useState<number | null>(null)
@@ -673,6 +678,102 @@ const Timesheets = () => {
     };
   }
 
+
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(
+      1,
+      page - Math.floor(maxVisiblePages / 2)
+    );
+
+    let endPage = Math.min(
+      totalPages,
+      startPage + maxVisiblePages - 1
+    );
+
+    // Shift the window left if we're near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(
+        1,
+        endPage - maxVisiblePages + 1
+      );
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <PaginationItem key={i}>
+          <PaginationLink
+            href="#"
+            isActive={i === page}
+            onClick={(e) => {
+              e.preventDefault();
+              setPage(i);
+            }}
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      );
+    }
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+        {/* <div className="text-sm text-muted-foreground">
+          Showing page {page} of {totalPages} ({totalTimesheets} total records)
+        </div> */}
+
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+
+                  if (page > 1) {
+                    setPage(page - 1);
+                  }
+                }}
+                className={
+                  page === 1
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              />
+            </PaginationItem>
+
+            {pages}
+
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+
+                  if (page < totalPages) {
+                    setPage(page + 1);
+                  }
+                }}
+                className={
+                  page === totalPages
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    );
+  };
+
+
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -782,7 +883,7 @@ const Timesheets = () => {
               <Select
                 value={String(pageSize)}
                 onValueChange={(v) => {
-                  setPageSize(Number(v));
+                  setPage(Number(v));
                   setPage(1);
                 }}
               >
@@ -1025,7 +1126,7 @@ const Timesheets = () => {
                 </TableBody>
               </Table>
             )}
-            <div className="flex items-center justify-between mt-4">
+            {/* <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-gray-600">
                 Page {page} of {totalPages}
               </p>
@@ -1041,7 +1142,9 @@ const Timesheets = () => {
                   Next
                 </Button>
               </div>
-            </div>
+            </div> */}
+
+            {renderPagination()}
           </CardContent>
         </Card>
       </div>

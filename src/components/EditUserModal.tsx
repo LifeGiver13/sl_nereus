@@ -109,12 +109,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     label: sectionName
   })) : [{ value: "profile", label: "Profile" }];
 
-  const allTabs = [...profileTabs, ...systemTabs];
-  const defaultTab = profileTabs[0]?.value || "profile";
+  const allTabs = [ ...systemTabs, ...profileTabs];
+  const defaultTab = systemTabs[0]?.value || "profile";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit User: {user.username}</DialogTitle>
         </DialogHeader>
