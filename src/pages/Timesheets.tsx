@@ -192,6 +192,7 @@ const Timesheets = () => {
     return Array.from(fields);
   };
 
+
   const fetchTimesheets = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -247,6 +248,18 @@ const Timesheets = () => {
     }
   }, [token, fetchTimesheets]);
 
+  const HEADER_OVERRIDES: Record<string, string> = {
+    srNumber: "SR Number",
+    sr_number: "SR Number",
+    rate: "Rate",
+  };
+
+  function formatHeader(key: string) {
+    return key
+      .replace(/([a-z])([A-Z])/g, "$1 $2")   // camelCase → camel Case
+      .replace(/_/g, " ")                   // snake_case → snake case
+      .replace(/\b\w/g, (c) => c.toUpperCase()); // capitalize words
+  }
 
   function buildExportRow(timesheet: Timesheet) {
     const NA = "N/A";
@@ -309,7 +322,12 @@ const Timesheets = () => {
       "Saturday": `${dayHours.Saturday.toFixed(2)} h`,
       "Sunday": `${dayHours.Sunday.toFixed(2)} h`,
 
-      ...custom,
+      ...Object.fromEntries(
+        Object.entries(custom).map(([k, v]) => [
+          HEADER_OVERRIDES[k] ?? formatHeader(k),
+          v,
+        ])
+      ),
     };
   }
 
@@ -364,74 +382,74 @@ const Timesheets = () => {
   };
 
 
-const exportSelectedTimesheetsToCSV = () => {
-  try {
-    if (selectedIds.length === 0) {
-      toast({
-        title: "No Selection",
-        description: "Please select at least one timesheet",
-        variant: "destructive",
-      });
-      return;
-    }
+  const exportSelectedTimesheetsToCSV = () => {
+    try {
+      if (selectedIds.length === 0) {
+        toast({
+          title: "No Selection",
+          description: "Please select at least one timesheet",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    const selectedTimesheets = filtered.filter((t) =>
-      selectedIds.includes(t.id)
-    );
-
-    if (selectedTimesheets.length === 0) return;
-
-    const rows = selectedTimesheets.map(buildExportRow);
-
-    // headers from first row (stable schema)
-    const headers = Object.keys(rows[0]);
-
-    const csvRows: string[] = [];
-
-    csvRows.push(headers.join(","));
-
-    rows.forEach((row) => {
-      const values = headers.map((h) =>
-        `"${String(row[h] ?? "").replace(/"/g, '""')}"`
+      const selectedTimesheets = filtered.filter((t) =>
+        selectedIds.includes(t.id)
       );
 
-      csvRows.push(values.join(","));
-    });
+      if (selectedTimesheets.length === 0) return;
 
-    const csvContent = csvRows.join("\n");
+      const rows = selectedTimesheets.map(buildExportRow);
 
-    const blob = new Blob(["\uFEFF" + csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
+      // headers from first row (stable schema)
+      const headers = Object.keys(rows[0]);
 
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
+      const csvRows: string[] = [];
 
-    link.href = url;
+      csvRows.push(headers.join(","));
 
-    link.setAttribute(
-      "download",
-      `bulk_timesheets_${Date.now()}.csv`
-    );
+      rows.forEach((row) => {
+        const values = headers.map((h) =>
+          `"${String(row[h] ?? "").replace(/"/g, '""')}"`
+        );
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+        csvRows.push(values.join(","));
+      });
 
-    toast({
-      title: "Export Successful",
-      description: `${selectedTimesheets.length} timesheets exported`,
-    });
-  } catch (error) {
-    console.error(error);
-    toast({
-      title: "Export Failed",
-      description: "Something went wrong while exporting",
-      variant: "destructive",
-    });
-  }
-};
+      const csvContent = csvRows.join("\n");
+
+      const blob = new Blob(["\uFEFF" + csvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+
+      link.setAttribute(
+        "download",
+        `bulk_timesheets_${Date.now()}.csv`
+      );
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: `${selectedTimesheets.length} timesheets exported`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Export Failed",
+        description: "Something went wrong while exporting",
+        variant: "destructive",
+      });
+    }
+  };
 
   function parseLocalDate(dateStr: string) {
     const d = new Date(dateStr);
