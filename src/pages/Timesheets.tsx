@@ -5,7 +5,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { API_BASE_URL } from "../config/env";
@@ -129,7 +128,6 @@ const Timesheets = () => {
   const [expandedTimesheetId, setExpandedTimesheetId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState<TimesheetStatus | "none">("none");
-  const [signaturePreview, setSignaturePreview] = useState<{ url: string; label: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
 
@@ -1063,63 +1061,61 @@ const Timesheets = () => {
                                       <p className="text-xs text-gray-500">No entries added.</p>
                                     )}
                                   </div>
-                                  <div className="rounded-md border bg-white p-3 text-xs space-y-2">
-                                    <p className="font-semibold text-sm text-[#000009]">Signature Details</p>
-                                    <p><strong>Signed by:</strong> {getSignerLabel(row)}</p>
-                                    {row.meta?.signedAt && (
-                                      <p><strong>Signed at:</strong> {new Date(row.meta.signedAt).toLocaleString()}</p>
-                                    )}
-                                    {typeof row.meta?.infoVerified === "boolean" && (
-                                      <p>
-                                        <strong>Info verified:</strong>{" "}
-                                        {row.meta.infoVerified ? "Yes" : "No"}
-                                      </p>
-                                    )}
+                                  <div className="rounded-md border bg-white p-3 text-xs">
+                                    <p className="font-semibold text-sm text-[#000009] mb-3">Signature Details</p>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                      <div className="space-y-2">
+                                        <p><strong>Signed by:</strong> {getSignerLabel(row)}</p>
+                                        {row.meta?.signedAt && (
+                                          <p><strong>Signed at:</strong> {new Date(row.meta.signedAt).toLocaleString()}</p>
+                                        )}
+                                        {typeof row.meta?.infoVerified === "boolean" && (
+                                          <p>
+                                            <strong>Info verified:</strong>{" "}
+                                            {row.meta.infoVerified ? "Yes" : "No"}
+                                          </p>
+                                        )}
 
-                                    {row.meta?.certificationReason && (
-                                      <p>
-                                        <strong>Certification reason:</strong>{" "}
-                                        {row.meta.certificationReason}
-                                      </p>
-                                    )}
+                                        {row.meta?.certificationReason && (
+                                          <p>
+                                            <strong>Certification reason:</strong>{" "}
+                                            {row.meta.certificationReason}
+                                          </p>
+                                        )}
 
-                                    {row.meta?.managerNote && (
-                                      <p>
-                                        <strong>Manager note:</strong>{" "}
-                                        {row.meta.managerNote}
-                                      </p>
-                                    )}
+                                        {row.meta?.managerNote && (
+                                          <p>
+                                            <strong>Manager note:</strong>{" "}
+                                            {row.meta.managerNote}
+                                          </p>
+                                        )}
 
-                                    {row.meta?.rejectionReason && (
-                                      <p className="text-red-600">
-                                        <strong>Rejection reason:</strong>{" "}
-                                        {row.meta.rejectionReason}
-                                      </p>
-                                    )}
+                                        {row.meta?.rejectionReason && (
+                                          <p className="text-red-600">
+                                            <strong>Rejection reason:</strong>{" "}
+                                            {row.meta.rejectionReason}
+                                          </p>
+                                        )}
 
-                                    {row.meta?.rejectedAt && (
-                                      <p className="text-red-500">
-                                        <strong>Rejected at:</strong>{" "}
-                                        {new Date(row.meta.rejectedAt).toLocaleString()}
-                                      </p>
-                                    )}
-                                    {row.meta?.signature ? (
-                                      <Button
-                                        type="button"
-                                        variant="link"
-                                        className="h-auto p-0 text-blue-700"
-                                        onClick={() =>
-                                          setSignaturePreview({
-                                            url: row.meta?.signature || "",
-                                            label: `Timesheet #${row.id}`,
-                                          })
-                                        }
-                                      >
-                                        View signature
-                                      </Button>
-                                    ) : (
-                                      <p><strong>Signature:</strong> Not uploaded</p>
-                                    )}
+                                        {row.meta?.rejectedAt && (
+                                          <p className="text-red-500">
+                                            <strong>Rejected at:</strong>{" "}
+                                            {new Date(row.meta.rejectedAt).toLocaleString()}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="rounded-md border bg-muted/20 p-2">
+                                        {row.meta?.signature ? (
+                                          <img
+                                            src={row.meta.signature}
+                                            alt={`Signature for timesheet #${row.id}`}
+                                            className="mx-auto max-h-44 w-auto rounded"
+                                          />
+                                        ) : (
+                                          <p className="text-gray-500"><strong>Signature:</strong> Not uploaded</p>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1154,25 +1150,6 @@ const Timesheets = () => {
           </CardContent>
         </Card>
       </div>
-      <Dialog open={!!signaturePreview} onOpenChange={(open) => !open && setSignaturePreview(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              Signature Preview {signaturePreview ? `- ${signaturePreview.label}` : ""}
-            </DialogTitle>
-          </DialogHeader>
-          {signaturePreview && (
-            <div className="rounded-md border bg-muted/20 p-2">
-              <img
-                src={signaturePreview.url}
-                alt={`Signature for ${signaturePreview.label}`}
-                className="mx-auto max-h-[70vh] w-auto rounded"
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
       <RejecteTimesheetModal
         open={rejectModalOpen}
         onClose={() => {
