@@ -82,7 +82,7 @@ const Jobs = () => {
 
   const buildSearchQuery = () => {
     const searchObject: any = {};
-    
+
     if (selectedClientId) {
       searchObject.clientId = selectedClientId;
     }
@@ -229,12 +229,12 @@ const Jobs = () => {
   // Helper function to get skill names from IDs
   const getSkillNames = (skillIds: number[]) => {
     if (!skillsData || !skillIds || skillIds.length === 0) return [];
-    
+
     const allSkills: any[] = [];
     Object.values(skillsData).forEach((categorySkills: any) => {
       allSkills.push(...categorySkills);
     });
-    
+
     return skillIds.map(id => {
       const skill = allSkills.find(s => s.id === id);
       return skill ? skill.name : `Skill ${id}`;
@@ -283,7 +283,7 @@ const Jobs = () => {
             <CardDescription>Search and filter job postings</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 items-center">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Client</label>
                 <div className="relative">
@@ -308,7 +308,7 @@ const Jobs = () => {
                   )}
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Posted By</label>
                 <div className="relative">
@@ -333,14 +333,18 @@ const Jobs = () => {
                   )}
                 </div>
               </div>
-              
-              <Input
-                placeholder="Job Title"
-                value={searchFilters.title}
-                onChange={(e) => setSearchFilters({ ...searchFilters, title: e.target.value })}
-                className="w-full"
-              />
-              <div className="flex gap-2 w-full">
+              <div className="space-y-2">
+
+                <label className="text-sm font-medium">Job Title</label>
+                <Input
+                  placeholder="Job Title"
+                  value={searchFilters.title}
+                  onChange={(e) => setSearchFilters({ ...searchFilters, title: e.target.value })}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="flex gap-2  w-full pt-8">
                 <Button onClick={handleSearch} className="bg-[#712B71] hover:bg-[#712B71]/90 flex-1 sm:flex-initial">
                   <Search className="h-4 w-4 mr-2" />
                   Search
@@ -351,7 +355,7 @@ const Jobs = () => {
                 </Button>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Start Date Range</label>
@@ -503,7 +507,7 @@ const Jobs = () => {
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
+                      <PaginationPrevious
                         onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                         className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                       />
@@ -523,7 +527,7 @@ const Jobs = () => {
                       );
                     })}
                     <PaginationItem>
-                      <PaginationNext 
+                      <PaginationNext
                         onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                         className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                       />

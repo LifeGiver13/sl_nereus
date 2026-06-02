@@ -134,7 +134,7 @@ const Timesheets = () => {
 
 
   const { preferences, updateTablePreferences } = usePreferences();
-  const pageSize = preferences.table.pageSize;
+  const pageSize = preferences.table.pageSize || 10;
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [selectedRejectId, setSelectedRejectedId] = useState<number | null>(null)
@@ -883,14 +883,20 @@ const Timesheets = () => {
               <Select
                 value={String(pageSize)}
                 onValueChange={(v) => {
-                  setPage(Number(v));
+                  updateTablePreferences({
+                    pageSize: Number(v),
+                  });
+
                   setPage(1);
                 }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Rows per page" />
                 </SelectTrigger>
+
                 <SelectContent>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="25">25 per page</SelectItem>
                   <SelectItem value="50">50 per page</SelectItem>
                   <SelectItem value="100">100 per page</SelectItem>
                   <SelectItem value="200">200 per page</SelectItem>

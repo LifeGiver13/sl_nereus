@@ -282,13 +282,13 @@ const People = () => {
 
     return (
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-        <div className="text-sm text-muted-foreground">
+        {/* <div className="text-sm text-muted-foreground">
           Showing {(currentPage - 1) * itemsPerPage + 1}
           {" - "}
           {Math.min(currentPage * itemsPerPage, total)}
           {" of "}
           {total} users
-        </div>
+        </div> */}
 
         <Pagination>
           <PaginationContent>
