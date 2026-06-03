@@ -108,6 +108,122 @@ function calculateTotalHours(timesheet: Timesheet): number {
   return timesheet.entries.reduce((sum, entry) => sum + calculateEntryHours(entry as TimesheetEntry), 0);
 }
 
+type CategoryHours = {
+  standard: number;
+  evening: number;
+  weekend: number;
+};
+
+function getEntryInterval(entry: TimesheetEntry): { start: Date; end: Date; rawMinutes: number } | null {
+  if (!entry?.date || typeof entry.startTime !== "string" || typeof entry.endTime !== "string") return null;
+
+  const start = new Date(entry.date);
+  const end = new Date(entry.date);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+
+  const [startHour, startMinute] = entry.startTime.split(":").map(Number);
+  const [endHour, endMinute] = entry.endTime.split(":").map(Number);
+  if ([startHour, startMinute, endHour, endMinute].some((v) => Number.isNaN(v))) return null;
+
+  start.setHours(startHour, startMinute, 0, 0);
+  end.setHours(endHour, endMinute, 0, 0);
+  if (end <= start) {
+    end.setDate(end.getDate() + 1);
+  }
+
+  const rawMinutes = Math.max(0, (end.getTime() - start.getTime()) / 60000);
+  return { start, end, rawMinutes };
+}
+
+function getCategoryMinutesForInterval(start: Date, end: Date): CategoryHours {
+  const categoryMinutes: CategoryHours = { standard: 0, evening: 0, weekend: 0 };
+  let cursor = new Date(start);
+
+  while (cursor < end) {
+    const dayStart = new Date(cursor);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const segmentEnd = end < dayEnd ? end : dayEnd;
+    const segmentMinutes = Math.max(0, (segmentEnd.getTime() - cursor.getTime()) / 60000);
+    const dayOfWeek = cursor.getDay(); // Sun=0 ... Sat=6
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      categoryMinutes.weekend += segmentMinutes;
+    } else {
+      const standardStart = new Date(dayStart);
+      standardStart.setHours(6, 0, 0, 0);
+      const standardEnd = new Date(dayStart);
+      standardEnd.setHours(20, 0, 0, 0);
+
+      const overlapStart = cursor > standardStart ? cursor : standardStart;
+      const overlapEnd = segmentEnd < standardEnd ? segmentEnd : standardEnd;
+      const standardMinutes = overlapEnd > overlapStart ? (overlapEnd.getTime() - overlapStart.getTime()) / 60000 : 0;
+
+      categoryMinutes.standard += standardMinutes;
+      categoryMinutes.evening += Math.max(0, segmentMinutes - standardMinutes);
+    }
+
+    cursor = segmentEnd;
+  }
+
+  return categoryMinutes;
+}
+
+function calculateCategoryHours(timesheet: Timesheet): CategoryHours {
+  if (!Array.isArray(timesheet.entries)) return { standard: 0, evening: 0, weekend: 0 };
+
+  return timesheet.entries.reduce(
+    (totals, entry) => {
+      const interval = getEntryInterval(entry as TimesheetEntry);
+      if (!interval || interval.rawMinutes <= 0) return totals;
+
+      const breakMinutes = typeof entry.break === "number" && !Number.isNaN(entry.break) ? Math.max(entry.break, 0) : 0;
+      const workedMinutes = Math.max(interval.rawMinutes - breakMinutes, 0);
+      const ratio = interval.rawMinutes > 0 ? workedMinutes / interval.rawMinutes : 0;
+
+      const rawByCategory = getCategoryMinutesForInterval(interval.start, interval.end);
+      totals.standard += (rawByCategory.standard / 60) * ratio;
+      totals.evening += (rawByCategory.evening / 60) * ratio;
+      totals.weekend += (rawByCategory.weekend / 60) * ratio;
+      return totals;
+    },
+    { standard: 0, evening: 0, weekend: 0 } as CategoryHours
+  );
+}
+
+function formatCategoryHoursForDisplay(categoryHours: CategoryHours, totalHours: number) {
+  const roundedTotal = Number(totalHours.toFixed(2));
+  const roundedStandard = Number(categoryHours.standard.toFixed(2));
+  const roundedEvening = Number(categoryHours.evening.toFixed(2));
+  const roundedWeekend = Number(categoryHours.weekend.toFixed(2));
+
+  const currentSum = roundedStandard + roundedEvening + roundedWeekend;
+  const difference = Number((roundedTotal - currentSum).toFixed(2));
+
+  if (difference === 0) {
+    return {
+      standard: roundedStandard,
+      evening: roundedEvening,
+      weekend: roundedWeekend,
+    };
+  }
+
+  const largestKey =
+    roundedStandard >= roundedEvening && roundedStandard >= roundedWeekend
+      ? "standard"
+      : roundedEvening >= roundedWeekend
+        ? "evening"
+        : "weekend";
+
+  return {
+    standard: largestKey === "standard" ? Number((roundedStandard + difference).toFixed(2)) : roundedStandard,
+    evening: largestKey === "evening" ? Number((roundedEvening + difference).toFixed(2)) : roundedEvening,
+    weekend: largestKey === "weekend" ? Number((roundedWeekend + difference).toFixed(2)) : roundedWeekend,
+  };
+}
+
 function getSignerLabel(timesheet: Timesheet): string {
   if (timesheet.meta?.signerName) {
     const role = timesheet.meta.managerRole ? ` (${timesheet.meta.managerRole})` : "";
@@ -923,6 +1039,8 @@ const Timesheets = () => {
                   {filtered.map((row) => {
                     const isExpanded = expandedTimesheetId === row.id;
                     const totalHours = calculateTotalHours(row);
+                    const categoryHours = calculateCategoryHours(row);
+                    const displayCategoryHours = formatCategoryHoursForDisplay(categoryHours, totalHours);
                     const entryCount = Array.isArray(row.entries) ? row.entries.length : 0;
                     return (
                       <React.Fragment key={row.id}>
@@ -1013,35 +1131,44 @@ const Timesheets = () => {
                                 <div className="grid gap-3 md:grid-cols-2">
                                   <div>
                                     {entryCount > 0 ? (
-                                      <div className="rounded-md border bg-white w-full md:max-w-xl">
-                                        <Table>
-                                          <TableHeader>
-                                            <TableRow>
-                                              <TableHead className="h-8">Day / Date</TableHead>
-                                              <TableHead className="h-8">Start</TableHead>
-                                              <TableHead className="h-8">End</TableHead>
-                                              <TableHead className="h-8">Break</TableHead>
-                                              <TableHead className="h-8">Hours</TableHead>
-                                            </TableRow>
-                                          </TableHeader>
-                                          <TableBody>
-                                            {row.entries.map((entry, idx) => {
-                                              const entryDate = new Date(entry.date);
-                                              const day = Number.isNaN(entryDate.getTime()) ? "-" : dayFormatter.format(entryDate);
-                                              const hours = calculateEntryHours(entry);
-                                              return (
-                                                <TableRow key={`${row.id}-entry-${idx}`} className="text-xs">
-                                                  <TableCell className="py-1.5">{day}, {formatDate(entry.date)}</TableCell>
-                                                  <TableCell className="py-1.5">{entry.startTime}</TableCell>
-                                                  <TableCell className="py-1.5">{entry.endTime}</TableCell>
-                                                  <TableCell className="py-1.5">{entry.break}m</TableCell>
-                                                  <TableCell className="py-1.5">{hours.toFixed(2)}h</TableCell>
-                                                </TableRow>
-                                              );
-                                            })}
-                                          </TableBody>
-                                        </Table>
-                                      </div>
+                                      <>
+                                        <div className="rounded-md border bg-white w-full">
+                                          <Table>
+                                            <TableHeader>
+                                              <TableRow>
+                                                <TableHead className="h-8">Day / Date</TableHead>
+                                                <TableHead className="h-8">Start</TableHead>
+                                                <TableHead className="h-8">End</TableHead>
+                                                <TableHead className="h-8">Break</TableHead>
+                                                <TableHead className="h-8">Hours</TableHead>
+                                              </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                              {row.entries.map((entry, idx) => {
+                                                const entryDate = new Date(entry.date);
+                                                const day = Number.isNaN(entryDate.getTime()) ? "-" : dayFormatter.format(entryDate);
+                                                const hours = calculateEntryHours(entry);
+                                                return (
+                                                  <TableRow key={`${row.id}-entry-${idx}`} className="text-xs">
+                                                    <TableCell className="py-1.5">{day}, {formatDate(entry.date)}</TableCell>
+                                                    <TableCell className="py-1.5">{entry.startTime}</TableCell>
+                                                    <TableCell className="py-1.5">{entry.endTime}</TableCell>
+                                                    <TableCell className="py-1.5">{entry.break}m</TableCell>
+                                                    <TableCell className="py-1.5">{hours.toFixed(2)}h</TableCell>
+                                                  </TableRow>
+                                                );
+                                              })}
+                                            </TableBody>
+                                          </Table>
+                                        </div>
+                                        <div className="mt-2 rounded-md border bg-white p-2 text-xs text-gray-700">
+                                          <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
+                                            <p><strong>Standard:</strong> {displayCategoryHours.standard.toFixed(2)}h</p>
+                                            <p><strong>Evening:</strong> {displayCategoryHours.evening.toFixed(2)}h</p>
+                                            <p><strong>Weekend:</strong> {displayCategoryHours.weekend.toFixed(2)}h</p>
+                                          </div>
+                                        </div>
+                                      </>
                                     ) : (
                                       <p className="text-xs text-gray-500">No entries added.</p>
                                     )}
