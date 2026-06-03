@@ -48,6 +48,7 @@ type Timesheet = {
   startDate: string;
   endDate: string;
   status: TimesheetStatus;
+  approvedAt?: string;
   entries: TimesheetEntry[];
   meta?: TimesheetMeta;
 
@@ -134,6 +135,8 @@ const Timesheets = () => {
   const [bulkStatus, setBulkStatus] = useState<TimesheetStatus | "none">("none");
   const [isSaving, setIsSaving] = useState(false);
 
+  const [periodDate, setPeriodDate] = useState("");
+  const [approvedDate, setApprovedDate] = useState("");
 
   const { preferences, updateTablePreferences } = usePreferences();
   const pageSize = preferences.table.pageSize || 10;
@@ -513,9 +516,26 @@ const Timesheets = () => {
       }
 
 
+      let matchesApprovalWeek = true;
 
+      if (approvedDate) {
+        if (!row.approvedAt) {
+          matchesApprovalWeek = false
+        } else {
+          const { monday, sunday } = getWeekRange(approvedDate);
 
-      return matchesUser && matchesWeek;
+          const approved = parseLocalDate(row.approvedAt);
+
+          monday.setHours(0, 0, 0, 0)
+          sunday.setHours(23, 59, 59, 999)
+          approved.setHours(12, 0, 0, 0)
+
+          matchesApprovalWeek =
+            approved >= monday && approved <= sunday;
+        }
+      }
+
+      return matchesUser && matchesWeek && matchesApprovalWeek;
 
 
     });
