@@ -31,7 +31,7 @@ const Settings = () => {
                   <DepartmentManagement />
                 </AccordionContent>
               </AccordionItem>
-              
+
               <AccordionItem value="view-management">
                 <AccordionTrigger className="text-lg font-semibold">
                   View Management
@@ -40,7 +40,7 @@ const Settings = () => {
                   <ViewManagement />
                 </AccordionContent>
               </AccordionItem>
-              
+
               <AccordionItem value="application-forms">
                 <AccordionTrigger className="text-lg font-semibold">
                   Application Forms Manager
@@ -49,8 +49,17 @@ const Settings = () => {
                   <ApplicationFormsManager />
                 </AccordionContent>
               </AccordionItem>
-              
+
             </Accordion>
+
+            <AccordionItem value="timesheet-management">
+              <AccordionTrigger className="text-lg font-semibold">
+                Timesheet Management
+              </AccordionTrigger>
+              <AccordionContent>
+                {/* <TimesheetManagement /> */}
+              </AccordionContent>
+            </AccordionItem>
           </CardContent>
         </Card>
       </div>

@@ -14,6 +14,7 @@ import { ChevronDown, ChevronUp, Trash2, Download } from "lucide-react";
 import RejecteTimesheetModal from "@/components/RejectTimesheetModal";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { usePreferences } from "@/hooks/usePreferences";
+import { object } from "zod";
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected";
 
@@ -396,6 +397,8 @@ const Timesheets = () => {
 
     const totalHours = calculateTotalHours(timesheet);
 
+    const categoryHours = calculateCategoryHours(timesheet);
+    const displayCategoryHours = formatCategoryHoursForDisplay(categoryHours, totalHours);
     const dayHours: Record<string, number> = {
       Monday: 0,
       Tuesday: 0,
@@ -423,38 +426,104 @@ const Timesheets = () => {
 
     const custom = timesheet.custom || {};
 
-    return {
+    const baseRow: Record<string, any> = {
+      // main feilds
       "Timesheet ID": timesheet.id,
-      "Candidate Name": getDisplayName(timesheet),
+      "User": getDisplayName(timesheet),
+      "User ID": timesheet.userId,
       "Client": timesheet.client?.name || NA,
       "Position": timesheet.position?.title || NA,
-      "Date Range": `${formatDateOnly(timesheet.startDate)} - ${formatDateOnly(timesheet.endDate)}`,
       "Status": timesheet.status.toUpperCase(),
-      "Hours Worked": totalHours.toFixed(2),
+
+      "Start Date": formatDateOnly(timesheet.startDate),
+      "End Date": formatDateOnly(timesheet.endDate),
+
+      // approved at included if status approved
+      "Approved At":
+        timesheet.approvedAt
+          ? new Date(timesheet.approvedAt).toLocaleString()
+          : timesheet.status === "approved"
+            ? "APPROVED (no timestamp)"
+            : NA,
+
       "Signed By": timesheet.meta?.signerName || timesheet.meta?.signedBy || NA,
 
-      "Monday": `${dayHours.Monday.toFixed(2)} h`,
-      "Tuesday": `${dayHours.Tuesday.toFixed(2)} h`,
-      "Wednesday": `${dayHours.Wednesday.toFixed(2)} h`,
-      "Thursday": `${dayHours.Thursday.toFixed(2)} h`,
-      "Friday": `${dayHours.Friday.toFixed(2)} h`,
-      "Saturday": `${dayHours.Saturday.toFixed(2)} h`,
-      "Sunday": `${dayHours.Sunday.toFixed(2)} h`,
+      //category type hours
+      "Standard Hours": displayCategoryHours.standard.toFixed(2),
+      "Evening Hours": displayCategoryHours.evening.toFixed(2),
+      "Weekend Hours": displayCategoryHours.weekend.toFixed(2),
 
-      ...Object.fromEntries(
-        Object.entries(custom).map(([k, v]) => [
-          HEADER_OVERRIDES[k] ?? formatHeader(k),
-          v,
-        ])
-      ),
+      // hours
+      "Total Hours": totalHours.toFixed(2),
+      "Monday Hours": dayHours.Monday.toFixed(2),
+      "Tuesday Hours": dayHours.Tuesday.toFixed(2),
+      "Wednesday Hours": dayHours.Wednesday.toFixed(2),
+      "Thursday Hours": dayHours.Thursday.toFixed(2),
+      "Friday Hours": dayHours.Friday.toFixed(2),
+      "Saturday Hours": dayHours.Saturday.toFixed(2),
+      "Sunday Hours": dayHours.Sunday.toFixed(2),
+
+      //signature info
+      "Signed At": timesheet.meta?.signedAt
+        ? new Date(timesheet.meta.signedAt).toLocaleString()
+        : NA,
+
+      "Manager Role": timesheet.meta?.managerRole || NA,
+      "Manager Note": timesheet.meta?.managerNote || NA,
+      "Info Verified": typeof timesheet.meta?.infoVerified === "boolean"
+        ? timesheet.meta.infoVerified
+          ? "Yes"
+          : "No"
+        : NA,
+
+      "Rejection Reason": timesheet.meta?.rejectionReason || NA,
+      "Rejected At": timesheet.meta?.rejectedAt
+        ? new Date(timesheet.meta.rejectedAt).toLocaleString()
+        : NA,
+    };
+
+    //custom fields
+    const customFields = Object.fromEntries(
+      Object.entries(custom).map(([k, v]) => [
+        HEADER_OVERRIDES[k] ?? formatHeader(k),
+        v ?? NA,
+      ])
+    );
+
+    return {
+      ...baseRow,
+      ...customFields,
     };
   }
 
+
+
+  function getStableHeaders(rows: Record<string, any>[]) {
+    const ordered: string[] = [];
+
+    rows.forEach((row) => {
+      Object.keys(row).forEach((key) => {
+        if (!ordered.includes(key)) {
+          ordered.push(key);
+        }
+      });
+    });
+
+    return ordered;
+  }
+
+
+
   const exportTimesheetToCSV = (timesheet: Timesheet) => {
     try {
+
+
       const row = buildExportRow(timesheet);
 
-      const headers = Object.keys(row);
+
+      const headers = Object.keys(row)
+
+
       const values = Object.values(row).map((v) =>
         `"${String(v).replace(/"/g, '""')}"`
       );
@@ -516,22 +585,20 @@ const Timesheets = () => {
         selectedIds.includes(t.id)
       );
 
-      if (selectedTimesheets.length === 0) return;
-
       const rows = selectedTimesheets.map(buildExportRow);
 
-      // headers from first row (stable schema)
-      const headers = Object.keys(rows[0]);
+      const headers = getStableHeaders(rows);
 
       const csvRows: string[] = [];
 
+      // header row
       csvRows.push(headers.join(","));
 
+      // data rows
       rows.forEach((row) => {
         const values = headers.map((h) =>
           `"${String(row[h] ?? "").replace(/"/g, '""')}"`
         );
-
         csvRows.push(values.join(","));
       });
 
@@ -545,11 +612,7 @@ const Timesheets = () => {
       const link = document.createElement("a");
 
       link.href = url;
-
-      link.setAttribute(
-        "download",
-        `bulk_timesheets_${Date.now()}.csv`
-      );
+      link.setAttribute("download", `bulk_timesheets_${Date.now()}.csv`);
 
       document.body.appendChild(link);
       link.click();
@@ -569,7 +632,6 @@ const Timesheets = () => {
       });
     }
   };
-
   function parseLocalDate(dateStr: string) {
     const d = new Date(dateStr);
 
