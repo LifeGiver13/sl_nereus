@@ -382,6 +382,8 @@ const Timesheets = () => {
   }
 
   function buildExportRow(timesheet: Timesheet) {
+    console.log("EXPORT TIMESHEET", timesheet);
+
     const NA = "N/A";
 
     const safe = (v: any) =>
@@ -425,12 +427,53 @@ const Timesheets = () => {
     }
 
     const custom = timesheet.custom || {};
+    const splitName = (timesheet: Timesheet) => {
+      const profile = timesheet.user?.profile;
+
+      if (profile?.firstName || profile?.surname) {
+        return {
+          firstName: profile.firstName || "",
+          lastName: profile.surname || "",
+        };
+      }
+
+      const fullName = (profile?.fullName || "").trim();
+
+      if (!fullName) {
+        return {
+          firstName: "",
+          lastName: "",
+        };
+      }
+
+      const parts = fullName.split(/\s+/);
+
+      // Single-word name
+      if (parts.length === 1) {
+        return {
+          firstName: parts[0],
+          lastName: "",
+        };
+      }
+
+      return {
+        firstName: parts.slice(0, -1).join(" "),
+        lastName: parts[parts.length - 1],
+      };
+    };
+
+    const names = splitName(timesheet);
 
     const baseRow: Record<string, any> = {
       // main feilds
       "Timesheet ID": timesheet.id,
-      "User": getDisplayName(timesheet),
-      "User ID": timesheet.userId,
+      "First Name": names.firstName || NA,
+      "Department": "-", // blank for now
+      "Notes": "-",      // blank for now
+      "Type": "-",
+
+      // "User": getDisplayName(timesheet),
+      "Worker ID": timesheet.userId,
       "Client": timesheet.client?.name || NA,
       "Position": timesheet.position?.title || NA,
       "Status": timesheet.status.toUpperCase(),
