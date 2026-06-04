@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { API_BASE_URL } from "../config/env";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp, Trash2, Download } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Download, Edit } from "lucide-react";
 import RejecteTimesheetModal from "@/components/RejectTimesheetModal";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { usePreferences } from "@/hooks/usePreferences";
 import { object } from "zod";
+import { useNavigate } from "react-router-dom";
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected";
 
@@ -271,7 +272,11 @@ const Timesheets = () => {
       ...(token ? { Authorization: `Bearer ${token}`, "x-service-user": token } : {}),
     }),
     [token]
+
   );
+
+  const navigate = useNavigate()
+
 
   const splitName = (timesheet: Timesheet) => {
     const profile = timesheet.user?.profile;
@@ -464,10 +469,42 @@ const Timesheets = () => {
 
     const names = splitName(timesheet);
 
+    const dayData: Record<
+      string,
+      {
+        hours: number;
+        startTime: string;
+        endTime: string;
+      }
+    > = {
+      Monday: { hours: 0, startTime: "", endTime: "" },
+      Tuesday: { hours: 0, startTime: "", endTime: "" },
+      Wednesday: { hours: 0, startTime: "", endTime: "" },
+      Thursday: { hours: 0, startTime: "", endTime: "" },
+      Friday: { hours: 0, startTime: "", endTime: "" },
+      Saturday: { hours: 0, startTime: "", endTime: "" },
+      Sunday: { hours: 0, startTime: "", endTime: "" },
+    };
+
+    timesheet.entries.forEach((entry) => {
+      const date = new Date(entry.date);
+
+      const day = date.toLocaleDateString("en-US", {
+        weekday: "long",
+      }) as keyof typeof dayData;
+
+      if (dayData[day]) {
+        dayData[day].hours += calculateEntryHours(entry);
+        dayData[day].startTime = entry.startTime;
+        dayData[day].endTime = entry.endTime;
+      }
+    });
+
     const baseRow: Record<string, any> = {
       // main feilds
       "Timesheet ID": timesheet.id,
-      "First Name": names.firstName || NA,
+      "F/N": names.firstName || "-",
+      "L/N": names.lastName || '-',
       "Department": "-", // blank for now
       "Notes": "-",      // blank for now
       "Type": "-",
@@ -498,13 +535,12 @@ const Timesheets = () => {
 
       // hours
       "Total Hours": totalHours.toFixed(2),
-      "Monday Hours": dayHours.Monday.toFixed(2),
-      "Tuesday Hours": dayHours.Tuesday.toFixed(2),
-      "Wednesday Hours": dayHours.Wednesday.toFixed(2),
-      "Thursday Hours": dayHours.Thursday.toFixed(2),
-      "Friday Hours": dayHours.Friday.toFixed(2),
-      "Saturday Hours": dayHours.Saturday.toFixed(2),
-      "Sunday Hours": dayHours.Sunday.toFixed(2),
+      "Monday Hours": `${dayData.Monday.hours.toFixed(2)} (${dayData.Monday.startTime}-${dayData.Monday.endTime})`,
+      "Tuesday Hours": `${dayData.Tuesday.hours.toFixed(2)} (${dayData.Tuesday.startTime}-${dayData.Tuesday.endTime})`,
+      "Wednesday Hours": `${dayData.Wednesday.hours.toFixed(2)} (${dayData.Wednesday.startTime}-${dayData.Wednesday.endTime})`,
+      "Thursday Hours": `${dayData.Thursday.hours.toFixed(2)} (${dayData.Thursday.startTime}-${dayData.Thursday.endTime})`,
+      "Friday Hours": `${dayData.Friday.hours.toFixed(2)} (${dayData.Friday.startTime}-${dayData.Friday.endTime})`,
+      "Saturday Hours": `${dayData.Sunday.hours.toFixed(2)} (${dayData.Sunday.startTime}-${dayData.Sunday.endTime})`,
 
       //signature info
       "Signed At": timesheet.meta?.signedAt
@@ -1184,6 +1220,16 @@ const Timesheets = () => {
                               >
                                 <Download className="h-4 w-4 mr-1" />
                                 Export
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  navigate(`/admin/timesheets/${row.id}/edit`)
+                                }
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
                               </Button>
                               {row.status !== "approved" && (
                                 <Button

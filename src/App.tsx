@@ -32,6 +32,7 @@ import StartPageEditor from "./pages/StartPageEditor";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { DocumentProvider } from "./contexts/DocumentContext";
+import CustomAddition from "./pages/UpdateTimesheet";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,17 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+
+              <Route
+                path="/admin/timesheets/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    < CustomAddition />
+                  </ProtectedRoute>
+                }
+              />
+
+
               <Route
                 path="/user/:id/edit"
                 element={
