@@ -1225,7 +1225,7 @@ const Timesheets = () => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() =>
-                                  navigate(`/admin/timesheets/${row.id}/edit`)
+                                  navigate(`/timesheets/${row.id}/edit`)
                                 }
                               >
                                 <Edit className="h-4 w-4 mr-1" />

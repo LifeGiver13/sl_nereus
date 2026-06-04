@@ -89,7 +89,7 @@ const App = () => (
               />
 
               <Route
-                path="/admin/timesheets/:id/edit"
+                path="/timesheets/:id/edit"
                 element={
                   <ProtectedRoute>
                     < CustomAddition />
