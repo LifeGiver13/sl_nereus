@@ -33,6 +33,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { DocumentProvider } from "./contexts/DocumentContext";
 import CustomAddition from "./pages/UpdateTimesheet";
+import { TimesheetCustomFieldsProvider } from "./contexts/TimesheetContext";
 
 const queryClient = new QueryClient();
 
@@ -42,210 +43,212 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <DocumentProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/applications"
-                element={
-                  <ProtectedRoute>
-                    <Applications />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/application/:id"
-                element={
-                  <ProtectedRoute>
-                    <ApplicationDetail />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/people"
-                element={
-                  <ProtectedRoute>
-                    <People />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/user/:id"
-                element={
-                  <ProtectedRoute>
-                    <UserDetail />
-                  </ProtectedRoute>
-                }
-              />
+        <TimesheetCustomFieldsProvider>
+          <DocumentProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/applications"
+                  element={
+                    <ProtectedRoute>
+                      <Applications />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/application/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ApplicationDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/people"
+                  element={
+                    <ProtectedRoute>
+                      <People />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/user/:id"
+                  element={
+                    <ProtectedRoute>
+                      <UserDetail />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/timesheets/:id/edit"
-                element={
-                  <ProtectedRoute>
-                    < CustomAddition />
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/timesheets/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      < CustomAddition />
+                    </ProtectedRoute>
+                  }
+                />
 
 
-              <Route
-                path="/user/:id/edit"
-                element={
-                  <ProtectedRoute>
-                    <UserEdit />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/clients"
-                element={
-                  <ProtectedRoute>
-                    <Clients />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/client/:id"
-                element={
-                  <ProtectedRoute>
-                    <ClientDetail />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/client/:clientId/shifts"
-                element={
-                  <ProtectedRoute>
-                    <ShiftManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/client/:clientId/positions"
-                element={
-                  <ProtectedRoute>
-                    <PositionManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/jobs"
-                element={
-                  <ProtectedRoute>
-                    <Jobs />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/jobs/create"
-                element={
-                  <ProtectedRoute>
-                    <JobCreate />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/jobs/edit/:id"
-                element={
-                  <ProtectedRoute>
-                    <JobEdit />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/job/:id"
-                element={
-                  <ProtectedRoute>
-                    <JobDetail />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/job/:id/fill"
-                element={
-                  <ProtectedRoute>
-                    <JobFill />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/timesheets"
-                element={
-                  <ProtectedRoute>
-                    <Timesheets />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/skills"
-                element={
-                  <ProtectedRoute>
-                    <SkillsManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/skills/category/:categoryId"
-                element={
-                  <ProtectedRoute>
-                    <CategorySkillsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/content/pages"
-                element={
-                  <ProtectedRoute>
-                    <ContentPages />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/content/pages/landing-page"
-                element={
-                  <ProtectedRoute>
-                    <LandingPageEditor />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/content/pages/start-page"
-                element={
-                  <ProtectedRoute>
-                    <StartPageEditor />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <Settings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings/application-forms/create"
-                element={
-                  <ProtectedRoute>
-                    <ApplicationFormCreate />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </DocumentProvider>
+                <Route
+                  path="/user/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      <UserEdit />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/clients"
+                  element={
+                    <ProtectedRoute>
+                      <Clients />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/client/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ClientDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/client/:clientId/shifts"
+                  element={
+                    <ProtectedRoute>
+                      <ShiftManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/client/:clientId/positions"
+                  element={
+                    <ProtectedRoute>
+                      <PositionManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/jobs"
+                  element={
+                    <ProtectedRoute>
+                      <Jobs />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/jobs/create"
+                  element={
+                    <ProtectedRoute>
+                      <JobCreate />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/jobs/edit/:id"
+                  element={
+                    <ProtectedRoute>
+                      <JobEdit />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/job/:id"
+                  element={
+                    <ProtectedRoute>
+                      <JobDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/job/:id/fill"
+                  element={
+                    <ProtectedRoute>
+                      <JobFill />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/timesheets"
+                  element={
+                    <ProtectedRoute>
+                      <Timesheets />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/skills"
+                  element={
+                    <ProtectedRoute>
+                      <SkillsManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/skills/category/:categoryId"
+                  element={
+                    <ProtectedRoute>
+                      <CategorySkillsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/content/pages"
+                  element={
+                    <ProtectedRoute>
+                      <ContentPages />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/content/pages/landing-page"
+                  element={
+                    <ProtectedRoute>
+                      <LandingPageEditor />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/content/pages/start-page"
+                  element={
+                    <ProtectedRoute>
+                      <StartPageEditor />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/application-forms/create"
+                  element={
+                    <ProtectedRoute>
+                      <ApplicationFormCreate />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </DocumentProvider>
+        </TimesheetCustomFieldsProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

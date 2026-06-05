@@ -6,6 +6,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import DepartmentManagement from '../components/DepartmentManagement';
 import ViewManagement from '../components/ViewManagement';
 import ApplicationFormsManager from '../components/ApplicationFormsManager';
+import TimesheetCustomManagment from '@/components/TimesheetCustomManagment';
 
 const Settings = () => {
   return (
@@ -50,16 +51,19 @@ const Settings = () => {
                 </AccordionContent>
               </AccordionItem>
 
+
+              <AccordionItem value="timesheet-management">
+                <AccordionTrigger className="text-lg font-semibold">
+                  Timesheet Custom Field Management
+                </AccordionTrigger>
+                <AccordionContent>
+                  <TimesheetCustomManagment />
+                </AccordionContent>
+              </AccordionItem>
+
             </Accordion>
 
-            <AccordionItem value="timesheet-management">
-              <AccordionTrigger className="text-lg font-semibold">
-                Timesheet Management
-              </AccordionTrigger>
-              <AccordionContent>
-                {/* <TimesheetManagement /> */}
-              </AccordionContent>
-            </AccordionItem>
+
           </CardContent>
         </Card>
       </div>
