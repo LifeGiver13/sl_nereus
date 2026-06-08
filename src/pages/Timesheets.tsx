@@ -253,7 +253,6 @@ const Timesheets = () => {
   const [bulkStatus, setBulkStatus] = useState<TimesheetStatus | "none">("none");
   const [isSaving, setIsSaving] = useState(false);
 
-  const [periodDate, setPeriodDate] = useState("");
   const [approvedDate, setApprovedDate] = useState("");
 
   const { preferences, updateTablePreferences } = usePreferences();
@@ -261,6 +260,8 @@ const Timesheets = () => {
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [selectedRejectId, setSelectedRejectedId] = useState<number | null>(null)
+
+  const [dateFilterType, setDateFilterType] = useState<"period" | "approved">("period")
 
 
   const { token } = useAuth();
@@ -742,61 +743,45 @@ const Timesheets = () => {
         String(row.userId).includes(userTerm) ||
         getDisplayName(row).toLowerCase().includes(userTerm);
 
-      let matchesWeek = true;
+      let matchesDate = true;
 
       if (date) {
         const { monday, sunday } = getWeekRange(date);
 
-        const rowStart = parseLocalDate(row.startDate);
-        const rowEnd = parseLocalDate(row.endDate);
-
-
-        // normalize times
         monday.setHours(0, 0, 0, 0);
         sunday.setHours(23, 59, 59, 999);
-        rowStart.setHours(0, 0, 0, 0);
-        rowEnd.setHours(23, 59, 59, 999);
 
-        // overlap check
-        matchesWeek =
-          rowStart <= sunday &&
-          rowEnd >= monday;
+        if (dateFilterType === "period") {
+          const rowStart = parseLocalDate(row.startDate);
+          const rowEnd = parseLocalDate(row.endDate);
 
-        console.log({
-          selected: date,
-          monday,
-          sunday,
-          rowStart,
-          rowEnd,
-          matchesWeek,
-        });
-      }
+          rowStart.setHours(0, 0, 0, 0);
+          rowEnd.setHours(23, 59, 59, 999);
 
+          matchesDate =
+            rowStart <= sunday &&
+            rowEnd >= monday;
+        }
 
-      let matchesApprovalWeek = true;
+        if (dateFilterType === "approved") {
+          if (!row.approvedAt) {
+            matchesDate = false;
+          } else {
+            const approved = parseLocalDate(row.approvedAt);
 
-      if (approvedDate) {
-        if (!row.approvedAt) {
-          matchesApprovalWeek = false
-        } else {
-          const { monday, sunday } = getWeekRange(approvedDate);
+            approved.setHours(12, 0, 0, 0);
 
-          const approved = parseLocalDate(row.approvedAt);
-
-          monday.setHours(0, 0, 0, 0)
-          sunday.setHours(23, 59, 59, 999)
-          approved.setHours(12, 0, 0, 0)
-
-          matchesApprovalWeek =
-            approved >= monday && approved <= sunday;
+            matchesDate =
+              approved >= monday &&
+              approved <= sunday;
+          }
         }
       }
 
-      return matchesUser && matchesWeek && matchesApprovalWeek;
-
+      return matchesUser && matchesDate;
 
     });
-  }, [timesheets, userFilter, date]);
+  }, [timesheets, userFilter, date, dateFilterType]);
 
   const totalPages = Math.max(1, Math.ceil(totalTimesheets / pageSize));
   const allVisibleSelected = filtered.length > 0 && filtered.every((row) => selectedIds.includes(row.id));
@@ -1066,6 +1051,30 @@ const Timesheets = () => {
               </Select>
 
               <div className="flex flex-col gap-1">
+                <Select
+                  value={dateFilterType}
+                  onValueChange={(v) => {
+                    setDateFilterType(v as "period" || "approved")
+                  }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder='Date Filter Type' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="period">
+                      Timesheet Period
+                    </SelectItem>
+                    <SelectItem value="approved">
+                      Approval Week
+                    </SelectItem>
+
+                  </SelectContent>
+                </Select>
+                <label className="text-xs text-gray-500">
+                  {dateFilterType === 'period'
+                    ? "Timesheet Week"
+                    : "Approved Week"
+                  }
+                </label>
                 <Input
                   type="date"
                   value={date}
@@ -1091,6 +1100,7 @@ const Timesheets = () => {
                   setSortDir("desc");
                   setPage(1);
                   setDate("")
+                  setDateFilterType("period")
                 }}
               >
                 Clear filters
@@ -1148,7 +1158,7 @@ const Timesheets = () => {
 
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-[#000009]">Timesheet Records ({totalTimesheets})</CardTitle>
+            <CardTitle className="text-[#000009]">Timesheet Records ({filtered.length} of {totalTimesheets})</CardTitle>
             <CardDescription>Approve, reject, inspect, or remove records</CardDescription>
           </CardHeader>
           <CardContent>
