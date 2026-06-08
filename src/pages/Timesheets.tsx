@@ -17,7 +17,7 @@ import { usePreferences } from "@/hooks/usePreferences";
 import { object } from "zod";
 import { useNavigate } from "react-router-dom";
 
-type TimesheetStatus = "draft" | "pending" | "approved" | "rejected";
+type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing";
 
 type TimesheetEntry = {
   date: string;
@@ -74,6 +74,7 @@ const statusClasses: Record<TimesheetStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   approved: "bg-green-100 text-green-800",
   rejected: "bg-red-100 text-red-800",
+  processing: "bg-blue-100 text-blue-800",
 };
 
 const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
@@ -1027,8 +1028,10 @@ const Timesheets = () => {
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
+
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={(v) => { setSortBy(v as "period" | "client"); setPage(1); }}>
@@ -1241,6 +1244,16 @@ const Timesheets = () => {
                                 <Edit className="h-4 w-4 mr-1" />
                                 Edit
                               </Button>
+                              {row.status === "pending" && (
+                                <Button
+                                  size="sm"
+                                  className="bg-blue-700 hover:bg-blue-800"
+                                  onClick={() => updateStatus(row.id, "processing")}
+                                  disabled={isSaving}
+                                >
+                                  Processing
+                                </Button>
+                              )}
                               {row.status !== "approved" && (
                                 <Button
                                   size="sm"
