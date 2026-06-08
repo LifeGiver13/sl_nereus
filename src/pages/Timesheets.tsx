@@ -16,6 +16,9 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { usePreferences } from "@/hooks/usePreferences";
 import { object } from "zod";
 import { useNavigate } from "react-router-dom";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
+
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing";
 
@@ -1217,15 +1220,20 @@ const Timesheets = () => {
                             <Badge className={statusClasses[row.status]}>{row.status}</Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="flex justify-end flex-wrap gap-2">
+                            <div className="flex justify-end items-center gap-2">
+
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setExpandedTimesheetId(isExpanded ? null : row.id)}
                               >
-                                {isExpanded ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                                {isExpanded
+                                  ? <ChevronUp className="h-4 w-4 mr-1" />
+                                  : <ChevronDown className="h-4 w-4 mr-1" />
+                                }
                                 {isExpanded ? "Hide" : "View"}
                               </Button>
+
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1234,60 +1242,76 @@ const Timesheets = () => {
                                 <Download className="h-4 w-4 mr-1" />
                                 Export
                               </Button>
+
                               <Button
-                                size="sm"
                                 variant="outline"
-                                onClick={() =>
-                                  navigate(`/timesheets/${row.id}/edit`)
-                                }
+                                size="sm"
+                                onClick={() => navigate(`/timesheets/${row.id}/edit`)}
                               >
                                 <Edit className="h-4 w-4 mr-1" />
                                 Edit
                               </Button>
-                              {row.status === "pending" && (
-                                <Button
-                                  size="sm"
-                                  className="bg-blue-700 hover:bg-blue-800"
-                                  onClick={() => updateStatus(row.id, "processing")}
-                                  disabled={isSaving}
-                                >
-                                  Processing
-                                </Button>
-                              )}
-                              {row.status !== "approved" && (
-                                <Button
-                                  size="sm"
-                                  className="bg-green-700 hover:bg-green-800"
-                                  onClick={() => updateStatus(row.id, "approved")}
-                                  disabled={isSaving}
-                                >
-                                  Approve
-                                </Button>
-                              )}
-                              {row.status !== "rejected" && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => {
-                                    setSelectedRejectedId(row.id)
-                                    setRejectModalOpen(true)
-                                  }
-                                  }
-                                  disabled={isSaving}
-                                >
-                                  Reject
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 border-red-300 hover:bg-red-50"
-                                onClick={() => deleteTimesheet(row.id)}
-                                disabled={isSaving}
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                Delete
-                              </Button>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                    Update Status
+                                  </DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+
+                                  {row.status === "pending" && (
+                                    <DropdownMenuItem
+                                      className="text-blue-700"
+                                      onClick={() => updateStatus(row.id, "processing")}
+                                      disabled={isSaving}
+                                    >
+                                      Set Processing
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {row.status !== "approved" && (
+                                    <DropdownMenuItem
+                                      className="text-green-700"
+                                      onClick={() => updateStatus(row.id, "approved")}
+                                      disabled={isSaving}
+                                    >
+                                      Approve
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {row.status !== "rejected" && (
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onClick={() => {
+                                        setSelectedRejectedId(row.id);
+                                        setRejectModalOpen(true);
+                                      }}
+                                      disabled={isSaving}
+                                    >
+                                      Reject
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuSeparator />
+
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => deleteTimesheet(row.id)}
+                                    disabled={isSaving}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+
                             </div>
                           </TableCell>
                         </TableRow>
