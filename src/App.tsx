@@ -90,14 +90,7 @@ const App = () => (
                   }
                 />
 
-                <Route
-                  path="/timesheets/:id/edit"
-                  element={
-                    <ProtectedRoute>
-                      < CustomAddition />
-                    </ProtectedRoute>
-                  }
-                />
+              
 
 
                 <Route

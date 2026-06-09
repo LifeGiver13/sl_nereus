@@ -18,6 +18,7 @@ import { object } from "zod";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import CustomAddition from "./UpdateTimesheet";
 
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing";
@@ -1217,7 +1218,9 @@ const Timesheets = () => {
                           </TableCell>
                           <TableCell>{totalHours.toFixed(2)}h</TableCell>
                           <TableCell>
-                            <Badge className={statusClasses[row.status]}>{row.status}</Badge>
+                            <Badge className={statusClasses[row.status]}>
+                              {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end items-center gap-2">
@@ -1243,14 +1246,14 @@ const Timesheets = () => {
                                 Export
                               </Button>
 
-                              <Button
+                              {/* <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => navigate(`/timesheets/${row.id}/edit`)}
                               >
                                 <Edit className="h-4 w-4 mr-1" />
                                 Edit
-                              </Button>
+                              </Button> */}
 
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -1366,6 +1369,8 @@ const Timesheets = () => {
                                             <p><strong>Weekend:</strong> {displayCategoryHours.weekend.toFixed(2)}h</p>
                                           </div>
                                         </div>
+                                       
+                                        <CustomAddition timesheetId={row.id} authHeaders={authHeaders} />
                                       </>
                                     ) : (
                                       <p className="text-xs text-gray-500">No entries added.</p>

@@ -1,15 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import AdminLayout from '../components/AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTimesheetCustomFields } from '@/contexts/TimesheetContext';
+import React, { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "../config/env";
+import { useTimesheetCustomFields } from "@/contexts/TimesheetContext";
+import { ActivityIcon } from "lucide-react";
 
-//   Old hardcoded keys to ignore when restoring from saved data
 const LEGACY_KEYS = new Set(["rate", "srNumber", "srRate"]);
 
 interface LocalField {
@@ -18,7 +14,6 @@ interface LocalField {
     value: string;
 }
 
-// "SR Number" to "srNumber", "Site Visit Date" to "siteVisitDate"
 function normalizeFieldKey(label: string): string {
     const words = label.trim().split(/\s+/);
     return words
@@ -30,45 +25,39 @@ function normalizeFieldKey(label: string): string {
         .join("");
 }
 
-const CustomAddition = () => {
-    const { token } = useAuth();
+interface Props {
+    timesheetId: number;
+    authHeaders: Record<string, string>;
+}
+
+const CustomAddition: React.FC<Props> = ({ timesheetId, authHeaders }) => {
     const { toast } = useToast();
-    const { id } = useParams<{ id: string }>();
+    const { customFields, fetchCustomFields } = useTimesheetCustomFields();
 
     const [fieldValues, setFieldValues] = useState<Record<number, string>>({});
     const [localFields, setLocalFields] = useState<LocalField[]>([]);
     const [newFieldName, setNewFieldName] = useState("");
     const [isSaving, setIsSaving] = useState(false);
-
-    const { customFields, fetchCustomFields } = useTimesheetCustomFields();
-
-    const authHeaders = {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}`, "x-service-user": token } : {}),
-    };
+    const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
         fetchCustomFields();
     }, []);
 
     useEffect(() => {
-        if (!id || !token || customFields.length === 0) return;
+        if (customFields.length === 0) return;
         fetchTimesheet();
-    }, [id, token, customFields]);
+    }, [customFields]);
 
     const fetchTimesheet = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/admin/timesheets/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}`, {
                 headers: authHeaders,
             });
-
             if (!response.ok) throw new Error("Failed to load timesheet");
-
             const data = await response.json();
             const savedCustom: Record<string, string> = data.custom || {};
 
-            // Populate API-defined fields
-            //   Normalize each fieldName to match how it was saved
             const populated: Record<number, string> = {};
             const knownNormalizedKeys = new Set<string>();
 
@@ -80,7 +69,6 @@ const CustomAddition = () => {
 
             setFieldValues(populated);
 
-            // Restore local fields - skip legacy keys and known API keys
             const restored: LocalField[] = [];
             for (const [key, value] of Object.entries(savedCustom)) {
                 if (!knownNormalizedKeys.has(key) && !LEGACY_KEYS.has(key)) {
@@ -88,12 +76,11 @@ const CustomAddition = () => {
                 }
             }
             setLocalFields(restored);
-
+            setIsLoaded(true);
         } catch (error) {
-            console.error("[fetchTimesheet]", error);
             toast({
                 title: "Error",
-                description: "Failed to load timesheet data",
+                description: "Failed to load custom fields",
                 variant: "destructive",
             });
         }
@@ -116,35 +103,18 @@ const CustomAddition = () => {
             return;
         }
 
-        //   Store the normalized key but keep the original label for display
         setLocalFields((prev) => [...prev, { key, label: newFieldName, value: "" }]);
         setNewFieldName("");
     };
 
-    const updateLocalField = (key: string, value: string) => {
-        setLocalFields((prev) =>
-            prev.map((f) => (f.key === key ? { ...f, value } : f))
-        );
-    };
-
-    const removeLocalField = (key: string) => {
-        setLocalFields((prev) => prev.filter((f) => f.key !== key));
-    };
-
-    const updateFieldValue = (fieldId: number, value: string) => {
-        setFieldValues((prev) => ({ ...prev, [fieldId]: value }));
-    };
-
     const saveCustomFields = async () => {
         const missingFields: string[] = [];
-
         for (const field of customFields) {
             const value = fieldValues[field.id] ?? "";
             if (field.isRequired && !value.trim()) {
                 missingFields.push(field.fieldName);
             }
         }
-
         if (missingFields.length > 0) {
             toast({
                 title: "Missing required fields",
@@ -156,33 +126,28 @@ const CustomAddition = () => {
 
         try {
             setIsSaving(true);
-
             const customPayload: Record<string, string> = {};
 
-            // API-defined fields — normalize fieldName as the key
             for (const field of customFields) {
                 const value = fieldValues[field.id] ?? "";
                 if (value.trim() || field.isRequired) {
                     customPayload[normalizeFieldKey(field.fieldName)] = value;
                 }
             }
-
-            //  Local fields — key is already normalized from addLocalField
             for (const field of localFields) {
                 if (field.value.trim()) {
                     customPayload[field.key] = field.value;
                 }
             }
 
-            const response = await fetch(`${API_BASE_URL}/admin/timesheets/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}`, {
                 method: "PUT",
                 headers: authHeaders,
                 body: JSON.stringify({ custom: customPayload }),
             });
 
-            if (!response.ok) throw new Error("Failed to update, check your internet connection");
-
-            toast({ title: "Success", description: "Custom fields updated successfully" });
+            if (!response.ok) throw new Error("Failed to update");
+            toast({ title: "Saved", description: "Custom fields updated" });
         } catch (error) {
             toast({
                 title: "Error",
@@ -194,92 +159,99 @@ const CustomAddition = () => {
         }
     };
 
-    if (!id) return <div className="p-6">Invalid timesheet id</div>;
+    if (!isLoaded) return (
+        <div className="mt-2 rounded-md border bg-white p-3 text-xs text-gray-500 flex items-center gap-2">
+            <ActivityIcon className="h-3 w-3 animate-spin" />
+            Loading custom fields...
+        </div>
+    );
+
+    if (customFields.length === 0 && localFields.length === 0) return null;
 
     return (
-        <AdminLayout>
-            <Card className="border-0 shadow-lg">
-                <CardHeader>
-                    <CardTitle className="text-[#000009]">Custom Fields</CardTitle>
-                    <CardDescription>Manage timesheet custom fields</CardDescription>
-                </CardHeader>
+        <div className="mt-2 rounded-md border bg-white p-3 text-xs text-gray-700 space-y-2">
+            <p className="font-semibold text-sm text-[#000009]">Custom Fields</p>
 
-                <CardContent className="space-y-4">
-
-                    {/* API-defined fields */}
-                    {customFields
-                        .slice()
-                        .sort((a, b) => a.displayOrder - b.displayOrder)
-                        .map((field) => (
-                            <div key={field.id} className="flex gap-2 items-center">
-                                <div className="w-48 font-medium">
-                                    {field.fieldName}
-                                    {field.isRequired && <span className="text-red-500 ml-1">*</span>}
-                                </div>
-                                <Input
-                                    type={
-                                        field.fieldType === "number" ? "number"
-                                        : field.fieldType === "date" ? "date"
-                                        : "text"
-                                    }
-                                    value={fieldValues[field.id] ?? ""}
-                                    onChange={(e) => updateFieldValue(field.id, e.target.value)}
-                                    placeholder={`Enter ${field.fieldName}${field.isRequired ? " (required)" : ""}`}
-                                />
-                            </div>
-                        ))}
-
-                    {/* Manually added local fields */}
-                    {localFields.map((field) => (
-                        <div key={field.key} className="flex gap-2 items-center">
-                            <div className="w-48 font-medium">{field.label}</div>
-                            <Input
-                                value={field.value}
-                                onChange={(e) => updateLocalField(field.key, e.target.value)}
-                                placeholder={`Enter ${field.label}`}
-                            />
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => removeLocalField(field.key)}
-                            >
-                                Remove
-                            </Button>
-                        </div>
-                    ))}
-
-                    {customFields.length === 0 && localFields.length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                            No custom fields configured. Add some in Settings or below.
-                        </p>
-                    )}
-
-                    {/* Add field section */}
-                    <div className="border-t pt-4 mt-4 flex gap-2">
+            {customFields
+                .slice()
+                .sort((a, b) => a.displayOrder - b.displayOrder)
+                .map((field) => (
+                    <div key={field.id} className="flex items-center gap-2">
+                        <span className="w-40 font-medium shrink-0">
+                            {field.fieldName}
+                            {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+                        </span>
                         <Input
-                            value={newFieldName}
-                            placeholder="New field name"
-                            onChange={(e) => setNewFieldName(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && addLocalField()}
+                            className="h-7 text-xs"
+                            type={
+                                field.fieldType === "number" ? "number"
+                                    : field.fieldType === "date" ? "date"
+                                        : "text"
+                            }
+                            value={fieldValues[field.id] ?? ""}
+                            onChange={(e) =>
+                                setFieldValues((prev) => ({ ...prev, [field.id]: e.target.value }))
+                            }
+                            placeholder={`${field.fieldName}${field.isRequired ? " (required)" : ""}`}
                         />
-                        <Button type="button" onClick={addLocalField} disabled={!newFieldName.trim()}>
-                            Add Field
-                        </Button>
                     </div>
+                ))}
 
-                    <div className="pt-4">
-                        <Button
-                            onClick={saveCustomFields}
-                            disabled={isSaving}
-                            className="bg-[#712B71] hover:bg-[#712B71]/90"
-                        >
-                            {isSaving ? "Saving..." : "Save Changes"}
-                        </Button>
-                    </div>
+            {localFields.map((field) => (
+                <div key={field.key} className="flex items-center gap-2">
+                    <span className="w-40 font-medium shrink-0">{field.label}</span>
+                    <Input
+                        className="h-7 text-xs"
+                        value={field.value}
+                        onChange={(e) =>
+                            setLocalFields((prev) =>
+                                prev.map((f) => (f.key === field.key ? { ...f, value: e.target.value } : f))
+                            )
+                        }
+                        placeholder={`Enter ${field.label}`}
+                    />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 h-7 px-2 text-xs"
+                        onClick={() => setLocalFields((prev) => prev.filter((f) => f.key !== field.key))}
+                    >
+                        Remove
+                    </Button>
+                </div>
+            ))}
 
-                </CardContent>
-            </Card>
-        </AdminLayout>
+            {/* Add new local field */}
+            <div className="flex gap-2 pt-1 border-t">
+                <Input
+                    className="h-7 text-xs"
+                    value={newFieldName}
+                    placeholder="New field name"
+                    onChange={(e) => setNewFieldName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addLocalField()}
+                />
+                <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={addLocalField}
+                    disabled={!newFieldName.trim()}
+                >
+                    Add
+                </Button>
+            </div>
+
+            <div className="pt-1">
+                <Button
+                    size="sm"
+                    className="h-7 text-xs bg-[#712B71] hover:bg-[#712B71]/90"
+                    onClick={saveCustomFields}
+                    disabled={isSaving}
+                >
+                    {isSaving ? "Saving..." : "Save Custom Fields"}
+                </Button>
+            </div>
+        </div>
     );
 };
 
