@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight, FileSignature, Columns } from "lucide-react";
+import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight, FileSignature, Columns, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE_URL } from "../config/env";
 import { PageSizeSelector } from "../components/ui/page-size-selector";
@@ -339,7 +339,15 @@ const Applications = () => {
     );
   };
 
-
+  const SortIcon = ({ column, sortColumn, sortDirection }: {
+    column: string;
+    sortColumn: string | null;
+    sortDirection: 'asc' | 'desc';
+  }) => {
+    if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
+    if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
+    return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
+  };
 
   return (
     <AdminLayout>
@@ -384,41 +392,23 @@ const Applications = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort("id")}
-                      >
-                        Application ID {sortColumn === "id" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("id")}>
+                        Application ID <SortIcon column="id" sortColumn={sortColumn} sortDirection={sortDirection} />
                       </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort("username")}
-                      >
-                        Username {sortColumn === "username" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("username")}>
+                        Username <SortIcon column="username" sortColumn={sortColumn} sortDirection={sortDirection} />
                       </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort("stage")}
-                      >
-                        Stage {sortColumn === "stage" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("stage")}>
+                        Stage <SortIcon column="stage" sortColumn={sortColumn} sortDirection={sortDirection} />
                       </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort("status")}
-                      >
-                        Status {sortColumn === "status" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("status")}>
+                        Status <SortIcon column="status" sortColumn={sortColumn} sortDirection={sortDirection} />
                       </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort("createdAt")}
-                      >
-                        Date Created {sortColumn === "createdAt" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("createdAt")}>
+                        Date Created <SortIcon column="createdAt" sortColumn={sortColumn} sortDirection={sortDirection} />
                       </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort("updatedAt")}
-                      >
-                        Last Update {sortColumn === "updatedAt" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("updatedAt")}>
+                        Last Update <SortIcon column="updatedAt" sortColumn={sortColumn} sortDirection={sortDirection} />
                       </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>

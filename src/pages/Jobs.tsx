@@ -1,18 +1,15 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Search, Plus, Eye, Edit, UserPlus, X } from 'lucide-react';
+import { Search, Plus, Eye, Edit, UserPlus, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
-import { DateRangePicker } from '../components/DateRangePicker';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
 import { IconActionButton, IconActionTooltip } from '@/components/IconActionTooltip';
@@ -34,6 +31,8 @@ interface Job {
   assignees: number[];
   createdAt: string;
   updatedAt: string;
+  client?: { id: number; name: string };
+  owner?: { id: number; username: string };
 }
 
 interface Client {
@@ -46,155 +45,251 @@ interface User {
   name: string;
 }
 
+type SortDirection = 'asc' | 'desc' | null;
+
+// Single-click date range picker: first click = from, second click = to
+const SimpleDateRangePicker = ({
+  value,
+  onChange,
+  label,
+}: {
+  value: { from: string; to: string };
+  onChange: (range: { from: string; to: string }) => void;
+  label: string;
+}) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.value;
+    if (!value.from || (value.from && value.to)) {
+      // First click or reset: set from
+      onChange({ from: picked, to: '' });
+    } else {
+      // Second click: set to (ensure correct order)
+      if (picked < value.from) {
+        onChange({ from: picked, to: value.from });
+      } else {
+        onChange({ from: value.from, to: picked });
+      }
+    }
+  };
+
+  const clear = () => onChange({ from: '', to: '' });
+
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium">{label}</label>
+      <div className="flex items-center gap-2">
+        <input
+          type="date"
+          className="border rounded px-2 py-1.5 text-sm w-full"
+          onChange={handleChange}
+          // We don't bind value here — it's a fire-and-forget picker
+        />
+        {(value.from || value.to) && (
+          <button onClick={clear} className="text-gray-400 hover:text-gray-600">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      {value.from && (
+        <p className="text-xs text-gray-500">
+          {value.from}{value.to ? ` → ${value.to}` : ' → (pick end date)'}
+        </p>
+      )}
+    </div>
+  );
+};
+
+const SortIcon = ({ column, sortColumn, sortDirection }: {
+  column: string;
+  sortColumn: string | null;
+  sortDirection: SortDirection;
+}) => {
+  if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
+  if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
+  return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
+};
+
 const Jobs = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const { preferences, updateTablePreferences } = usePreferences();
   const pageSize = preferences.table.pageSize;
-  const [searchFilters, setSearchFilters] = useState({
-    clientId: '',
-    postedBy: '',
-    title: '',
-    startDateRange: { from: '', to: '' },
-    endDateRange: { from: '', to: '' }
-  });
 
-  // Client search state
+  // Filter state
+  const [titleFilter, setTitleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState('');
+  const [startDateRange, setStartDateRange] = useState({ from: '', to: '' });
+  const [endDateRange, setEndDateRange] = useState({ from: '', to: '' });
+
+  // Client typeahead
   const [clients, setClients] = useState<Client[]>([]);
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
 
-  // User search state
+  // User typeahead
   const [users, setUsers] = useState<User[]>([]);
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
-  // Fetch skills data for displaying skill names
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') setSortDirection('desc');
+      else if (sortDirection === 'desc') { setSortColumn(null); setSortDirection(null); }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Skills
   const { data: skillsData } = useQuery({
     queryKey: ['skills'],
     queryFn: async () => {
       const response = await fetch(`${API_BASE_URL}/candidate/skills/indexed`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch skills');
-      }
+      if (!response.ok) throw new Error('Failed to fetch skills');
       return response.json();
     }
   });
 
-  const buildSearchQuery = () => {
-    const searchObject: any = {};
-
-    if (selectedClientId) {
-      searchObject.clientId = selectedClientId;
-    }
-    if (selectedUserId) {
-      searchObject.postedBy = selectedUserId;
-    }
-    if (searchFilters.title) {
-      searchObject.title = { "iLike": `%${searchFilters.title}%` };
-    }
-    if (searchFilters.startDateRange.from) {
-      searchObject.startDate = { "gte": searchFilters.startDateRange.from };
-    }
-    if (searchFilters.startDateRange.to) {
-      if (searchObject.startDate) {
-        searchObject.startDate.lte = searchFilters.startDateRange.to;
-      } else {
-        searchObject.startDate = { "lte": searchFilters.startDateRange.to };
-      }
-    }
-    if (searchFilters.endDateRange.from) {
-      searchObject.endDate = { "gte": searchFilters.endDateRange.from };
-    }
-    if (searchFilters.endDateRange.to) {
-      if (searchObject.endDate) {
-        searchObject.endDate.lte = searchFilters.endDateRange.to;
-      } else {
-        searchObject.endDate = { "lte": searchFilters.endDateRange.to };
-      }
-    }
-
-    return Object.keys(searchObject).length > 0 ? `&search=${encodeURIComponent(JSON.stringify(searchObject))}` : '';
-  };
-
+  // Fetch ALL jobs (no server-side filtering — we do it client-side)
   const { data: jobsData, isLoading, error } = useQuery({
-    queryKey: ['jobs', currentPage, pageSize, selectedClientId, selectedUserId, searchFilters],
+    queryKey: ['jobs-all'],
     queryFn: async () => {
-      const searchQuery = buildSearchQuery();
-      const response = await fetch(`${API_BASE_URL}/jobs?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}${searchQuery}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch jobs');
-      }
+      const response = await fetch(`${API_BASE_URL}/jobs?limit=9999&offset=0`);
+      if (!response.ok) throw new Error('Failed to fetch jobs');
       return response.json();
     }
   });
 
-  const jobs = jobsData?.results || [];
-  const totalPages = Math.ceil((jobsData?.total || 0) / pageSize);
+  const allJobs: Job[] = jobsData?.results || [];
 
-  // Client search functions
-  const searchClients = async (searchTerm: string) => {
-    if (searchTerm.length < 2) {
-      setClients([]);
-      return;
-    }
-
+  // Client search
+  const searchClients = async (term: string) => {
+    if (term.length < 2) { setClients([]); return; }
     try {
-      const response = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(searchTerm)}`);
-      if (response.ok) {
-        const clientData = await response.json();
-        const clientArray = Object.entries(clientData).map(([id, name]) => ({
-          id: parseInt(id),
-          name: name as string
-        }));
-        setClients(clientArray);
+      const res = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(term)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setClients(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
       }
-    } catch (error) {
-      console.error('Error searching clients:', error);
-    }
+    } catch { /* ignore */ }
   };
 
   const handleClientSearch = (value: string) => {
     setClientSearchTerm(value);
+    if (!value) { setSelectedClientId(null); setClientFilter(''); }
     searchClients(value);
   };
 
   const handleClientSelect = (client: Client) => {
     setSelectedClientId(client.id);
     setClientSearchTerm(client.name);
+    setClientFilter(client.name.toLowerCase());
     setClients([]);
   };
 
-  // User search functions
-  const searchUsers = async (searchTerm: string) => {
-    if (searchTerm.length < 2) {
-      setUsers([]);
-      return;
-    }
-
+  // User search
+  const searchUsers = async (term: string) => {
+    if (term.length < 2) { setUsers([]); return; }
     try {
-      const response = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(searchTerm)}`);
-      if (response.ok) {
-        const userData = await response.json();
-        const userArray = Object.entries(userData).map(([id, name]) => ({
-          id: parseInt(id),
-          name: name as string
-        }));
-        setUsers(userArray);
+      const res = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
       }
-    } catch (error) {
-      console.error('Error searching users:', error);
-    }
+    } catch { /* ignore */ }
   };
 
   const handleUserSearch = (value: string) => {
     setUserSearchTerm(value);
+    if (!value) { setSelectedUserId(null); setOwnerFilter(''); }
     searchUsers(value);
   };
 
   const handleUserSelect = (user: User) => {
     setSelectedUserId(user.id);
     setUserSearchTerm(user.name);
+    setOwnerFilter(user.name.toLowerCase());
     setUsers([]);
+  };
+
+  // Client-side filtering
+  const filtered = useMemo(() => {
+    return allJobs.filter((job) => {
+      if (titleFilter && !job.title.toLowerCase().includes(titleFilter.toLowerCase())) return false;
+      if (statusFilter && job.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+
+      if (clientFilter) {
+        const name = job.client?.name?.toLowerCase() ?? '';
+        if (!name.includes(clientFilter)) return false;
+      }
+
+      if (ownerFilter) {
+        const uname = job.owner?.username?.toLowerCase() ?? '';
+        if (!uname.includes(ownerFilter)) return false;
+      }
+
+      if (startDateRange.from) {
+        if (job.startDate < startDateRange.from) return false;
+      }
+      if (startDateRange.to) {
+        if (job.startDate > startDateRange.to) return false;
+      }
+      if (endDateRange.from && job.endDate) {
+        if (job.endDate < endDateRange.from) return false;
+      }
+      if (endDateRange.to && job.endDate) {
+        if (job.endDate > endDateRange.to) return false;
+      }
+
+      return true;
+    });
+  }, [allJobs, titleFilter, statusFilter, clientFilter, ownerFilter, startDateRange, endDateRange]);
+
+  // Sorting
+  const sorted = useMemo(() => {
+    if (!sortColumn || !sortDirection) return filtered;
+    return [...filtered].sort((a, b) => {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+      switch (sortColumn) {
+        case 'id': return (a.id - b.id) * dir;
+        case 'client': return (a.client?.name ?? '').localeCompare(b.client?.name ?? '') * dir;
+        case 'owner': return (a.owner?.username ?? '').localeCompare(b.owner?.username ?? '') * dir;
+        case 'title': return a.title.localeCompare(b.title) * dir;
+        case 'startDate': return a.startDate.localeCompare(b.startDate) * dir;
+        case 'endDate': return (a.endDate ?? '').localeCompare(b.endDate ?? '') * dir;
+        case 'vacancies': return (a.vacancies - b.vacancies) * dir;
+        case 'status': return a.status.localeCompare(b.status) * dir;
+        case 'filled': return (Number(a.filled) - Number(b.filled)) * dir;
+        default: return 0;
+      }
+    });
+  }, [filtered, sortColumn, sortDirection]);
+
+  // Pagination on filtered+sorted data
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, currentPage, pageSize]);
+
+  const clearFilters = () => {
+    setTitleFilter('');
+    setStatusFilter('');
+    setClientFilter('');
+    setOwnerFilter('');
+    setStartDateRange({ from: '', to: '' });
+    setEndDateRange({ from: '', to: '' });
+    setSelectedClientId(null);
+    setSelectedUserId(null);
+    setClientSearchTerm('');
+    setUserSearchTerm('');
+    setCurrentPage(1);
   };
 
   const getStatusColor = (status: string) => {
@@ -207,49 +302,22 @@ const Jobs = () => {
     }
   };
 
-  const handleSearch = () => {
-    setCurrentPage(1);
-  };
-
-  const clearFilters = () => {
-    setSearchFilters({
-      clientId: '',
-      postedBy: '',
-      title: '',
-      startDateRange: { from: '', to: '' },
-      endDateRange: { from: '', to: '' }
-    });
-    setSelectedClientId(null);
-    setSelectedUserId(null);
-    setClientSearchTerm('');
-    setUserSearchTerm('');
-    setCurrentPage(1);
-  };
-
-  // Helper function to get skill names from IDs
   const getSkillNames = (skillIds: number[]) => {
-    if (!skillsData || !skillIds || skillIds.length === 0) return [];
-
+    if (!skillsData || !skillIds?.length) return [];
     const allSkills: any[] = [];
-    Object.values(skillsData).forEach((categorySkills: any) => {
-      allSkills.push(...categorySkills);
-    });
-
-    return skillIds.map(id => {
-      const skill = allSkills.find(s => s.id === id);
-      return skill ? skill.name : `Skill ${id}`;
-    });
+    Object.values(skillsData).forEach((cat: any) => allSkills.push(...cat));
+    return skillIds.map(id => allSkills.find(s => s.id === id)?.name ?? `Skill ${id}`);
   };
 
-  if (isLoading) {
-    return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading jobs...</div>
-        </div>
-      </AdminLayout>
-    );
-  }
+  const SortableTh = ({ column, children }: { column: string; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer select-none whitespace-nowrap"
+      onClick={() => handleSort(column)}
+    >
+      {children}
+      <SortIcon column={column} sortColumn={sortColumn} sortDirection={sortDirection} />
+    </TableHead>
+  );
 
   if (error) {
     return (
@@ -260,6 +328,9 @@ const Jobs = () => {
       </AdminLayout>
     );
   }
+
+  // Unique statuses for filter dropdown
+  const uniqueStatuses = Array.from(new Set(allJobs.map(j => j.status))).filter(Boolean);
 
   return (
     <AdminLayout>
@@ -277,28 +348,30 @@ const Jobs = () => {
           </Link>
         </div>
 
+        {/* Filters */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-[#000009]">Filter Jobs</CardTitle>
-            <CardDescription>Search and filter job postings</CardDescription>
+            <CardDescription>All filters apply to the current page data</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 items-center">
-              <div className="space-y-2">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+
+              {/* Client typeahead */}
+              <div className="space-y-1">
                 <label className="text-sm font-medium">Client</label>
                 <div className="relative">
                   <Input
                     value={clientSearchTerm}
                     onChange={(e) => handleClientSearch(e.target.value)}
                     placeholder="Start typing client name..."
-                    className="w-full"
                   />
                   {clients.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                       {clients.map((client) => (
                         <div
                           key={client.id}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                           onClick={() => handleClientSelect(client)}
                         >
                           {client.name}
@@ -309,21 +382,21 @@ const Jobs = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* Owner typeahead */}
+              <div className="space-y-1">
                 <label className="text-sm font-medium">Posted By</label>
                 <div className="relative">
                   <Input
                     value={userSearchTerm}
                     onChange={(e) => handleUserSearch(e.target.value)}
                     placeholder="Start typing user name..."
-                    className="w-full"
                   />
                   {users.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                       {users.map((user) => (
                         <div
                           key={user.id}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                           onClick={() => handleUserSelect(user)}
                         >
                           {user.name}
@@ -333,55 +406,64 @@ const Jobs = () => {
                   )}
                 </div>
               </div>
-              <div className="space-y-2">
 
+              {/* Title */}
+              <div className="space-y-1">
                 <label className="text-sm font-medium">Job Title</label>
                 <Input
-                  placeholder="Job Title"
-                  value={searchFilters.title}
-                  onChange={(e) => setSearchFilters({ ...searchFilters, title: e.target.value })}
-                  className="w-full"
+                  placeholder="Filter by title..."
+                  value={titleFilter}
+                  onChange={(e) => { setTitleFilter(e.target.value); setCurrentPage(1); }}
                 />
               </div>
 
-              <div className="flex gap-2  w-full pt-8">
-                <Button onClick={handleSearch} className="bg-[#712B71] hover:bg-[#712B71]/90 flex-1 sm:flex-initial">
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </Button>
-                <Button onClick={clearFilters} variant="outline" className="flex-1 sm:flex-initial">
-                  <X className="h-4 w-4 mr-2" />
-                  Clear
-                </Button>
+              {/* Status */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Status</label>
+                <select
+                  className="border rounded px-2 py-1.5 text-sm w-full"
+                  value={statusFilter}
+                  onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                >
+                  <option value="">All statuses</option>
+                  {uniqueStatuses.map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
+            {/* Date ranges */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Start Date Range</label>
-                <DateRangePicker
-                  value={searchFilters.startDateRange}
-                  onChange={(range) => setSearchFilters({ ...searchFilters, startDateRange: range })}
-                  placeholder="Select start date range"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">End Date Range</label>
-                <DateRangePicker
-                  value={searchFilters.endDateRange}
-                  onChange={(range) => setSearchFilters({ ...searchFilters, endDateRange: range })}
-                  placeholder="Select end date range"
-                />
-              </div>
+              <SimpleDateRangePicker
+                label="Start Date Range"
+                value={startDateRange}
+                onChange={(r) => { setStartDateRange(r); setCurrentPage(1); }}
+              />
+              <SimpleDateRangePicker
+                label="End Date Range"
+                value={endDateRange}
+                onChange={(r) => { setEndDateRange(r); setCurrentPage(1); }}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={clearFilters} variant="outline">
+                {/* <X className="h-4 w-4 mr-2" /> */}
+                Clear Filters
+              </Button>
             </div>
           </CardContent>
         </Card>
 
+        {/* Table */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-[#000009]">Jobs ({jobsData?.total || 0})</CardTitle>
+                <CardTitle className="text-[#000009]">
+                  Jobs ({sorted.length}{sorted.length !== allJobs.length ? ` of ${allJobs.length}` : ''})
+                </CardTitle>
                 <CardDescription>All job postings in the system</CardDescription>
               </div>
               <PageSizeSelector
@@ -390,116 +472,111 @@ const Jobs = () => {
                   updateTablePreferences({ pageSize: size });
                   setCurrentPage(1);
                 }}
-                totalItems={jobsData?.total}
+                totalItems={sorted.length}
               />
             </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto max-w-full">
-              <Table className="min-w-full">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Vacancies</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Filled</TableHead>
-                    <TableHead>Skills</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {jobs.map((job) => (
-                    <TableRow key={job.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/job/${job.id}`}>
-                      <TableCell>{job.id}</TableCell>
-                      <TableCell>{job.client.name}</TableCell>
-                      <TableCell>{job.owner.username}</TableCell>
-                      <TableCell className="font-medium">{job.title}</TableCell>
-                      <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Ongoing'}</TableCell>
-                      <TableCell>{job.vacancies}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(job.status)}>
-                          {job.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={job.filled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                          {job.filled ? 'Yes' : 'No'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-xs">
-                          {getSkillNames(job.skills || []).map((skillName, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {skillName}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <IconActionTooltip label="View job">
-                            <span className="inline-flex">
-                              <Link to={`/job/${job.id}`}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-9 w-9 p-0"
-                                  aria-label="View job"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </Link>
-                            </span>
-                          </IconActionTooltip>
-                          <IconActionTooltip label="Edit job">
-                            <span className="inline-flex">
-                              <Link to={`/jobs/edit/${job.id}`}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-9 w-9 p-0"
-                                  aria-label="Edit job"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </Link>
-                            </span>
-                          </IconActionTooltip>
-                          <IconActionTooltip label="Fill job placements">
-                            <span className="inline-flex">
-                              <Link to={`/job/${job.id}/fill`}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-9 w-9 p-0"
-                                  aria-label="Fill job placements"
-                                >
-                                  <UserPlus className="h-4 w-4" />
-                                </Button>
-                              </Link>
-                            </span>
-                          </IconActionTooltip>
-                          <IconActionButton
-                            label="Remove job (not available)"
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 w-9 p-0 opacity-40"
-                            disabled
-                          >
-                            <X className="h-4 w-4" />
-                          </IconActionButton>
-                        </div>
-                      </TableCell>
+              {isLoading ? (
+                <div className="text-center py-10 text-gray-500">Loading jobs...</div>
+              ) : sorted.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">No jobs found</div>
+              ) : (
+                <Table className="min-w-full">
+                  <TableHeader>
+                    <TableRow>
+                      <SortableTh column="id">ID</SortableTh>
+                      <SortableTh column="client">Client</SortableTh>
+                      <SortableTh column="owner">Owner</SortableTh>
+                      <SortableTh column="title">Title</SortableTh>
+                      <SortableTh column="startDate">Start Date</SortableTh>
+                      <SortableTh column="endDate">End Date</SortableTh>
+                      <SortableTh column="vacancies">Vacancies</SortableTh>
+                      <SortableTh column="status">Status</SortableTh>
+                      <SortableTh column="filled">Filled</SortableTh>
+                      <TableHead>Skills</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginated.map((job) => (
+                      <TableRow
+                        key={job.id}
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => window.location.href = `/job/${job.id}`}
+                      >
+                        <TableCell>{job.id}</TableCell>
+                        <TableCell>{job.client?.name ?? `Client #${job.clientId}`}</TableCell>
+                        <TableCell>{job.owner?.username ?? `User #${job.postedBy}`}</TableCell>
+                        <TableCell className="font-medium">{job.title}</TableCell>
+                        <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Ongoing'}</TableCell>
+                        <TableCell>{job.vacancies}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(job.status)}>
+                            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={job.filled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                            {job.filled ? 'Yes' : 'No'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {getSkillNames(job.skills || []).map((skillName, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {skillName}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <IconActionTooltip label="View job">
+                              <span className="inline-flex">
+                                <Link to={`/job/${job.id}`}>
+                                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="View job">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              </span>
+                            </IconActionTooltip>
+                            <IconActionTooltip label="Edit job">
+                              <span className="inline-flex">
+                                <Link to={`/jobs/edit/${job.id}`}>
+                                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Edit job">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              </span>
+                            </IconActionTooltip>
+                            <IconActionTooltip label="Fill job placements">
+                              <span className="inline-flex">
+                                <Link to={`/job/${job.id}/fill`}>
+                                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Fill job placements">
+                                    <UserPlus className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              </span>
+                            </IconActionTooltip>
+                            <IconActionButton
+                              label="Remove job (not available)"
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 w-9 p-0 opacity-40"
+                              disabled
+                            >
+                              <X className="h-4 w-4" />
+                            </IconActionButton>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </div>
 
             {totalPages > 1 && (
@@ -513,15 +590,15 @@ const Jobs = () => {
                       />
                     </PaginationItem>
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const page = i + 1;
+                      const pg = i + 1;
                       return (
-                        <PaginationItem key={page}>
+                        <PaginationItem key={pg}>
                           <PaginationLink
-                            onClick={() => setCurrentPage(page)}
-                            isActive={currentPage === page}
+                            onClick={() => setCurrentPage(pg)}
+                            isActive={currentPage === pg}
                             className="cursor-pointer"
                           >
-                            {page}
+                            {pg}
                           </PaginationLink>
                         </PaginationItem>
                       );
