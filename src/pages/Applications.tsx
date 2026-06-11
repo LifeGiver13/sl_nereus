@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight, FileSignature } from "lucide-react";
+import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight, FileSignature, Columns } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE_URL } from "../config/env";
 import { PageSizeSelector } from "../components/ui/page-size-selector";
@@ -51,6 +51,9 @@ const STATUS_LABELS: { [key: string]: string } = {
   pending: "In Progress",
   submitted: "Pending Review",
   complete: "Completed",
+  approved: "Approved",
+  rejected: "Rejected",
+  incomplete: "Incomplete",
   processed: "NA",
 };
 
@@ -66,7 +69,17 @@ const Applications = () => {
   const { preferences, updateTablePreferences } = usePreferences();
   const navigate = useNavigate();
   const pageSize = preferences.table.pageSize;
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortColumn(column)
+      setSortDirection("asc")
+    }
+  }
 
   useEffect(() => {
     const fetchApplications = async () => {
@@ -113,18 +126,25 @@ const Applications = () => {
     return application.meta?.stage || "pre-registration";
   };
 
+  const capitalize = (value: string) =>
+    value.charAt(0).toUpperCase() + value.slice(1);
+
   const getStatusFromMeta = (application: Application): string => {
     const stage = getStageFromMeta(application);
 
+    let status: string;
+
     if (stage === "pre-registration") {
-      return application.meta?.pre_registration || "pending";
+      status = application.meta?.pre_registration || "pending";
     } else if (stage === "full-registration") {
-      return application.meta?.full_registration || "pending";
+      status = application.meta?.full_registration || "pending";
     } else if (stage === "processed") {
-      return "processed";
+      status = "processed";
+    } else {
+      status = application.status;
     }
 
-    return application.status;
+    return capitalize(status)
   };
 
   const isProcessed = (application: Application): boolean => {
@@ -132,6 +152,8 @@ const Applications = () => {
   };
 
   const getStatusBadge = (status: string) => {
+    const normalizedStatus = status.toLocaleLowerCase();
+
     const statusColors: { [key: string]: string } = {
       complete: "bg-green-500 hover:bg-green-600",
       submitted: "bg-blue-500 hover:bg-blue-600",
@@ -142,8 +164,8 @@ const Applications = () => {
     };
 
     return (
-      <Badge variant="default" className={statusColors[status] || "bg-gray-500 hover:bg-gray-600"}>
-        {STATUS_LABELS[status] || status}
+      <Badge variant="default" className={statusColors[normalizedStatus] || "bg-gray-500 hover:bg-gray-600"}>
+        {STATUS_LABELS[normalizedStatus] || status}
       </Badge>
     );
   };
@@ -210,6 +232,43 @@ const Applications = () => {
       console.error(`Error ${action}ing application:`, error);
     }
   };
+
+
+  const sortedApplications = [...applications].sort((a, b) => {
+    if (!sortColumn) return 0;
+    const dir = sortDirection === "asc" ? 1 : -1;
+
+    switch (sortColumn) {
+      case "id":
+        return (a.id - b.id) * dir;
+
+      case "username":
+        return (a.user?.username ?? "").localeCompare(b.user?.username ?? "") * dir;
+
+      case "createdAt":
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
+
+      case "updatedAt":
+        return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
+
+      case "status":
+        return (
+          getStatusFromMeta(a).localeCompare(
+            getStatusFromMeta(b)
+          ) * dir
+        );
+
+      case "stage":
+        return (
+          getStageFromMeta(a).localeCompare(
+            getStageFromMeta(b)
+          ) * dir
+        );
+
+      default:
+        return 0;
+    }
+  });
 
   const renderPagination = () => {
     const totalPages = Math.ceil(total / pageSize);
@@ -280,6 +339,8 @@ const Applications = () => {
     );
   };
 
+
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -323,17 +384,47 @@ const Applications = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Application ID</TableHead>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Stage</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date Created</TableHead>
-                      <TableHead>Last Update</TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("id")}
+                      >
+                        Application ID {sortColumn === "id" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("username")}
+                      >
+                        Username {sortColumn === "username" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("stage")}
+                      >
+                        Stage {sortColumn === "stage" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("status")}
+                      >
+                        Status {sortColumn === "status" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("createdAt")}
+                      >
+                        Date Created {sortColumn === "createdAt" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort("updatedAt")}
+                      >
+                        Last Update {sortColumn === "updatedAt" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
+                      </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {applications.map((application) => (
+                    {sortedApplications.map((application) => (
                       <TableRow
                         key={application.id}
                         className="cursor-pointer hover:bg-gray-50"
@@ -377,7 +468,7 @@ const Applications = () => {
                             </IconActionTooltip>
                             {!isProcessed(application) && (
                               <>
-                                <IconActionTooltip label="Comment on application">
+                                {/* <IconActionTooltip label="Comment on application">
                                   <span className="inline-flex">
                                     <Button
                                       variant="ghost"
@@ -388,7 +479,7 @@ const Applications = () => {
                                       <MessageSquare className="h-4 w-4" />
                                     </Button>
                                   </span>
-                                </IconActionTooltip>
+                                </IconActionTooltip> */}
                                 {hasUnresolvedRemarks(application) ? (
                                   <IconActionButton
                                     label="Cannot approve — unresolved remarks"
@@ -410,7 +501,7 @@ const Applications = () => {
                                     <Check className="h-4 w-4" />
                                   </IconActionButton>
                                 )}
-                                <IconActionButton
+                                {/* <IconActionButton
                                   label="Reject application"
                                   variant="ghost"
                                   size="sm"
@@ -418,7 +509,7 @@ const Applications = () => {
                                   onClick={() => handleApplicationAction(application.id, "reject")}
                                 >
                                   <X className="h-4 w-4" />
-                                </IconActionButton>
+                                </IconActionButton> */}
                               </>
                             )}
                             {(canSendDocuSignInvite(application) || isProcessed(application)) && (

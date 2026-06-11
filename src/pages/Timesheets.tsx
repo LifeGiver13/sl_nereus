@@ -788,7 +788,12 @@ const Timesheets = () => {
     });
   }, [timesheets, userFilter, date, dateFilterType]);
 
-  const totalPages = Math.max(1, Math.ceil(totalTimesheets / pageSize));
+  const paginatedFiltered = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const allVisibleSelected = filtered.length > 0 && filtered.every((row) => selectedIds.includes(row.id));
 
   const updateStatus = async (timesheetId: number, status: TimesheetStatus, rejectionReason?: string) => {
@@ -1022,9 +1027,11 @@ const Timesheets = () => {
               <Input
                 placeholder="Filter by user name or ID"
                 value={userFilter}
-                onChange={(e) => setUserFilter(e.target.value)}
-              />
-              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                onChange={(e) => { setUserFilter(e.target.value); setPage(1); }} />
+              <Select value={statusFilter} onValueChange={(v) => {
+                setStatusFilter(v); setPage(1);
+
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
@@ -1060,9 +1067,8 @@ const Timesheets = () => {
               <div className="flex flex-col gap-1">
                 <Select
                   value={dateFilterType}
-                  onValueChange={(v) => {
-                    setDateFilterType(v as "period" || "approved")
-                  }}>
+                  onValueChange={(v) => { setDateFilterType(v as "period" | "approved"); setPage(1); }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder='Date Filter Type' />
                   </SelectTrigger>
@@ -1194,7 +1200,7 @@ const Timesheets = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((row) => {
+                  {paginatedFiltered.map((row) => {
                     const isExpanded = expandedTimesheetId === row.id;
                     const totalHours = calculateTotalHours(row);
                     const categoryHours = calculateCategoryHours(row);
@@ -1369,7 +1375,7 @@ const Timesheets = () => {
                                             <p><strong>Weekend:</strong> {displayCategoryHours.weekend.toFixed(2)}h</p>
                                           </div>
                                         </div>
-                                       
+
                                         <CustomAddition timesheetId={row.id} authHeaders={authHeaders} />
                                       </>
                                     ) : (
