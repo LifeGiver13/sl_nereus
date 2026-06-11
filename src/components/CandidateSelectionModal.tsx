@@ -18,6 +18,7 @@ interface User {
   profile?: {
     Forename?: string;
     Surname?: string;
+    fullName?: string;
   };
   placements?: Array<{
     id: number;
@@ -56,6 +57,11 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [multiDateMode, setMultiDateMode] = useState(false);
   const [selectedDates, setSelectedDates] = useState<Date[]>([date]);
+  const searchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  //for optimised search
+  const userCache = React.useRef<Map<number, User>>(new Map());
+  const latestSearchRef = React.useRef(0);
 
   // Fetch recently placed candidates with full placement data
   const { data: recentlyPlaced, isLoading: isLoadingRecent } = useQuery({
@@ -65,7 +71,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
       if (!response.ok) return [];
       const data = await response.json();
       const candidates = Array.isArray(data) ? data : [];
-      
+
       // Fetch full user data with placements for each candidate
       const candidatesWithPlacements = await Promise.all(
         candidates.map(async (candidate) => {
@@ -84,7 +90,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
           return candidate;
         })
       );
-      
+
       return candidatesWithPlacements;
     },
     enabled: open && !!jobId
@@ -95,16 +101,16 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
     queryKey: ['candidateMatches', skillIds],
     queryFn: async () => {
       if (!skillIds || skillIds.length === 0) return { results: [] };
-      
+
       const searchParams = new URLSearchParams();
-      searchParams.append('search', JSON.stringify({ skillId: { in: skillIds} }));
-      
+      searchParams.append('search', JSON.stringify({ skillId: { in: skillIds } }));
+
       const response = await fetch(`${API_BASE_URL}/candidates/match?${searchParams.toString()}`);
       if (!response.ok) return { results: [] };
-      
+
       const data = await response.json();
       const candidates = Array.isArray(data?.results) ? data.results : [];
-      
+
       // Fetch full user data with placements for each candidate
       const candidatesWithPlacements = await Promise.all(
         candidates.map(async (candidate) => {
@@ -123,7 +129,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
           return candidate;
         })
       );
-      
+
       return {
         results: candidatesWithPlacements
       };
@@ -133,78 +139,145 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
 
   // Search for users using the same endpoint as UserSearchForm
   const searchUsers = async (term: string) => {
+    const searchId = ++latestSearchRef.current;
+
     if (!term.trim() || term.length < 2) {
+      if (searchId === latestSearchRef.current) {
+        setSearchResults([]);
+        setIsSearching(false);
+      }
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`
+      );
+
+      if (!response.ok) {
+        setSearchResults([]);
+        return;
+      }
+
+      const userData = await response.json();
+
+      const userArray: User[] = Object.entries(userData).map(([id, name]) => {
+        const nameParts = (name as string).split(" ");
+
+        return {
+          id: parseInt(id),
+          username: name as string,
+          profile: {
+            fullName: name as string,
+            Forename: nameParts[0] || "",
+            Surname: nameParts.slice(1).join(" "),
+          },
+        };
+      });
+
+      const usersWithPlacements = await Promise.all(
+        userArray.map(async (user) => {
+          const cached = userCache.current.get(user.id);
+
+          if (cached) {
+            return cached;
+          }
+
+          try {
+            const userResponse = await fetch(
+              `${API_BASE_URL}/user/${user.id}`,
+              {
+                headers: {
+                  "x-service-user":
+                    localStorage.getItem("session_token") || "",
+                },
+              }
+            );
+
+            if (userResponse.ok) {
+              const fullUser = await userResponse.json();
+
+              userCache.current.set(user.id, fullUser);
+
+              return fullUser;
+            }
+          } catch (err) {
+            console.error(err);
+          }
+
+          return user;
+        })
+      );
+
+      if (searchId !== latestSearchRef.current) {
+        return;
+      }
+
+      const searchLower = term.toLowerCase();
+
+      const filteredResults = usersWithPlacements.filter((user) => {
+        const fullName =
+          user.profile?.fullName ||
+          `${user.profile?.Forename || ""} ${user.profile?.Surname || ""}`;
+
+        return (
+          fullName.toLowerCase().includes(searchLower) ||
+          user.username?.toLowerCase().includes(searchLower)
+        );
+      });
+
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error("Error searching users:", error);
+
+      if (searchId === latestSearchRef.current) {
+        setSearchResults([]);
+      }
+    } finally {
+      if (searchId === latestSearchRef.current) {
+        setIsSearching(false);
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    recentlyPlaced?.forEach((user: User) => {
+      userCache.current.set(user.id, user);
+    });
+  }, [recentlyPlaced]);
+
+  React.useEffect(() => {
+    goodFitCandidates?.results?.forEach((user: User) => {
+      userCache.current.set(user.id, user);
+    });
+  }, [goodFitCandidates]);
+
+  const handleInputChange = (value: string) => {
+    setSearchTerm(value);
+
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    if (value.length < 2) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
 
     setIsSearching(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
-      if (response.ok) {
-        const userData = await response.json();
-        const userArray = Object.entries(userData).map(([id, name]) => {
-          const nameParts = (name as string).split(' ');
-          return {
-            id: parseInt(id),
-            username: name as string,
-            profile: {
-              Forename: nameParts[0] || '',
-              Surname: nameParts.slice(1).join(' ') || ''
-            }
-          };
-        });
-        
-        // Fetch full user data with placements for each search result
-        const usersWithPlacements = await Promise.all(
-          userArray.map(async (user) => {
-            try {
-              const userResponse = await fetch(`${API_BASE_URL}/user/${user.id}`, {
-                headers: {
-                  'x-service-user': localStorage.getItem('session_token') || '',
-                },
-              });
-              if (userResponse.ok) {
-                return await userResponse.json();
-              }
-            } catch (error) {
-              console.error(`Failed to fetch placements for user ${user.id}:`, error);
-            }
-            return user;
-          })
-        );
-        
-        setSearchResults(usersWithPlacements);
-      } else {
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('Error searching users:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleInputChange = (value: string) => {
-    setSearchTerm(value);
-    if (value.length >= 2) {
+    searchDebounceRef.current = setTimeout(() => {
       searchUsers(value);
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-  };
-
+    }, 500);
+  }
   // Calculate available dates (all job dates minus conflicting ones)
   const availableDates = useMemo(() => {
     if (!job) return new Set<string>();
-    
+
     const jobStart = new Date(job.startDate);
     const jobEnd = new Date(job.endDate);
     const dates = new Set<string>();
-    
+
     for (let d = new Date(jobStart); d <= jobEnd; d.setDate(d.getDate() + 1)) {
       const dateStr = formatDateString(d);
       if (!conflictingDates.has(dateStr)) {
@@ -216,7 +289,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
         dates.add(dateStr);
       }
     }
-    
+
     return dates;
   }, [job, conflictingDates]);
 
@@ -264,23 +337,25 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
     return (
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {candidateArray.map((candidate) => {
-          const firstName = candidate.profile?.Forename || 'Unknown';
-          const lastName = candidate.profile?.Surname || 'User';
+          const displayName =
+            candidate.profile?.fullName ||
+            `${candidate.profile?.Forename || ''} ${candidate.profile?.Surname || ''}`.trim() ||
+            'Unknown User';
+             const lastName = candidate.profile?.Surname || '';
           const email = candidate.username || '';
           const datesToCheck = multiDateMode ? selectedDates : [date];
           const isUnavailable = isCandidateUnavailable(candidate, datesToCheck);
-          
+
           return (
             <div
               key={candidate.id}
-              className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
-                isUnavailable 
-                  ? 'opacity-50 bg-muted cursor-not-allowed' 
-                  : 'hover:bg-accent/50'
-              }`}
+              className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${isUnavailable
+                ? 'opacity-50 bg-muted cursor-not-allowed'
+                : 'hover:bg-accent/50'
+                }`}
             >
               <div className="flex-1">
-                <p className="font-medium">{firstName} {lastName}</p>
+                <p className="font-medium">{displayName} {lastName}</p>
                 <p className="text-sm text-muted-foreground">{email}</p>
                 {isUnavailable && (
                   <p className="text-xs text-destructive mt-1">
@@ -337,14 +412,14 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
             />
           </div>
         )}
-        
+
         <Tabs defaultValue="recent" className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="recent">Recently Placed</TabsTrigger>
             <TabsTrigger value="search">Search</TabsTrigger>
             <TabsTrigger value="good-fit">Good Fit</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="recent" className="flex-1 overflow-auto mt-4">
             {renderCandidateList(
               recentlyPlaced || [],
@@ -352,7 +427,7 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
               "No recently placed candidates found"
             )}
           </TabsContent>
-          
+
           <TabsContent value="search" className="flex-1 overflow-auto mt-4">
             <div className="space-y-4">
               <div className="relative">
@@ -379,12 +454,12 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
               )}
             </div>
           </TabsContent>
-          
+
           <TabsContent value="good-fit" className="flex-1 overflow-auto mt-4">
             {renderCandidateList(
               goodFitCandidates?.results || [],
               isLoadingGoodFit,
-              skillIds && skillIds.length > 0 
+              skillIds && skillIds.length > 0
                 ? "No candidates found with matching skills"
                 : "No skills specified for this job"
             )}

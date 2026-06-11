@@ -29,6 +29,8 @@ export function DateRangePicker({
   startLabel = "Start Date",
   endLabel = "End Date"
 }: DateRangePickerProps) {
+
+  const [open, setOpen] = React.useState(false)
   const [date, setDate] = React.useState<DateRange | undefined>(() => {
     if (value?.from && value?.to) {
       return {
@@ -41,14 +43,23 @@ export function DateRangePicker({
 
   const handleDateChange = (newDate: DateRange | undefined) => {
     setDate(newDate)
-    if (onChange && newDate?.from && newDate?.to) {
+
+    if (onChange) {
       onChange({
-        from: format(newDate.from, "yyyy-MM-dd"),
-        to: format(newDate.to, "yyyy-MM-dd")
+        from: newDate?.from
+          ? format(newDate.from, "yyyy-MM-dd")
+          : "",
+        to: newDate?.to
+          ? format(newDate.to, "yyyy-MM-dd")
+          : "",
       })
     }
-  }
 
+    // Close only when range complete
+    if (newDate?.from && newDate?.to) {
+      setOpen(false)
+    }
+  }
   React.useEffect(() => {
     if (value?.from && value?.to) {
       setDate({
@@ -62,7 +73,7 @@ export function DateRangePicker({
 
   return (
     <div className={cn("grid gap-2", className)}>
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             id="date"
