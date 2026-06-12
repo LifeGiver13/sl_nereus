@@ -339,9 +339,8 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
         {candidateArray.map((candidate) => {
           const displayName =
             candidate.profile?.fullName ||
-            `${candidate.profile?.Forename || ''} ${candidate.profile?.Surname || ''}`.trim() ||
-            'Unknown User';
-             const lastName = candidate.profile?.Surname || '';
+            `${candidate.profile?.Forename || ''} ${candidate.profile?.Surname || ''}`.trim() || candidate.username || 'Unknown User';
+          const lastName = candidate.profile?.Surname || '';
           const email = candidate.username || '';
           const datesToCheck = multiDateMode ? selectedDates : [date];
           const isUnavailable = isCandidateUnavailable(candidate, datesToCheck);

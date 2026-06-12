@@ -67,6 +67,7 @@ interface PlacementCalendarTableProps {
         profile?: {
           Forename?: string;
           Surname?: string;
+          fullName?: string;
         };
       };
     }>;
@@ -83,11 +84,11 @@ interface PlacementCalendarTableProps {
   statusFilter?: string;
 }
 
-const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({ 
-  job, 
+const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
+  job,
   slots,
   existingPlacements = [],
-  onAssignCandidate, 
+  onAssignCandidate,
   onEditPlacement,
   statusFilter = 'active'
 }) => {
@@ -106,7 +107,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
 
   const currentWeekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
 
-  const weekDays = eachDayOfInterval({ 
+  const weekDays = eachDayOfInterval({
     start: currentWeekStart,
     end: currentWeekEnd
   });
@@ -114,7 +115,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
   const isDayApplicable = (day: Date) => {
     const comparisonDay = new Date(day);
     comparisonDay.setHours(12, 0, 0, 0);
-    
+
     if (comparisonDay < jobStart || comparisonDay > jobEnd) return false;
     if (!includeWeekends && isWeekend(day)) return false;
     return true;
@@ -139,32 +140,32 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
 
   const getAssignmentForSlotAndDate = (slotId: number, date: Date): PlacementRow | null => {
     const dateString = format(date, 'yyyy-MM-dd');
-    
+
     const placement = job.placements?.find(p => {
       const shiftDate = p.meta?.shiftDate || p.shiftDate;
-      
+
       if (!shiftDate) {
         console.warn('Placement has no shiftDate:', p);
         return false;
       }
-      
+
       const placementDate = new Date(shiftDate);
-      
+
       if (isNaN(placementDate.getTime())) {
         console.error('Invalid placement date:', shiftDate);
         return false;
       }
-      
+
       placementDate.setHours(12, 0, 0, 0);
       const placementDateString = format(placementDate, 'yyyy-MM-dd');
-      
+
       const placementSlot = p.meta?.vacancy ?? p.vacancy ?? 1;
-      
+
       // Check if date and slot match
       if (placementDateString !== dateString || placementSlot !== slotId) {
         return false;
       }
-      
+
       // Apply status filter
       if (statusFilter === 'active') {
         return ['awaiting_confirmation', 'accepted', 'completed', 'cancelled', 'absent_explained', 'absent_unexplained'].includes(p.status);
@@ -176,7 +177,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
     if (!placement || !placement.user) return null;
 
     const profile = placement.user.profile;
-    const displayName = profile ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() : placement.user.username || 'Unknown User';
+    const displayName = profile ? `${profile.Forename || ''} ${profile.Surname || ''} `.trim() || `${profile.fullName || ''}` : placement.user.username || 'Unknown User';
 
     return {
       id: placement.id,
@@ -220,7 +221,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
 
     const handleClick = () => {
       if (!isApplicable) return;
-      
+
       if (isFilled && onEditPlacement) {
         // Find the full placement data from existingPlacements (which has userId, jobId, etc.)
         const fullPlacement = existingPlacements.find(p => p.id === assignment.id);
@@ -238,17 +239,17 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
 
     const getStatusColor = (status: string) => {
       switch (status?.toLowerCase()) {
-        case 'accepted': 
-        case 'awaiting_confirmation': 
+        case 'accepted':
+        case 'awaiting_confirmation':
           return 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
-        case 'cancelled': 
+        case 'cancelled':
           return 'bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200';
         case 'absent_explained':
         case 'absent_unexplained':
           return 'bg-purple-100 dark:bg-purple-900 hover:bg-purple-200 dark:hover:bg-purple-800 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200';
         case 'completed':
           return 'bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200';
-        default: 
+        default:
           return 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
       }
     };
@@ -256,7 +257,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
     return (
       <div className="h-full">
         {isFilled ? (
-          <div 
+          <div
             className={`${getStatusColor(assignment.status)} rounded-md p-2 space-y-1 border cursor-pointer transition-colors`}
             onClick={handleClick}
           >
@@ -268,7 +269,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
             </div>
           </div>
         ) : isApplicable ? (
-          <div 
+          <div
             className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-2 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
             onClick={handleClick}
           >
@@ -329,7 +330,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
                   {weekDays.map((day, index) => {
                     const isApplicable = isDayApplicable(day);
                     return (
-                      <TableHead 
+                      <TableHead
                         key={index}
                         className={`text-center border-r last:border-r-0 ${!isApplicable ? 'bg-muted/30' : ''}`}
                       >

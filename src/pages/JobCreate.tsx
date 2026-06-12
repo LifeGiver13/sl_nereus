@@ -384,7 +384,7 @@ const JobCreate = () => {
         endDate: endDateStr || null,
         shiftId: formData.shiftId ? parseInt(formData.shiftId) : null,
         vacancies: parseInt(formData.vacancies),
-        status: 'active',
+        status: 'open',
         skills: selectedSkills.map(skill => skill.id),
         filled: false,
         assignees: [],

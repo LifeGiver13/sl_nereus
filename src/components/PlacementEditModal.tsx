@@ -304,13 +304,13 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Edit Placement</DialogTitle>
+          <DialogTitle className="pl-1" >Edit Placement</DialogTitle>
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto min-h-0 pr-2">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-6 pl-1">
             {/* Left Column */}
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
                 <p className="text-sm text-muted-foreground">Candidate</p>
                 <p className="font-medium">{candidateName}</p>

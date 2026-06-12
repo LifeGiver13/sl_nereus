@@ -100,12 +100,12 @@ const JobDetail = () => {
 
   const getSkillNames = (skillIds: number[]) => {
     if (!skillsData || !skillIds) return [];
-    
+
     const allSkills: Skill[] = [];
     Object.values(skillsData).forEach((categorySkills: any) => {
       allSkills.push(...categorySkills);
     });
-    
+
     return skillIds.map(id => {
       const skill = allSkills.find(s => s.id === id);
       return skill ? skill.name : `Skill ID: ${id}`;
@@ -173,9 +173,10 @@ const JobDetail = () => {
           shiftId: job.shiftId,
           confirmed: true,
           status: 'awaiting_confirmation',
+          shiftDate: date.toISOString(),
           meta: {
             vacancy: slotId,
-            shiftDate: date.toISOString()
+            shiftDate: date.toISOString(),
           }
         };
 
@@ -376,11 +377,11 @@ const JobDetail = () => {
           existingPlacements={existingPlacements?.results || []}
           onAssignCandidate={handleAssignCandidate}
           onEditPlacement={handleEditPlacement}
-          slots={job?.vacancies ? Array.from({length: job.vacancies}, (_, i) => ({
+          slots={job?.vacancies ? Array.from({ length: job.vacancies }, (_, i) => ({
             id: i + 1,
             placements: [],
             occupiedDates: new Set<string>()
-          })) : [{id: 1, placements: [], occupiedDates: new Set<string>()}]}
+          })) : [{ id: 1, placements: [], occupiedDates: new Set<string>() }]}
         />
 
 
@@ -417,11 +418,11 @@ const JobDetail = () => {
         placement={selectedPlacement}
         job={job}
         existingPlacements={existingPlacements?.results || []}
-        slots={job?.vacancies ? Array.from({length: job.vacancies}, (_, i) => ({
+        slots={job?.vacancies ? Array.from({ length: job.vacancies }, (_, i) => ({
           id: i + 1,
           placements: [],
           occupiedDates: new Set<string>()
-        })) : [{id: 1, placements: [], occupiedDates: new Set<string>()}]}
+        })) : [{ id: 1, placements: [], occupiedDates: new Set<string>() }]}
       />
     </AdminLayout>
   );

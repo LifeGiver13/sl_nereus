@@ -37,7 +37,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Error",
@@ -77,21 +77,29 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create user');
-      }
+      const data = await response.json()
 
-      toast({
-        title: "Success",
-        description: "User created successfully",
-      });
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+          data?.error ||
+          'Failed to create user'
+        );
+      }
+      if (response.ok) {
+
+        toast({
+          title: "Success",
+          description: "User created successfully",
+        });
+      }
 
       onUserCreated();
     } catch (error) {
       console.error('Error creating user:', error);
       toast({
         title: "Error",
-        description: "Failed to create user",
+        description: error.message || "Failed to create user",
         variant: "destructive",
       });
     } finally {
@@ -176,8 +184,8 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isSubmitting || !formData.username || !formData.password || !formData.role}
               className="bg-[#712B71] hover:bg-[#712B71]/90"
             >

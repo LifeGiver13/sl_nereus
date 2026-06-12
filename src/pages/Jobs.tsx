@@ -69,7 +69,6 @@ const Jobs = () => {
   const [titleFilter, setTitleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
-  const [ownerFilter, setOwnerFilter] = useState('');
   const [startDateRange, setStartDateRange] = useState({ from: '', to: '' });
   const [endDateRange, setEndDateRange] = useState({ from: '', to: '' });
 
@@ -146,29 +145,25 @@ const Jobs = () => {
 
   const searchUsers = async (term: string) => {
     if (term.length < 2) { setUsers([]); return; }
-    try {
-      const res = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
-      }
-    } catch { /* ignore */ }
+    const res = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
+    if (res.ok) {
+      const data = await res.json();
+      setUsers(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
+    }
   };
 
   const handleUserSearch = (value: string) => {
     setUserSearchTerm(value);
-    if (!value) { setSelectedUserId(null); setOwnerFilter(''); }
+    if (!value) setSelectedUserId(null);
     searchUsers(value);
   };
 
   const handleUserSelect = (user: User) => {
     setSelectedUserId(user.id);
     setUserSearchTerm(user.name);
-    setOwnerFilter(user.name.toLowerCase());
     setUsers([]);
   };
 
-  // Client-side filtering
   const filtered = useMemo(() => {
     return allJobs.filter((job) => {
       if (titleFilter && !job.title.toLowerCase().includes(titleFilter.toLowerCase())) return false;
@@ -179,10 +174,8 @@ const Jobs = () => {
         if (!name.includes(clientFilter)) return false;
       }
 
-      if (ownerFilter) {
-        const uname = job.owner?.username?.toLowerCase() ?? '';
-        if (!uname.includes(ownerFilter)) return false;
-      }
+      if (selectedUserId && job.owner?.id !== selectedUserId) return false;
+
 
       if (startDateRange.from && job.startDate < startDateRange.from) return false;
       if (startDateRange.to && job.startDate > startDateRange.to) return false;
@@ -191,7 +184,7 @@ const Jobs = () => {
       if (endDateRange.to && job.endDate && job.endDate > endDateRange.to) return false;
       return true;
     });
-  }, [allJobs, titleFilter, statusFilter, clientFilter, ownerFilter, startDateRange, endDateRange]);
+  }, [allJobs, titleFilter, statusFilter, clientFilter, startDateRange, endDateRange]);
 
   // Sorting + Pagination (unchanged)
   const sorted = useMemo(() => {
@@ -223,7 +216,6 @@ const Jobs = () => {
     setTitleFilter('');
     setStatusFilter('');
     setClientFilter('');
-    setOwnerFilter('');
     setStartDateRange({ from: '', to: '' });
     setEndDateRange({ from: '', to: '' });
     setSelectedClientId(null);
