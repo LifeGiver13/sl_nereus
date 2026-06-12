@@ -486,7 +486,43 @@ const Jobs = () => {
                                 </Link>
                               </span>
                             </IconActionTooltip>
-                            {/* ... other buttons ... */}
+                            <IconActionTooltip label="Edit job">
+                              <span className="inline-flex">
+                                <Link to={`/jobs/edit/${job.id}`}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-9 p-0"
+                                    aria-label="Edit job"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              </span>
+                            </IconActionTooltip>
+                            <IconActionTooltip label="Fill job placements">
+                              <span className="inline-flex">
+                                <Link to={`/job/${job.id}/fill`}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-9 p-0"
+                                    aria-label="Fill job placements"
+                                  >
+                                    <UserPlus className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              </span>
+                            </IconActionTooltip>
+                            <IconActionButton
+                              label="Remove job (not available)"
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 w-9 p-0 opacity-40"
+                              disabled
+                            >
+                              <X className="h-4 w-4" />
+                            </IconActionButton>
                           </div>
                         </TableCell>
                       </TableRow>

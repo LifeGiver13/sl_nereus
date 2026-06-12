@@ -36,17 +36,17 @@ const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated
       'pending': 'bg-yellow-100 text-yellow-800',
       'suspended': 'bg-red-100 text-red-800',
     };
-    
+
     return (
       <Badge className={statusColors[status] || 'bg-gray-100 text-gray-800'}>
-        {status}
+        {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (newStatus === user.status) {
       toast({
         title: "No Changes",
@@ -75,7 +75,7 @@ const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated
         title: "Success",
         description: "Status updated successfully",
       });
-      
+
       onUserUpdated();
     } catch (error) {
       console.error('Error updating status:', error);
@@ -100,7 +100,7 @@ const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated
             <label className="text-sm font-medium">Current Status</label>
             <div>{getStatusBadge(user.status)}</div>
           </div>
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">New Status</label>
             <Select value={newStatus} onValueChange={setNewStatus}>
@@ -116,7 +116,7 @@ const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="submit" disabled={isLoading}>
               {isLoading ? 'Updating...' : 'Update Status'}

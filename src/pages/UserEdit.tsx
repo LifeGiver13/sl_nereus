@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, GripVertical } from 'lucide-react';
 import ProfileEditForm from '@/components/ProfileEditForm';
 import UsernameChangeForm from '@/components/UsernameChangeForm';
 import StatusChangeForm from '@/components/StatusChangeForm';
@@ -43,6 +43,12 @@ interface User {
   meta: { [key: string]: any };
 }
 
+type TabItem = {
+  value: string;
+  label: string;
+  type: 'profile' | 'system'
+}
+
 const UserEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -51,6 +57,80 @@ const UserEdit: React.FC = () => {
   const [viewManager, setViewManager] = useState<ViewManager | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isViewLoading, setIsViewLoading] = useState(false);
+
+  //for tab movement
+  const [draggedTab, setDraggedTab] = useState<string | null>(null);
+  const [tabOrder, setTabOrder] = useState<TabItem[]>([])
+  const [initialized, setInitialized] = useState(false);
+
+  const [hasLoadedOrder, setHasLoadedOrder] = useState(false);
+
+  useEffect(() => {
+    if (!viewManager || initialized) return;
+
+    const saved = localStorage.getItem('user-edit-tab-order');
+
+    if (saved) {
+      const savedValues = JSON.parse(saved);
+
+      const orderedTabs = savedValues
+        .map((value: string) =>
+          defaultTabs.find(t => t.value === value)
+        )
+        .filter(Boolean) as TabItem[];
+
+      const missingTabs = defaultTabs.filter(
+        t => !savedValues.includes(t.value)
+      );
+
+      setTabOrder([...orderedTabs, ...missingTabs]);
+      setHasLoadedOrder(true)
+    } else {
+      setTabOrder(defaultTabs);
+    }
+
+    setInitialized(true);
+  }, [viewManager]);
+
+
+  useEffect(() => {
+    if (!tabOrder.length) return;
+
+    localStorage.setItem(
+      'user-edit-tab-order',
+      JSON.stringify(tabOrder.map(t => t.value))
+    );
+  }, [tabOrder]);
+
+  // useEffect(() => {
+  //   console.log('defaultTabs', defaultTabs);
+  //   console.log('tabOrder', tabOrder);
+  //   console.log(tabOrder.map(t => t.label));
+  // }, [tabOrder]);
+
+  const moveTab = (dragValue: string, dropValue: string) => {
+    const updated = [...tabOrder];
+
+    const dragIndex = updated.findIndex(
+      t => t.value === dragValue
+    );
+
+    const dropIndex = updated.findIndex(
+      t => t.value === dropValue
+    )
+
+    if (dragIndex === -1 || dropIndex === -1) return;
+
+    const [dragged] = updated.splice(dragIndex, 1);
+
+    updated.splice(dropIndex, 0, dragged);
+
+    setTabOrder(updated)
+
+
+  }
+
+
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -80,6 +160,8 @@ const UserEdit: React.FC = () => {
         setIsLoading(false);
       }
     };
+
+
 
     const fetchViewManager = async () => {
       try {
@@ -135,21 +217,45 @@ const UserEdit: React.FC = () => {
   };
 
   const systemTabs = [
-    { value: 'username', label: 'Username' },
-    { value: 'status', label: 'Status' },
     { value: 'role', label: 'Role' },
+    { value: 'status', label: 'Status' },
+    { value: 'username', label: 'Username' },
     { value: 'password', label: 'Password' },
   ];
 
+
+  const preferredProfileOrder = [
+    'Basic Information',
+    'Contact Information',
+    'Address',
+    'Admin Details',
+  ];
+
   const profileTabs = viewManager
-    ? Object.keys(viewManager.sections).map((sectionName) => ({
-        value: sectionName.toLowerCase().replace(/\s+/g, '-'),
-        label: sectionName,
+    ? preferredProfileOrder
+      .filter(section => viewManager.sections[section])
+      .map(section => ({
+        value: section.toLowerCase().replace(/\s+/g, '-'),
+        label: section,
       }))
     : [{ value: 'profile', label: 'Profile' }];
 
+
   const allTabs = [...profileTabs, ...systemTabs];
-  const defaultTab = profileTabs[0]?.value || 'profile';
+
+  const defaultTabs: TabItem[] = [
+    ...profileTabs.map(tab => ({
+      ...tab,
+      type: 'profile' as const,
+    })),
+    ...systemTabs.map(tab => ({
+      ...tab,
+      type: 'system' as const,
+    }))
+  ];
+
+  const defaultTabValue =
+    defaultTabs[0]?.value || 'profile';
 
   return (
     <AdminLayout>
@@ -183,11 +289,25 @@ const UserEdit: React.FC = () => {
             {isLoading || !user ? (
               <div className="text-center py-12 text-gray-500">Loading user details...</div>
             ) : (
-              <Tabs defaultValue={defaultTab} className="space-y-4">
+              <Tabs defaultValue={defaultTabValue} className="space-y-4">
                 <div className="overflow-x-auto pb-2">
                   <TabsList className="inline-flex h-auto w-max min-w-full flex-nowrap gap-2">
-                    {allTabs.map((tab) => (
-                      <TabsTrigger key={tab.value} value={tab.value} className="whitespace-nowrap">
+                    <GripVertical className="h-3 w-3 mr-1" />
+                    {tabOrder.map((tab) => (
+                      <TabsTrigger
+                        key={tab.value}
+                        value={tab.value}
+                        draggable
+                        onDragStart={() => setDraggedTab(tab.value)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => {
+                          if (draggedTab && draggedTab !== tab.value) {
+                            moveTab(draggedTab, tab.value);
+                          }
+                        }}
+                        className="whitespace-nowrap cursor-move   hover:bg-accent
+"
+                      >
                         {tab.label}
                       </TabsTrigger>
                     ))}

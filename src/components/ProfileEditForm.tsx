@@ -38,7 +38,6 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated, 
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // If fields are provided, filter profile data to only show those fields
   const displayProfile = fields ? 
     Object.fromEntries(
       fields.map(field => [field.property, profile[field.property] || ''])
