@@ -50,14 +50,14 @@ const People = () => {
   const { toast } = useToast();
 
   const { preferences, updateTablePreferences } = usePreferences();
-  const itemsPerPage = preferences.table.pageSize;
+  const itemsPerPage = preferences.table.pageSize || 10;
   const totalPages = Math.ceil(total / itemsPerPage);
 
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
 
-      let url = `${API_BASE_URL}/users?page=${currentPage}&limit=${itemsPerPage}`;
+      let url = `${API_BASE_URL}/users?page=${currentPage}&limit=${itemsPerPage}&offset=${(currentPage - 1) * itemsPerPage}`;
 
       // Build search object
       const searchObj: any = {};
@@ -109,6 +109,12 @@ const People = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+  const clearFilters = () => {
+    setSelectedRole('all')
+    setSelectedStatus('all')
+    setSearchTerm('')
+    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -183,6 +189,8 @@ const People = () => {
       description: "User created successfully and list refreshed",
     });
   };
+
+
 
   const getStatusBadge = (status: string) => {
     const statusColors: { [key: string]: string } = {
@@ -432,8 +440,14 @@ const People = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="pt-7 flex gap-2">
+                  <Button onClick={clearFilters} variant="outline">
+                    Clear Filters
+                  </Button>
+                </div>
               </div>
             </div>
+
 
             {isLoading ? (
               <div className="text-center py-8">
