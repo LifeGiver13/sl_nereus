@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { AlertCircle } from 'lucide-react';
 
 interface User {
   id: number;
@@ -18,9 +19,30 @@ interface StatusChangeFormProps {
 }
 
 const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated }) => {
-  const [newStatus, setNewStatus] = useState(user.status);
+
+  const storageKey = `user-${user.id}-status-draft`;
+  const [newStatus, setNewStatus] = useState(() => {
+    const saved = localStorage.getItem(storageKey);
+    return saved ? JSON.parse(saved) : user.status;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(newStatus));
+  }, [newStatus]);
+
+  const hasUnsavedChanges = newStatus !== user.status;
+
+  const discardChanges = () => {
+    setNewStatus(user.status);
+    localStorage.removeItem(storageKey);
+
+    toast({
+      title: 'Changes discarded',
+      description: 'Status reset to original value',
+    });
+  };
 
   const statusOptions = [
     { value: 'active', label: 'Active' },
@@ -28,6 +50,8 @@ const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated
     { value: 'pending', label: 'Pending' },
     { value: 'suspended', label: 'Suspended' },
   ];
+
+
 
   const getStatusBadge = (status: string) => {
     const statusColors: { [key: string]: string } = {
@@ -92,7 +116,14 @@ const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Change Status</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          Change Status
+          {hasUnsavedChanges && (
+            <span className="text-sm text-red-600 flex items-center gap-1 font-medium">
+              <AlertCircle className="h-4 w-4" />
+              Unsaved changes
+            </span>)}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -118,7 +149,16 @@ const StatusChangeForm: React.FC<StatusChangeFormProps> = ({ user, onUserUpdated
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={discardChanges}
+              disabled={!hasUnsavedChanges}
+            >
+              Discard
+            </Button>
+
+            <Button type="submit" disabled={isLoading || !hasUnsavedChanges}>
               {isLoading ? 'Updating...' : 'Update Status'}
             </Button>
           </div>

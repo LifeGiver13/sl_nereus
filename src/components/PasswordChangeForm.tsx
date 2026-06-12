@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { IconActionButton } from '@/components/IconActionTooltip';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Check, X, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/utils';
 
@@ -17,12 +17,22 @@ interface PasswordChangeFormProps {
 }
 
 const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpdated }) => {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const passwordKey = `user-${user.id}-password-draft`;
+  const confirmKey = `user-${user.id}-confirm-password-draft`;
+
+  const [password, setPassword] = useState(
+    () => localStorage.getItem(passwordKey) || ''
+  );
+
+  const [confirmPassword, setConfirmPassword] = useState(
+    () => localStorage.getItem(confirmKey) || ''
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
 
   // Password strength validation
   const passwordValidation = useMemo(() => {
@@ -37,9 +47,39 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
   const isPasswordValid = Object.values(passwordValidation).every(Boolean);
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
 
+  useEffect(() => {
+    localStorage.setItem(passwordKey, password);
+  }, [password]);
+
+  useEffect(() => {
+    localStorage.setItem(confirmKey, confirmPassword);
+  }, [confirmPassword]);
+
+
+  const hasUnsavedChanges = useMemo(() => {
+    return !!(password || confirmPassword);
+  }, [password, confirmPassword]);
+
+  const resetForm = () => {
+    setPassword('');
+    setConfirmPassword('');
+    localStorage.removeItem(passwordKey);
+    localStorage.removeItem(confirmKey);
+  };
+
+
+  const discardChanges = () => {
+    resetForm();
+
+    toast({
+      title: 'Draft discarded',
+      description: 'Unsaved password changes removed',
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isPasswordValid) {
       toast({
         title: "Validation Error",
@@ -74,11 +114,13 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
         title: "Success",
         description: "Password updated successfully",
       });
-      
+
       // Clear form
+      localStorage.removeItem(passwordKey);
+      localStorage.removeItem(confirmKey);
       setPassword('');
       setConfirmPassword('');
-      
+
       onUserUpdated();
     } catch (error) {
       console.error('Error updating password:', error);
@@ -92,10 +134,35 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
     }
   };
 
+  useEffect(() => {
+    if (password) {
+      localStorage.setItem(passwordKey, password);
+    } else {
+      localStorage.removeItem(passwordKey);
+    }
+  }, [password]);
+
+  useEffect(() => {
+    if (confirmPassword) {
+      localStorage.setItem(confirmKey, confirmPassword);
+    } else {
+      localStorage.removeItem(confirmKey);
+    }
+  }, [confirmPassword]);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Change Password</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          Change Password
+          {hasUnsavedChanges && (
+            <span className="text-sm text-red-600 flex items-center gap-1 font-medium">
+              <AlertCircle className="h-4 w-4" />
+              Unsaved changes
+            </span>
+          )}
+        </CardTitle>
+
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -126,7 +193,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
                 )}
               </IconActionButton>
             </div>
-            
+
             {/* Password requirements */}
             <div className="space-y-1 text-sm">
               <div className="text-gray-600 font-medium">Password requirements:</div>
@@ -144,11 +211,11 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
               </div>
               <div className={`flex items-center gap-2 ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-gray-500'}`}>
                 {passwordValidation.hasSpecialChar ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                At least 1 special character (!@#$%^&*(),.?":{}|&lt;&gt;)
+                At least 1 special character (!@#$%^&*(),.?":{ }|&lt;&gt;)
               </div>
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Confirm New Password</label>
             <div className="relative">
@@ -175,7 +242,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
                 )}
               </IconActionButton>
             </div>
-            
+
             {/* Password match indicator */}
             {confirmPassword && (
               <div className={`flex items-center gap-2 text-sm ${passwordsMatch ? 'text-green-600' : 'text-red-500'}`}>
@@ -184,11 +251,20 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ user, onUserUpd
               </div>
             )}
           </div>
-          
+
           <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              type="submit" 
-              disabled={isLoading || !isPasswordValid || !passwordsMatch}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={discardChanges}
+              disabled={!hasUnsavedChanges}
+            >
+              Discard Changes
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={isLoading || !isPasswordValid || !passwordsMatch || !hasUnsavedChanges}
             >
               {isLoading ? 'Updating...' : 'Update Password'}
             </Button>

@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { AlertCircle } from 'lucide-react';
 
 interface User {
   id: number;
@@ -18,10 +19,31 @@ interface RoleChangeFormProps {
 }
 
 const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) => {
-  const [newRole, setNewRole] = useState(user.role);
+  const storageKey = `user-${user.id}-role-draft`;
+
+  const [newRole, setNewRole] = useState(() => {
+    const saved = localStorage.getItem(storageKey);
+    return saved ? JSON.parse(saved) : user.role;
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(newRole));
+  }, [newRole]);
+
+  const hasUnsavedChanges = newRole !== user.role;
+
+  const discardChanges = () => {
+    setNewRole(user.role);
+    localStorage.removeItem(storageKey);
+
+    toast({
+      title: 'Changes discarded',
+      description: 'Role reset to original value',
+    });
+  };
   const roleOptions = [
     { value: 'applicant', label: 'Applicant' },
     { value: 'worker', label: 'Worker' },
@@ -38,7 +60,7 @@ const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) 
       'admin': 'bg-orange-100 text-orange-800',
       'super_admin': 'bg-red-100 text-red-800',
     };
-    
+
     return (
       <Badge className={roleColors[role] || 'bg-gray-100 text-gray-800'}>
         {role}
@@ -48,7 +70,7 @@ const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (newRole === user.role) {
       toast({
         title: "No Changes",
@@ -77,7 +99,7 @@ const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) 
         title: "Success",
         description: "Role updated successfully",
       });
-      
+
       onUserUpdated();
     } catch (error) {
       console.error('Error updating role:', error);
@@ -94,7 +116,15 @@ const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Change Role</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          Change Role
+          {hasUnsavedChanges && (
+            <span className="text-sm text-red-600 flex items-center gap-1 font-medium">
+              <AlertCircle className="h-4 w-4" />
+              Unsaved changes
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,7 +132,7 @@ const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) 
             <label className="text-sm font-medium">Current Role</label>
             <div>{getRoleBadge(user.role)}</div>
           </div>
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">New Role</label>
             <Select value={newRole} onValueChange={setNewRole}>
@@ -118,9 +148,18 @@ const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) 
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={discardChanges}
+              disabled={!hasUnsavedChanges}
+            >
+              Discard
+            </Button>
+
+            <Button type="submit" disabled={isLoading || !hasUnsavedChanges}>
               {isLoading ? 'Updating...' : 'Update Role'}
             </Button>
           </div>

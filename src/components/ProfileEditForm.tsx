@@ -1,11 +1,11 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { AlertCircle } from 'lucide-react';
 
 type ViewField = {
   property: string;
@@ -33,20 +33,52 @@ interface ProfileEditFormProps {
   fields?: ViewField[];
 }
 
-const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated, sectionName, fields }) => {
-  const [profile, setProfile] = useState(user.profile || {});
-  const [isLoading, setIsLoading] = useState(false);
+const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
+  user,
+  onUserUpdated,
+  sectionName,
+  fields,
+}) => {
+  const storageKey = `user-${user.id}-${sectionName || 'profile'}-draft`;
   const { toast } = useToast();
 
-  const displayProfile = fields ? 
-    Object.fromEntries(
-      fields.map(field => [field.property, profile[field.property] || ''])
-    ) : profile;
+  // Initialize with draft if exists, otherwise use user.profile
+  const [profile, setProfile] = useState<{ [key: string]: any }>(() => {
+    const savedDraft = localStorage.getItem(storageKey);
+    if (savedDraft) {
+      try {
+        return JSON.parse(savedDraft);
+      } catch (e) {
+        console.error('Failed to parse draft', e);
+      }
+    }
+    return user.profile || {};
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    return JSON.stringify(profile) !== JSON.stringify(user.profile || {});
+  }, [profile, user.profile]);
+
+  // Sync with latest user data when it changes 
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(storageKey);
+    if (!savedDraft) {
+      setProfile(user.profile || {});
+    }
+  }, [user.profile, storageKey]);
+
+  // Persist draft to localStorage whenever profile changes
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(profile));
+  }, [profile, storageKey]);
 
   const handleInputChange = (key: string, value: any) => {
-    setProfile(prev => ({
+    setProfile((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
@@ -55,28 +87,20 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated, 
     setIsLoading(true);
 
     try {
-      const updatedUser = {
-        ...user,
-        profile
-      };
+      const updatedUser = { ...user, profile };
 
       const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedUser),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
-      
+      toast({ title: "Success", description: "Profile updated successfully" });
+
+      // Clear draft after successful save
+      localStorage.removeItem(storageKey);
       onUserUpdated();
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -90,9 +114,26 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated, 
     }
   };
 
+  const discardChanges = () => {
+    setProfile(user.profile || {});
+    localStorage.removeItem(storageKey);
+    toast({
+      title: 'Draft discarded',
+      description: 'Unsaved changes have been removed',
+    });
+  };
+
+  const displayProfile = fields
+    ? Object.fromEntries(
+        fields.map((field) => [field.property, profile[field.property] ?? ''])
+      )
+    : profile;
+
   const renderProfileField = (key: string, value: any, field?: ViewField) => {
-    const label = field?.label || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-    
+    const label =
+      field?.label ||
+      key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+
     if (typeof value === 'object' && value !== null) {
       return (
         <div key={key} className="space-y-2">
@@ -101,14 +142,12 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated, 
             value={JSON.stringify(value, null, 2)}
             onChange={(e) => {
               try {
-                const parsedValue = JSON.parse(e.target.value);
-                handleInputChange(key, parsedValue);
+                handleInputChange(key, JSON.parse(e.target.value));
               } catch {
-                // Keep the string value for now
                 handleInputChange(key, e.target.value);
               }
             }}
-            rows={3}
+            rows={4}
           />
         </div>
       );
@@ -118,7 +157,7 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated, 
       <div key={key} className="space-y-2">
         <label className="text-sm font-medium">{label}</label>
         <Input
-          value={String(value || '')}
+          value={String(value ?? '')}
           onChange={(e) => handleInputChange(key, e.target.value)}
         />
       </div>
@@ -128,18 +167,34 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({ user, onUserUpdated, 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{sectionName || 'Profile Information'}</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          {sectionName || 'Profile Information'}
+          {hasUnsavedChanges && (
+            <span className="text-sm text-red-600 flex items-center gap-1 font-medium">
+              <AlertCircle className="h-4 w-4" />
+              Unsaved changes
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {Object.entries(displayProfile).map(([key, value]) => {
-            const field = fields?.find(f => f.property === key);
+            const field = fields?.find((f) => f.property === key);
             return renderProfileField(key, value, field);
           })}
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Updating...' : 'Update Profile'}
+
+          <div className="flex justify-end gap-3 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={discardChanges}
+              disabled={!hasUnsavedChanges}
+            >
+              Discard Changes
+            </Button>
+            <Button type="submit" disabled={isLoading || !hasUnsavedChanges}>
+              {isLoading ? 'Updating...' : 'Save Changes'}
             </Button>
           </div>
         </form>
