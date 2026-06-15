@@ -84,7 +84,7 @@ const ShiftManagement = () => {
       const url = `${API_BASE_URL}/client/${clientId}/shifts?offset=${offset}&limit=${pageSize}`;
 
       console.log('Fetching shifts from:', url);
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -98,7 +98,7 @@ const ShiftManagement = () => {
 
       const data: ShiftsResponse = await response.json();
       console.log('Shifts data received:', data);
-      
+
       setShifts(data.results || []);
       setTotalShifts(data.total || 0);
       setTotalPages(Math.ceil((data.total || 0) / pageSize));
@@ -135,7 +135,11 @@ const ShiftManagement = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const result = await response.json()
+        throw new Error(
+          result?.message ||
+          'Failed to create shift'
+        );
       }
 
       toast({
@@ -150,7 +154,7 @@ const ShiftManagement = () => {
       console.error('Error creating shift:', error);
       toast({
         title: "Error",
-        description: "Failed to create shift",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -200,6 +204,28 @@ const ShiftManagement = () => {
     });
     setIsEditDialogOpen(true);
   };
+  const handleCreateDialogChange = (open: boolean) => {
+    setIsCreateDialogOpen(open);
+
+    if (!open) {
+      setFormData({
+        name: '',
+        startTime: '',
+        endTime: ''
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (isCreateDialogOpen) {
+      setFormData({
+        name: '',
+        startTime: '',
+        endTime: '',
+      });
+    }
+  }, [isCreateDialogOpen]);
+
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -280,7 +306,10 @@ const ShiftManagement = () => {
                 <CardTitle className="text-[#000009]">Shifts</CardTitle>
                 <CardDescription>View and manage client shifts</CardDescription>
               </div>
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <Dialog
+                open={isCreateDialogOpen}
+                onOpenChange={handleCreateDialogChange}
+              >
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
@@ -296,7 +325,7 @@ const ShiftManagement = () => {
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="name" className="text-right">
+                      <Label htmlFor="name" className="text-right pr-10">
                         Name
                       </Label>
                       <Input
@@ -304,11 +333,11 @@ const ShiftManagement = () => {
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="col-span-3"
-                        placeholder="Shift name"
+                        placeholder="Enter a Shift Name"
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="startTime" className="text-right">
+                      <Label htmlFor="startTime" className="text-right pr-4">
                         Start Time
                       </Label>
                       <Input
@@ -319,8 +348,8 @@ const ShiftManagement = () => {
                         className="col-span-3"
                       />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="endTime" className="text-right">
+                    <div className="grid grid-cols-4 items-center gap-4 ">
+                      <Label htmlFor="endTime" className="text-right pr-6">
                         End Time
                       </Label>
                       <Input

@@ -457,7 +457,7 @@ const Jobs = () => {
                         <TableCell>{job.vacancies}</TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(job.status)}>
-                            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                            {job.status.charAt(0).toUpperCase() + job.status.slice(1) || 'NA'}
                           </Badge>
                         </TableCell>
                         <TableCell>

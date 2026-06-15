@@ -18,27 +18,27 @@ interface JobsCalendarTableProps {
   handleDateChange: (direction: 'next' | 'prev') => void;
 }
 
-const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({ 
-  jobs, 
-  currentDate, 
+const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
+  jobs,
+  currentDate,
   viewType,
   setViewType,
-  handleDateChange 
+  handleDateChange
 }) => {
   const navigate = useNavigate();
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
-  
+
   // Calculate date range based on view type
-  const rangeStart = viewType === 'weekly' 
+  const rangeStart = viewType === 'weekly'
     ? startOfWeek(currentDate, { weekStartsOn: 1 })
     : startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
-    
+
   const rangeEnd = viewType === 'weekly'
     ? endOfWeek(currentDate, { weekStartsOn: 1 })
     : endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
 
-  const displayDays = eachDayOfInterval({ 
+  const displayDays = eachDayOfInterval({
     start: rangeStart,
     end: rangeEnd
   });
@@ -49,17 +49,17 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
     jobStart.setHours(0, 0, 0, 0);
     const jobEnd = job.endDate ? new Date(job.endDate) : null;
     if (jobEnd) jobEnd.setHours(23, 59, 59, 999);
-    
+
     const checkDate = new Date(date);
     checkDate.setHours(12, 0, 0, 0);
-    
+
     const includeWeekends = job.body?.includeWeekends !== false;
-    
+
     // Check if it's a weekend and weekends are excluded
     if (!includeWeekends && isWeekend(date)) {
       return false;
     }
-    
+
     // Check if date is within job range
     return checkDate >= jobStart && (!jobEnd || checkDate <= jobEnd);
   };
@@ -67,27 +67,27 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
   // Get placements for a specific job, vacancy, and date
   const getPlacementForVacancyAndDate = (job: Job, vacancy: number, date: Date) => {
     if (!job.placements || !isJobActiveOnDate(job, date)) return null;
-    
+
     const dateString = format(date, 'yyyy-MM-dd');
-    
+
     return job.placements.find(p => {
       const meta = p.meta as any;
       const shiftDate = meta?.shiftDate;
       if (!shiftDate) return false;
-      
+
       const placementDate = new Date(shiftDate);
       placementDate.setHours(12, 0, 0, 0);
       const placementDateString = format(placementDate, 'yyyy-MM-dd');
-      
+
       const placementVacancy = meta?.vacancy ?? 1;
-      
+
       // Only show placements with allowed statuses
       const allowedStatuses = ['awaiting_confirmation', 'accepted', 'cancelled', 'absent_explained', 'absent_unexplained'];
       const isAllowedStatus = allowedStatuses.includes(p.status);
-      
-      return placementDateString === dateString && 
-             placementVacancy === vacancy && 
-             isAllowedStatus;
+
+      return placementDateString === dateString &&
+        placementVacancy === vacancy &&
+        isAllowedStatus;
     });
   };
 
@@ -111,7 +111,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
     date: Date;
   }> = ({ job, vacancies, date }) => {
     const isActive = isJobActiveOnDate(job, date);
-    
+
     if (!isActive) {
       return (
         <div className="text-xs text-muted-foreground py-4 opacity-40">
@@ -133,17 +133,17 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
     // Helper function to get status color
     const getStatusColor = (status: string) => {
       switch (status?.toLowerCase()) {
-        case 'accepted': 
-        case 'awaiting_confirmation': 
+        case 'accepted':
+        case 'awaiting_confirmation':
           return 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
-        case 'cancelled': 
+        case 'cancelled':
           return 'bg-red-100 dark:bg-red-900 hover:bg-red-200 dark:hover:bg-red-800 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200';
         case 'absent_explained':
         case 'absent_unexplained':
           return 'bg-purple-100 dark:bg-purple-900 hover:bg-purple-200 dark:hover:bg-purple-800 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200';
         case 'completed':
           return 'bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200';
-        default: 
+        default:
           return 'bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200';
       }
     };
@@ -153,14 +153,14 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
         {filledSlots.map(({ placement }) => {
           const user = placement!.user as any;
           const profile = user.profile;
-          const displayName = profile 
-            ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() 
+          const displayName = profile
+            ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() || `${profile.forename || ''} ${profile.surname || ''}`.trim() || `${profile.fullName}`
             : user.username || 'Unknown';
-          
+
           const statusColorClass = getStatusColor(placement!.status);
 
           return (
-            <div 
+            <div
               key={`${placement!.id}`}
               className={`${statusColorClass} rounded-md p-1.5 border cursor-pointer transition-colors`}
               onClick={(e) => {
@@ -175,7 +175,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
           );
         })}
         {vacantSlots.map(({ vacancy }) => (
-          <div 
+          <div
             key={`vacant-${vacancy}`}
             className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 rounded-md p-1.5 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
             onClick={(e) => {
@@ -207,7 +207,7 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
             Month
           </ToggleGroupItem>
         </ToggleGroup>
-        
+
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -231,86 +231,86 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <div className="w-32" /> {/* Spacer for alignment */}
       </div>
 
       <div className="rounded-md border">
         <div className="overflow-x-auto" style={{ maxWidth: 'calc(100vw - 18rem)' }}>
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="sticky left-0 bg-muted/50 border-r min-w-[280px] z-20">
-                <div className="font-semibold">Job</div>
-              </TableHead>
-              {displayDays.map((day, index) => (
-                <TableHead 
-                  key={index}
-                  className="text-center border-r last:border-r-0 min-w-[100px]"
-                >
-                  <div className="space-y-1">
-                    <div className="font-semibold">{format(day, 'EEE')}</div>
-                    <div className="text-xs font-normal">{format(day, 'MMM dd')}</div>
-                  </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="sticky left-0 bg-muted/50 border-r min-w-[280px] z-20">
+                  <div className="font-semibold">Job</div>
                 </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {jobs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={displayDays.length + 1} className="text-center py-8 text-muted-foreground">
-                  No jobs scheduled for this period
-                </TableCell>
+                {displayDays.map((day, index) => (
+                  <TableHead
+                    key={index}
+                    className="text-center border-r last:border-r-0 min-w-[100px]"
+                  >
+                    <div className="space-y-1">
+                      <div className="font-semibold">{format(day, 'EEE')}</div>
+                      <div className="text-xs font-normal">{format(day, 'MMM dd')}</div>
+                    </div>
+                  </TableHead>
+                ))}
               </TableRow>
-            ) : (
-              jobs.map((job) => {
-                const vacancyCount = job.vacancies || 1;
-                const vacancies = Array.from({ length: vacancyCount }, (_, i) => i + 1);
-                
-                return (
-                  <TableRow key={job.id} className="hover:bg-muted/30">
-                    <TableCell 
-                      className="sticky left-0 bg-background border-r cursor-pointer z-10"
-                      onClick={() => handleJobCellClick(job.id)}
-                    >
-                      <div className="py-2 space-y-1 min-w-[250px]">
-                        <div className="font-semibold text-sm text-primary">
-                          {job.clientName || 'Unknown Client'}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {job.title}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="text-xs text-muted-foreground">
-                            {job.shiftName || 'Shift'} ({vacancyCount} {vacancyCount === 1 ? 'vacancy' : 'vacancies'})
-                          </div>
-                          {job.departmentName && (
-                            <Badge variant="outline" className="text-xs">
-                              {job.departmentName}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    {displayDays.map((day, dayIndex) => (
-                      <TableCell 
-                        key={dayIndex} 
-                        className="text-center p-2 border-r last:border-r-0 align-top"
+            </TableHeader>
+            <TableBody>
+              {jobs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={displayDays.length + 1} className="text-center py-8 text-muted-foreground">
+                    No jobs scheduled for this period
+                  </TableCell>
+                </TableRow>
+              ) : (
+                jobs.map((job) => {
+                  const vacancyCount = job.vacancies || 1;
+                  const vacancies = Array.from({ length: vacancyCount }, (_, i) => i + 1);
+
+                  return (
+                    <TableRow key={job.id} className="hover:bg-muted/30">
+                      <TableCell
+                        className="sticky left-0 bg-background border-r cursor-pointer z-10"
+                        onClick={() => handleJobCellClick(job.id)}
                       >
-                        <VacancyCell
-                          job={job}
-                          vacancies={vacancies}
-                          date={day}
-                        />
+                        <div className="py-2 space-y-1 min-w-[250px]">
+                          <div className="font-semibold text-sm text-primary">
+                            {job.clientName || 'Unknown Client'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {job.title}
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="text-xs text-muted-foreground">
+                              {job.shiftName || 'Shift'} ({vacancyCount} {vacancyCount === 1 ? 'vacancy' : 'vacancies'})
+                            </div>
+                            {job.departmentName && (
+                              <Badge variant="outline" className="text-xs">
+                                {job.departmentName}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+                      {displayDays.map((day, dayIndex) => (
+                        <TableCell
+                          key={dayIndex}
+                          className="text-center p-2 border-r last:border-r-0 align-top"
+                        >
+                          <VacancyCell
+                            job={job}
+                            vacancies={vacancies}
+                            date={day}
+                          />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
 

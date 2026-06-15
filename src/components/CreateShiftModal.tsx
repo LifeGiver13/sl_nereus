@@ -34,7 +34,11 @@ const CreateShiftModal = ({ isOpen, onClose, clientId, onShiftCreated }: CreateS
         body: JSON.stringify(data),
       });
       if (!response.ok) {
-        throw new Error('Failed to create shift');
+        const result = await response.json()
+        throw new Error(
+          result?.message ||
+          'Failed to create shift'
+        );
       }
       return response.json();
     },
@@ -49,10 +53,10 @@ const CreateShiftModal = ({ isOpen, onClose, clientId, onShiftCreated }: CreateS
       onShiftCreated?.(newShift);
       onClose();
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to create shift",
+        description: error.message,
         variant: "destructive",
       });
     },

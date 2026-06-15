@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import CreateUserModal from '../components/CreateUserModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Briefcase, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Eye, Edit, Briefcase, ChevronLeft, ChevronRight, Plus, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
@@ -36,6 +36,55 @@ interface UsersResponse {
   limit: number;
 }
 
+type DateRangeOption = 'all' | 'today' | 'this_week' | 'this_month';
+type SortDirection = 'asc' | 'desc' | null;
+
+const SortIcon = ({ column, sortColumn, sortDirection }: {
+  column: string;
+  sortColumn: string | null;
+  sortDirection: SortDirection;
+}) => {
+  if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
+  if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
+  return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
+};
+
+const getDateRangeBounds = (range: DateRangeOption): { from: string; to: string } | null => {
+  if (range === 'all') return null;
+
+  const now = new Date();
+  let from: Date;
+  let to: Date;
+
+  if (range === 'today') {
+    // Start of today in UTC
+    from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+  }
+  else if (range === 'this_week') {
+    const day = now.getUTCDay(); // Use UTC day
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+
+    from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diffToMonday, 0, 0, 0, 0));
+
+    to = new Date(from);
+    to.setUTCDate(to.getUTCDate() + 6);
+    to.setUTCHours(23, 59, 59, 999);
+  }
+  else if (range === 'this_month') {
+    from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+    to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+  }
+  else {
+    return null;
+  }
+
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+  };
+};
+
 const People = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
@@ -52,6 +101,23 @@ const People = () => {
   const { preferences, updateTablePreferences } = usePreferences();
   const itemsPerPage = preferences.table.pageSize || 10;
   const totalPages = Math.ceil(total / itemsPerPage);
+
+
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
+
+  const [lastLoginRange, setLastLoginRange] = useState<DateRangeOption>('all');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') setSortDirection('desc');
+      else if (sortDirection === 'desc') { setSortColumn(null); setSortDirection(null); }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -80,6 +146,13 @@ const People = () => {
         searchObj.status = selectedStatus;
       }
 
+      const bounds = getDateRangeBounds(lastLoginRange);
+      if (bounds) {
+        searchObj.createdAt = {
+          gte: bounds.from,
+          lte: bounds.to,
+        };
+      }
       if (Object.keys(searchObj).length > 0) {
         url += `&search=${encodeURIComponent(JSON.stringify(searchObj))}`;
       }
@@ -111,15 +184,16 @@ const People = () => {
     }
   };
   const clearFilters = () => {
-    setSelectedRole('all')
-    setSelectedStatus('all')
-    setSearchTerm('')
+    setSelectedRole('all');
+    setSelectedStatus('all');
+    setSearchTerm('');
+    setLastLoginRange('all');
     setCurrentPage(1);
   };
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchTerm, selectedRole, selectedStatus, itemsPerPage]);
+  }, [currentPage, searchTerm, selectedRole, selectedStatus, itemsPerPage, lastLoginRange]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -231,6 +305,69 @@ const People = () => {
   const matchedFields = getMatchingFields();
 
 
+  const sortedUsers = useMemo(() => {
+
+
+    let list = [...users];
+    if (!sortColumn || !sortDirection) return list;
+
+    const dir = sortDirection === 'asc' ? 1 : -1;
+
+    return list.sort((a, b) => {
+      switch (sortColumn) {
+        case 'id':
+          return (a.id - b.id) * dir;
+
+        case 'fullName': {
+          const aName =
+            a.profile?.fullName ||
+            `${a.profile?.firstName || ''} ${a.profile?.lastName || ''}`.trim();
+
+          const bName =
+            b.profile?.fullName ||
+            `${b.profile?.firstName || ''} ${b.profile?.lastName || ''}`.trim();
+
+          return aName.localeCompare(bName) * dir;
+        }
+
+        case 'username':
+          return a.username.localeCompare(b.username) * dir;
+
+        case 'status':
+          return a.status.localeCompare(b.status) * dir;
+
+        case 'role':
+          return a.role.localeCompare(b.role) * dir;
+
+        case 'lastLogin':
+          return (
+            (new Date(a.lastLogin || 0).getTime() -
+              new Date(b.lastLogin || 0).getTime()) *
+            dir
+          );
+
+        case 'createdAt':
+          return (
+            (new Date(a.createdAt).getTime() -
+              new Date(b.createdAt).getTime()) *
+            dir
+          );
+
+        case 'updatedAt':
+          return (
+            (new Date(a.updatedAt).getTime() -
+              new Date(b.updatedAt).getTime()) *
+            dir
+          );
+
+        default:
+          return 0;
+      }
+    });
+  }, [users, sortColumn, sortDirection, lastLoginRange]);
+
+
+
   //pagination
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -327,6 +464,8 @@ const People = () => {
       </div>
     );
   };
+
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -440,6 +579,22 @@ const People = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="flex flex-col gap-2 min-w-[220px]">
+                  <label className="text-sm font-medium">Last Login</label>
+                  <Select value={lastLoginRange} onValueChange={(value) => { setLastLoginRange(value as DateRangeOption); setCurrentPage(1); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="this_week">This Week</SelectItem>
+                      <SelectItem value="this_month">This Month</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="pt-7 flex gap-2">
                   <Button onClick={clearFilters} variant="outline">
                     Clear Filters
@@ -458,25 +613,109 @@ const People = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Full Name</TableHead>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Last Login</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Updated</TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('id')}>
+                        ID
+                        <SortIcon
+                          column="id"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                        />
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('fullName')}>
+                        Full Name
+                        <SortIcon
+                          column="fullName"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                        />
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('username')}>
+                        Username
+                        <SortIcon
+                          column="username"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                        />
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('status')}>
+                        Status
+                        <SortIcon
+                          column="status"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                        />
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('role')}>
+                        Role
+                        <SortIcon
+                          column="role"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                        />
+
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('lastLogin')}>
+                        Last Login
+                        <SortIcon
+                          column="lastLogin"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                        />
+
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('createdAt')}>
+                        Created
+                        <SortIcon
+                          column="createdAt"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                        />
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('updatedAt')}>
+                        Updated
+                        <SortIcon
+                          column="updatedAt"
+                          sortColumn={sortColumn}
+                          sortDirection={sortDirection}
+                        />
+                      </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user) => (
+                    {sortedUsers.map((user) => (
                       <TableRow key={user.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/user/${user.id}`}>
-                        <TableCell>{user.id}</TableCell>
-                        <TableCell className="font-medium">{user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"}</TableCell>
-                        <TableCell className="font-medium"> {user.username}</TableCell>
-                        <TableCell>{getStatusBadge(user.status)}</TableCell>
-                        <TableCell>{getRoleBadge(user.role)}</TableCell>
+                        <TableCell>
+                          {user.id}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {user.username}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(user.status)}
+                        </TableCell>
+                        <TableCell>
+                          {getRoleBadge(user.role)}
+                        </TableCell>
                         <TableCell>{formatDate(user.lastLogin)}</TableCell>
                         <TableCell>{formatDate(user.createdAt)}</TableCell>
                         <TableCell>{formatDate(user.updatedAt)}</TableCell>
