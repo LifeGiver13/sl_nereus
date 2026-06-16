@@ -328,8 +328,8 @@ const Timesheets = () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
-        limit: String(pageSize),
-        offset: String((page - 1) * pageSize),
+        limit: "9999",
+        offset: "0",
         sortBy,
         sortDir,
         ...(statusFilter !== "all" ? { status: statusFilter } : {}),
@@ -371,7 +371,7 @@ const Timesheets = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [authHeaders, toast, pageSize, page, sortBy, sortDir, statusFilter]);
+  }, [authHeaders, toast, sortBy, sortDir, statusFilter]);
 
   useEffect(() => {
     if (token) {
@@ -1173,7 +1173,9 @@ const Timesheets = () => {
 
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-[#000009]">Timesheet Records ({filtered.length} of {totalTimesheets})</CardTitle>
+            <CardTitle className="text-[#000009]">
+              Timesheet Records ({filtered.length}{filtered.length !== timesheets.length ? ` of ${timesheets.length}` : ''})
+            </CardTitle>
             <CardDescription>Approve, reject, inspect, or remove records</CardDescription>
           </CardHeader>
           <CardContent>

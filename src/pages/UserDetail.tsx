@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import UserDocuments from '@/components/UserDocuments';
 import UploadUserDocumentModal from '@/components/UploadUserDocumentModal';
-
+import defaultAvatar from '@/assets/nereus-logo-light.png';
 
 type ViewField = {
   property: string;
@@ -346,7 +346,29 @@ const UserDetail = () => {
                   <CardTitle className="text-[#000009]">Basic Information</CardTitle>
                   <CardDescription>Core user information</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
+                  {/* Profile header with avatar */}
+                  {/* <div className="flex items-center gap-6 mb-6 pb-6 border-b border-gray-100">
+                      <img
+                        src={user.profile?.avatar || defaultAvatar}
+                        alt={user.username}
+                        className="h-20 w-20 rounded-full object-cover border-2 border-gray-200 shadow-sm flex-shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = defaultAvatar;
+                        }}
+                      />
+                      <div>
+                        <h2 className="text-xl font-bold text-[#000009]">
+                          {user.profile?.fullName || user.username}
+                        </h2>
+                        <p className="text-sm text-gray-500 mt-0.5">{user.username}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {getStatusBadge(user.status)}
+                          {getRoleBadge(user.role)}
+                        </div>
+                      </div>
+                    </div> */}
+
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
                       <div className="font-medium text-gray-700">ID</div>
