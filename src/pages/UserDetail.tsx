@@ -317,6 +317,7 @@ const UserDetail = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+
             <TabsList className="grid h-auto w-full grid-cols-3 gap-0 rounded-none border-b border-gray-200 bg-gray-100 p-0">
               <TabsTrigger
                 value="basic"
@@ -337,6 +338,8 @@ const UserDetail = () => {
                 Documents
               </TabsTrigger>
             </TabsList>
+          </div>
+
 
           <TabsContent value="basic" className="mt-0 focus-visible:outline-none">
             <Card className="rounded-none border-0 shadow-none">
@@ -472,7 +475,6 @@ const UserDetail = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          </div>
         </Tabs>
 
         {user && (
