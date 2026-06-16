@@ -13,6 +13,20 @@ import { usePreferences } from "../hooks/usePreferences";
 import { DocuSignInviteModal } from "../components/DocuSignInviteModal";
 import { IconActionButton, IconActionTooltip } from "@/components/IconActionTooltip";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+
+
 
 interface User {
   id: number;
@@ -65,6 +79,22 @@ const Applications = () => {
 
   const [docuSignModalOpen, setDocuSignModalOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+
+  const [newAppModalOpen, setNewAppModalOpen] = useState(false);
+  const [newAppLoading, setNewAppLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    title: "Mr",
+    forename: "",
+    middleName: "",
+    surname: "",
+    email: "",
+    referralCode: "",
+  });
+
+  const { toast } = useToast();
+  const TITLE_OPTIONS = ["Mr", "Miss", "Ms", "Mrs", "Madam", "Dr", "Prof"];
+
 
   const { token } = useAuth();
   const { preferences, updateTablePreferences } = usePreferences();
@@ -243,6 +273,99 @@ const Applications = () => {
       console.error(`Error ${action}ing application:`, error);
     }
   };
+  const handleCreateApplication = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.forename || !formData.surname || !formData.email ) {
+      toast({
+        title: "Error",
+        description: "Forename, Surname and Email are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setNewAppLoading(true);
+
+    try {
+      const payload = {
+        user: {
+          username: formData.email,
+          status: "inactive",
+          data: {},
+          meta: {
+            title: formData.title,
+            forename: formData.forename,
+            middleName: formData.middleName,
+            surname: formData.surname,
+          }
+        },
+        application: {
+          data: {
+            "Basic Information": {
+              fields: {
+                title: formData.title,
+                firstName: formData.forename,
+                middleNames: formData.middleName,
+                lastName: formData.surname,
+                email: formData.email,
+                referral_code: formData.referralCode || "",
+              }
+            }
+          },
+          meta: {
+            stage: "pre-registration",
+            pre_registration: "pending"
+          }
+        }
+      };
+
+      const response = await fetch(`${API_BASE_URL}/applicant/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || "Failed to create application");
+      }
+
+      toast({
+        title: "Success",
+        description: "New application created successfully"
+      });
+
+      setNewAppModalOpen(false);
+
+      // Reset form
+      setFormData({
+        title: "Mr",
+        forename: "",
+        middleName: "",
+        surname: "",
+        email: "",
+        referralCode: "",
+      });
+
+      // Refresh the list
+      fetchApplications();
+
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to create application",
+        variant: "destructive"
+      });
+    } finally {
+      setNewAppLoading(false);
+    }
+  };
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -370,11 +493,12 @@ const Applications = () => {
                 <CardDescription>View and process candidate applications</CardDescription>
               </div>
               <div className="flex items-center gap-3">
-                <Link to="/application/new">
-                  <Button className="bg-[#712B71] hover:bg-[#712B71]/90">
-                    + New Application
-                  </Button>
-                </Link>
+                <Button
+                  className="bg-[#712B71] hover:bg-[#712B71]/90"
+                  onClick={() => setNewAppModalOpen(true)}
+                >
+                  + New Application
+                </Button>
                 <PageSizeSelector
                   pageSize={pageSize}
                   onPageSizeChange={(size) => {
@@ -500,12 +624,103 @@ const Applications = () => {
                   </TableBody>
                 </Table>
 
+
                 {renderPagination()}
               </>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* New Application Modal */}
+      <Dialog open={newAppModalOpen} onOpenChange={setNewAppModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Application</DialogTitle>
+            <DialogDescription>Enter basic candidate information</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateApplication} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title</Label>
+                <Select
+                  value={formData.title}
+                  onValueChange={(value) => setFormData({ ...formData, title: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TITLE_OPTIONS.map(title => (
+                      <SelectItem key={title} value={title}>{title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="forename">Forename *</Label>
+                <Input
+                  id="forename"
+                  value={formData.forename}
+                  onChange={(e) => setFormData({ ...formData, forename: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="middleName">Middle Name(s)</Label>
+              <Input
+                id="middleName"
+                value={formData.middleName}
+                onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="surname">Surname *</Label>
+              <Input
+                id="surname"
+                value={formData.surname}
+                onChange={(e) => setFormData({ ...formData, surname: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
+            </div>
+
+
+            <div className="space-y-2">
+              <Label htmlFor="referralCode">Referral Code</Label>
+              <Input
+                id="referralCode"
+                value={formData.referralCode}
+                onChange={(e) => setFormData({ ...formData, referralCode: e.target.value })}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setNewAppModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-[#712B71] hover:bg-[#712B71]/90" disabled={newAppLoading}>
+                {newAppLoading ? "Creating..." : "Create Application"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {selectedApplication && (
         <DocuSignInviteModal
