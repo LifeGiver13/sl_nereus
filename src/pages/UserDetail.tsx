@@ -346,9 +346,9 @@ const UserDetail = () => {
                   <CardTitle className="text-[#000009]">Basic Information</CardTitle>
                   <CardDescription>Core user information</CardDescription>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="pt-6">
                   {/* Profile header with avatar */}
-                  {/* <div className="flex items-center gap-6 mb-6 pb-6 border-b border-gray-100">
+                  <div className="flex items-center gap-6 mb-6 pb-6 border-b border-gray-100">
                       <img
                         src={user.profile?.avatar || defaultAvatar}
                         alt={user.username}
@@ -367,7 +367,7 @@ const UserDetail = () => {
                           {getRoleBadge(user.role)}
                         </div>
                       </div>
-                    </div> */}
+                    </div>
 
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">

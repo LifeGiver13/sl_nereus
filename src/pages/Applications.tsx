@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminLayout from "../components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, MessageSquare, Check, X, ChevronLeft, ChevronRight, FileSignature, Columns, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Eye, MessageSquare, Check, FileSignature, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE_URL } from "../config/env";
 import { PageSizeSelector } from "../components/ui/page-size-selector";
@@ -58,80 +58,28 @@ const STATUS_LABELS: { [key: string]: string } = {
 };
 
 const Applications = () => {
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [allApplications, setAllApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [total, setTotal] = useState(0);
+
   const [docuSignModalOpen, setDocuSignModalOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+
   const { token } = useAuth();
   const { preferences, updateTablePreferences } = usePreferences();
   const navigate = useNavigate();
-  const pageSize = preferences.table.pageSize;
-  const [sortColumn, setSortColumn] = useState<string | null>(null)
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    } else {
-      setSortColumn(column)
-      setSortDirection("asc")
-    }
-  }
+  const pageSize = preferences.table.pageSize || 10;
 
-  useEffect(() => {
-    const fetchApplications = async () => {
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/applications?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch applications");
-        }
-
-        const data: ApplicationsResponse = await response.json();
-        setApplications(data.results);
-        setTotal(data.total);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (token) {
-      fetchApplications();
-    }
-  }, [token, currentPage, pageSize]);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
+  const [usernameFilter, setUsernameFilter] = useState('');
+  const [stageFilter, setStageFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const getStageFromMeta = (application: Application): string => {
     return application.meta?.stage || "pre-registration";
   };
-
-  const capitalize = (value: string) =>
-    value.charAt(0).toUpperCase() + value.slice(1);
-
   const getStatusFromMeta = (application: Application): string => {
     const stage = getStageFromMeta(application);
-
     let status: string;
 
     if (stage === "pre-registration") {
@@ -144,8 +92,78 @@ const Applications = () => {
       status = application.status;
     }
 
-    return capitalize(status)
+    return status.toLowerCase().trim();
   };
+  // Fetch ALL applications once (backend doesn't filter properly)
+  const fetchApplications = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${API_BASE_URL}/applications?limit=9999&offset=0`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch applications");
+
+      const data: ApplicationsResponse = await response.json();
+      setAllApplications(data.results || []);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchApplications();
+    }
+  }, [token]);
+
+  // Client-side filtering
+  const filteredApplications = useMemo(() => {
+    return allApplications.filter((app) => {
+      const matchesUsername = !usernameFilter.trim() ||
+        (app.user?.username?.toLowerCase() || "").includes(usernameFilter.toLowerCase());
+
+      const matchesStage = !stageFilter || getStageFromMeta(app) === stageFilter;
+
+      const matchesStatus = !statusFilter ||
+        getStatusFromMeta(app).toLowerCase() === statusFilter.toLowerCase();
+
+      return matchesUsername && matchesStage && matchesStatus;
+    });
+  }, [allApplications, usernameFilter, stageFilter, statusFilter]);
+
+  const total = filteredApplications.length;
+  const totalPages = Math.ceil(total / pageSize);
+
+  // Current page data
+  const paginatedApplications = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredApplications.slice(start, start + pageSize);
+  }, [filteredApplications, currentPage, pageSize]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [usernameFilter, stageFilter, statusFilter]);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+
+
 
   const isProcessed = (application: Application): boolean => {
     return getStageFromMeta(application) === "processed";
@@ -153,7 +171,6 @@ const Applications = () => {
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status.toLocaleLowerCase();
-
     const statusColors: { [key: string]: string } = {
       complete: "bg-green-500 hover:bg-green-600",
       submitted: "bg-blue-500 hover:bg-blue-600",
@@ -183,7 +200,6 @@ const Applications = () => {
   };
 
   const handleDocuSignSuccess = () => {
-    // Refresh applications list
     window.location.reload();
   };
 
@@ -197,15 +213,13 @@ const Applications = () => {
   };
 
   const handleApplicationAction = async (applicationId: number, action: "approve" | "reject") => {
-    const application = applications.find((app) => app.id === applicationId);
+    const application = allApplications.find((app) => app.id === applicationId);
     if (!application) return;
 
-    // Prevent approval if there are unresolved remarks
     if (action === "approve" && hasUnresolvedRemarks(application)) {
       return;
     }
 
-    // Determine the correct decision endpoint based on stage
     const stage = getStageFromMeta(application);
     let decision: string = action;
     if (action === "approve") {
@@ -222,77 +236,26 @@ const Applications = () => {
         body: JSON.stringify({ application }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to ${action} application`);
-      }
+      if (!response.ok) throw new Error(`Failed to ${action} application`);
 
-      // Refresh applications list
       window.location.reload();
     } catch (error) {
       console.error(`Error ${action}ing application:`, error);
     }
   };
 
-
-  const sortedApplications = [...applications].sort((a, b) => {
-    if (!sortColumn) return 0;
-    const dir = sortDirection === "asc" ? 1 : -1;
-
-    switch (sortColumn) {
-      case "id":
-        return (a.id - b.id) * dir;
-
-      case "username":
-        return (a.user?.username ?? "").localeCompare(b.user?.username ?? "") * dir;
-
-      case "createdAt":
-        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
-
-      case "updatedAt":
-        return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
-
-      case "status":
-        return (
-          getStatusFromMeta(a).localeCompare(
-            getStatusFromMeta(b)
-          ) * dir
-        );
-
-      case "stage":
-        return (
-          getStageFromMeta(a).localeCompare(
-            getStageFromMeta(b)
-          ) * dir
-        );
-
-      default:
-        return 0;
-    }
-  });
-
   const renderPagination = () => {
-    const totalPages = Math.ceil(total / pageSize);
     if (totalPages <= 1) return null;
 
     const pages = [];
     const maxVisiblePages = 5;
-    let startPage = Math.max(
-      1,
-      currentPage - Math.floor(maxVisiblePages / 2)
-    );
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-    let endPage = Math.min(
-      totalPages,
-      startPage + maxVisiblePages - 1
-    );
-
-    // Shift nav btns left if we're near the end
     if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(
-        1,
-        endPage - maxVisiblePages + 1
-      );
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
+
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <PaginationItem key={i}>
@@ -339,16 +302,6 @@ const Applications = () => {
     );
   };
 
-  const SortIcon = ({ column, sortColumn, sortDirection }: {
-    column: string;
-    sortColumn: string | null;
-    sortDirection: 'asc' | 'desc';
-  }) => {
-    if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
-    if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
-    return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
-  };
-
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -359,19 +312,77 @@ const Applications = () => {
 
         <Card className="border-0 shadow-lg">
           <CardHeader>
+            <CardTitle className="text-[#000009]">Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Username</label>
+                <input
+                  className="border rounded px-2 py-1.5 text-sm w-full"
+                  placeholder="Filter by username..."
+                  value={usernameFilter}
+                  onChange={(e) => setUsernameFilter(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Stage</label>
+                <select
+                  className="border rounded px-2 py-1.5 text-sm w-full"
+                  value={stageFilter}
+                  onChange={(e) => setStageFilter(e.target.value)}
+                >
+                  <option value="">All stages</option>
+                  {Object.entries(STAGE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Status</label>
+                <select
+                  className="border rounded px-2 py-1.5 text-sm w-full"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="">All statuses</option>
+                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <Button variant="outline" onClick={() => {
+                setUsernameFilter('');
+                setStageFilter('');
+                setStatusFilter('');
+              }}>
+                Clear Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-[#000009]">Application Management</CardTitle>
                 <CardDescription>View and process candidate applications</CardDescription>
               </div>
-              <PageSizeSelector
-                pageSize={pageSize}
-                onPageSizeChange={(size) => {
-                  updateTablePreferences({ pageSize: size });
-                  setCurrentPage(1);
-                }}
-                totalItems={total}
-              />
+              <div className="flex items-center gap-3">
+                <Link to="/application/new">
+                  <Button className="bg-[#712B71] hover:bg-[#712B71]/90">
+                    + New Application
+                  </Button>
+                </Link>
+                <PageSizeSelector
+                  pageSize={pageSize}
+                  onPageSizeChange={(size) => {
+                    updateTablePreferences({ pageSize: size });
+                  }}
+                  totalItems={total}
+                />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -383,7 +394,7 @@ const Applications = () => {
               <div className="text-center py-12">
                 <p className="text-red-500">Error: {error}</p>
               </div>
-            ) : applications.length === 0 ? (
+            ) : allApplications.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500">No applications found</p>
               </div>
@@ -392,29 +403,17 @@ const Applications = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("id")}>
-                        Application ID <SortIcon column="id" sortColumn={sortColumn} sortDirection={sortDirection} />
-                      </TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("username")}>
-                        Username <SortIcon column="username" sortColumn={sortColumn} sortDirection={sortDirection} />
-                      </TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("stage")}>
-                        Stage <SortIcon column="stage" sortColumn={sortColumn} sortDirection={sortDirection} />
-                      </TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("status")}>
-                        Status <SortIcon column="status" sortColumn={sortColumn} sortDirection={sortDirection} />
-                      </TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("createdAt")}>
-                        Date Created <SortIcon column="createdAt" sortColumn={sortColumn} sortDirection={sortDirection} />
-                      </TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("updatedAt")}>
-                        Last Update <SortIcon column="updatedAt" sortColumn={sortColumn} sortDirection={sortDirection} />
-                      </TableHead>
+                      <TableHead>Application ID</TableHead>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Stage</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date Created</TableHead>
+                      <TableHead>Last Update</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedApplications.map((application) => (
+                    {paginatedApplications.map((application) => (
                       <TableRow
                         key={application.id}
                         className="cursor-pointer hover:bg-gray-50"
@@ -456,20 +455,9 @@ const Applications = () => {
                                 </Link>
                               </span>
                             </IconActionTooltip>
+
                             {!isProcessed(application) && (
                               <>
-                                {/* <IconActionTooltip label="Comment on application">
-                                  <span className="inline-flex">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-9 w-9 p-0 hover:bg-[#712B71] hover:text-white"
-                                      aria-label="Comment on application"
-                                    >
-                                      <MessageSquare className="h-4 w-4" />
-                                    </Button>
-                                  </span>
-                                </IconActionTooltip> */}
                                 {hasUnresolvedRemarks(application) ? (
                                   <IconActionButton
                                     label="Cannot approve — unresolved remarks"
@@ -491,17 +479,9 @@ const Applications = () => {
                                     <Check className="h-4 w-4" />
                                   </IconActionButton>
                                 )}
-                                {/* <IconActionButton
-                                  label="Reject application"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-9 w-9 p-0 hover:bg-red-600 hover:text-white"
-                                  onClick={() => handleApplicationAction(application.id, "reject")}
-                                >
-                                  <X className="h-4 w-4" />
-                                </IconActionButton> */}
                               </>
                             )}
+
                             {(canSendDocuSignInvite(application) || isProcessed(application)) && (
                               <IconActionButton
                                 label="Send DocuSign invitation"
@@ -520,37 +500,7 @@ const Applications = () => {
                   </TableBody>
                 </Table>
 
-                {/* Pagination */}
                 {renderPagination()}
-
-                {/* <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {applications.length} of {total} results
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
-                    </Button>
-                    <span className="text-sm text-muted-foreground flex items-center px-2">
-                      Page {currentPage} of {Math.ceil(total / pageSize)}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(Math.min(Math.ceil(total / pageSize), currentPage + 1))}
-                      disabled={currentPage === Math.ceil(total / pageSize)}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div> */}
               </>
             )}
           </CardContent>
