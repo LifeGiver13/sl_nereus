@@ -44,6 +44,8 @@ type TimesheetMeta = {
 
   rejectionReason?: string;
   rejectedAt?: string;
+  processingAt?: string;
+
 };
 
 type Timesheet = {
@@ -597,8 +599,22 @@ const Timesheets = () => {
     return ordered;
   }
 
+  function getStatusLabel(row: Timesheet): string {
+    const status =
+      row.status.charAt(0).toUpperCase() +
+      row.status.slice(1);
 
+    if (row.status === "approved" && row.approvedAt) {
+      return `${status} (${new Date(row.approvedAt).toLocaleString()})`;
+    }
 
+    if (row.status === "processing" && row.meta?.processingAt) {
+      return `${status} (${new Date(row.meta.processingAt).toLocaleString()})`;
+    }
+
+    return status;
+  }
+  ///export
   const exportTimesheetToCSV = (timesheet: Timesheet) => {
     try {
 
@@ -890,6 +906,7 @@ const Timesheets = () => {
       setIsSaving(false);
     }
   };
+
 
   function getWeekRange(selectedDate: string) {
     const current = parseLocalDate(selectedDate);
@@ -1229,7 +1246,7 @@ const Timesheets = () => {
                           <TableCell>{totalHours.toFixed(2)}h</TableCell>
                           <TableCell>
                             <Badge className={statusClasses[row.status]}>
-                              {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                              {getStatusLabel(row)}
                             </Badge>
                           </TableCell>
                           <TableCell>
