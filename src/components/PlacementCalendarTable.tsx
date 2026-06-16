@@ -180,7 +180,8 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
     if (!placement || !placement.user) return null;
 
     const profile = placement.user.profile;
-    const displayName = profile ? `${profile.Forename || ''} ${profile.Surname || ''} `.trim() || `${profile.forename || ''} ${profile.surname || ''} `.trim() || `${profile.fullName || ''}` : placement.user.username || 'Unknown User';
+    const username = placement.user.username
+    const displayName = profile ? `${profile.Forename || ''} ${profile.Surname || ''} `.trim() || `${profile.forename || ''} ${profile.surname || ''} `.trim() || `${profile.fullName || ''}` || `${username || ''} `.trim() : placement.user.username || 'Unknown User';
 
     return {
       id: placement.id,

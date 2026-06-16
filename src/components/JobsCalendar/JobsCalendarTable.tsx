@@ -153,8 +153,13 @@ const JobsCalendarTable: React.FC<JobsCalendarTableProps> = ({
         {filledSlots.map(({ placement }) => {
           const user = placement!.user as any;
           const profile = user.profile;
+          const username = user.username
           const displayName = profile
-            ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() || `${profile.forename || ''} ${profile.surname || ''}`.trim() || `${profile.fullName}`
+            ? `${profile.Forename || ''} ${profile.Surname || ''}`.trim() ||
+            `${profile.forename || ''} ${profile.surname || ''}`.trim() ||
+            profile.fullName ||       
+            username ||
+            'Unknown'
             : user.username || 'Unknown';
 
           const statusColorClass = getStatusColor(placement!.status);

@@ -476,7 +476,6 @@ const Jobs = () => {
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex flex-wrap items-center gap-1.5">
-                            {/* Your action buttons */}
                             <IconActionTooltip label="View job">
                               <span className="inline-flex">
                                 <Link to={`/job/${job.id}`}>
