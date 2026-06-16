@@ -338,143 +338,143 @@ const UserDetail = () => {
                 Documents
               </TabsTrigger>
             </TabsList>
-          </div>
 
 
-          <TabsContent value="basic" className="mt-0 focus-visible:outline-none">
-            <Card className="rounded-none border-0 shadow-none">
-              <CardHeader>
-                <CardTitle className="text-[#000009]">Basic Information</CardTitle>
-                <CardDescription>Core user information</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                    <div className="font-medium text-gray-700">ID</div>
-                    <div className="md:col-span-2 text-gray-900">{user.id}</div>
+            <TabsContent value="basic" className="mt-0 focus-visible:outline-none">
+              <Card className="rounded-none border-0 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-[#000009]">Basic Information</CardTitle>
+                  <CardDescription>Core user information</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                      <div className="font-medium text-gray-700">ID</div>
+                      <div className="md:col-span-2 text-gray-900">{user.id}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                      <div className="font-medium text-gray-700">Username</div>
+                      <div className="md:col-span-2 text-gray-900">{user.username}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                      <div className="font-medium text-gray-700">Status</div>
+                      <div className="md:col-span-2">{getStatusBadge(user.status)}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                      <div className="font-medium text-gray-700">Role</div>
+                      <div className="md:col-span-2">{getRoleBadge(user.role)}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                      <div className="font-medium text-gray-700">Last Login</div>
+                      <div className="md:col-span-2 text-gray-900">{formatDate(user.lastLogin)}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                      <div className="font-medium text-gray-700">Created At</div>
+                      <div className="md:col-span-2 text-gray-900">{formatDate(user.createdAt)}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2">
+                      <div className="font-medium text-gray-700">Updated At</div>
+                      <div className="md:col-span-2 text-gray-900">{formatDate(user.updatedAt)}</div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                    <div className="font-medium text-gray-700">Username</div>
-                    <div className="md:col-span-2 text-gray-900">{user.username}</div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                    <div className="font-medium text-gray-700">Status</div>
-                    <div className="md:col-span-2">{getStatusBadge(user.status)}</div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                    <div className="font-medium text-gray-700">Role</div>
-                    <div className="md:col-span-2">{getRoleBadge(user.role)}</div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                    <div className="font-medium text-gray-700">Last Login</div>
-                    <div className="md:col-span-2 text-gray-900">{formatDate(user.lastLogin)}</div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
-                    <div className="font-medium text-gray-700">Created At</div>
-                    <div className="md:col-span-2 text-gray-900">{formatDate(user.createdAt)}</div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2">
-                    <div className="font-medium text-gray-700">Updated At</div>
-                    <div className="md:col-span-2 text-gray-900">{formatDate(user.updatedAt)}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="profile" className="mt-0 focus-visible:outline-none">
-            <Card className="rounded-none border-0 shadow-none">
-              <CardHeader>
-                <CardTitle className="text-[#000009]">Profile Information</CardTitle>
-                <CardDescription>User profile details organized by sections</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {!user.profile ? (
-                  <div className="text-sm text-gray-500">No profile data available</div>
-                ) : isViewLoading ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">Loading view configuration...</p>
-                  </div>
-                ) : viewManager ? (
-                  <Tabs
-                    defaultValue={Object.keys(viewManager.sections)[0]?.toLowerCase().replace(/\s+/g, '-')}
-                    className="space-y-4"
-                  >
-                    <TabsList
-                      className="grid w-full"
-                      style={{ gridTemplateColumns: `repeat(${Object.keys(viewManager.sections).length}, 1fr)` }}
+            <TabsContent value="profile" className="mt-0 focus-visible:outline-none">
+              <Card className="rounded-none border-0 shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-[#000009]">Profile Information</CardTitle>
+                  <CardDescription>User profile details organized by sections</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {!user.profile ? (
+                    <div className="text-sm text-gray-500">No profile data available</div>
+                  ) : isViewLoading ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Loading view configuration...</p>
+                    </div>
+                  ) : viewManager ? (
+                    <Tabs
+                      defaultValue={Object.keys(viewManager.sections)[0]?.toLowerCase().replace(/\s+/g, '-')}
+                      className="space-y-4"
                     >
-                      {Object.keys(viewManager.sections).map((sectionName) => (
-                        <TabsTrigger
+                      <TabsList
+                        className="grid w-full"
+                        style={{ gridTemplateColumns: `repeat(${Object.keys(viewManager.sections).length}, 1fr)` }}
+                      >
+                        {Object.keys(viewManager.sections).map((sectionName) => (
+                          <TabsTrigger
+                            key={sectionName}
+                            value={sectionName.toLowerCase().replace(/\s+/g, '-')}
+                          >
+                            {sectionName}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+
+                      {Object.entries(viewManager.sections).map(([sectionName, fields]) => (
+                        <TabsContent
                           key={sectionName}
                           value={sectionName.toLowerCase().replace(/\s+/g, '-')}
                         >
-                          {sectionName}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-
-                    {Object.entries(viewManager.sections).map(([sectionName, fields]) => (
-                      <TabsContent
-                        key={sectionName}
-                        value={sectionName.toLowerCase().replace(/\s+/g, '-')}
-                      >
-                        <div className="space-y-2">
-                          {fields.map((field) => {
-                            const value = user.profile[field.property];
-                            return (
-                              <div
-                                key={field.property}
-                                className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100 last:border-b-0"
-                              >
-                                <div className="font-medium text-gray-700">{field.label}</div>
-                                <div className="md:col-span-2 text-gray-900">
-                                  {typeof value === 'object' ? (
-                                    <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
-                                      {JSON.stringify(value, null, 2)}
-                                    </pre>
-                                  ) : (
-                                    String(value || 'N/A')
-                                  )}
+                          <div className="space-y-2">
+                            {fields.map((field) => {
+                              const value = user.profile[field.property];
+                              return (
+                                <div
+                                  key={field.property}
+                                  className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="font-medium text-gray-700">{field.label}</div>
+                                  <div className="md:col-span-2 text-gray-900">
+                                    {typeof value === 'object' ? (
+                                      <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+                                        {JSON.stringify(value, null, 2)}
+                                      </pre>
+                                    ) : (
+                                      String(value || 'N/A')
+                                    )}
+                                  </div>
                                 </div>
+                              );
+                            })}
+                            {fields.length === 0 && (
+                              <div className="text-sm text-gray-500">
+                                No fields configured for this section
                               </div>
-                            );
-                          })}
-                          {fields.length === 0 && (
-                            <div className="text-sm text-gray-500">
-                              No fields configured for this section
-                            </div>
-                          )}
-                        </div>
-                      </TabsContent>
-                    ))}
-                  </Tabs>
-                ) : (
-                  renderProfileTable(user.profile)
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                            )}
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  ) : (
+                    renderProfileTable(user.profile)
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="documents" className="mt-0 focus-visible:outline-none">
-            <Card className="rounded-none border-0 shadow-none">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-[#000009]">User Documents</CardTitle>
-                  <CardDescription>User uploaded compliance documents</CardDescription>
-                </div>
-                <Button
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="bg-[#712B71] hover:bg-[#712B71]/90"
-                >
-                  Upload Document
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <UserDocuments bucket={user.meta?.userBucket || user.username} />
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <TabsContent value="documents" className="mt-0 focus-visible:outline-none">
+              <Card className="rounded-none border-0 shadow-none">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-[#000009]">User Documents</CardTitle>
+                    <CardDescription>User uploaded compliance documents</CardDescription>
+                  </div>
+                  <Button
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="bg-[#712B71] hover:bg-[#712B71]/90"
+                  >
+                    Upload Document
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <UserDocuments bucket={user.meta?.userBucket || user.username} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </div>
         </Tabs>
 
         {user && (

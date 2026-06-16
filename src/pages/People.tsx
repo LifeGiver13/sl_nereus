@@ -581,7 +581,7 @@ const People = () => {
                 </div>
 
                 <div className="flex flex-col gap-2 min-w-[220px]">
-                  <label className="text-sm font-medium">Last Login</label>
+                  <label className="text-sm font-medium">Created</label>
                   <Select value={lastLoginRange} onValueChange={(value) => { setLastLoginRange(value as DateRangeOption); setCurrentPage(1); }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select range" />
