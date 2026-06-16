@@ -788,11 +788,15 @@ const Timesheets = () => {
     });
   }, [timesheets, userFilter, date, dateFilterType]);
 
-  const paginatedFiltered = filtered;
+  const paginatedFiltered = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
   const totalPages = Math.max(
     1,
-    Math.ceil(totalTimesheets / pageSize)
-  ); const allVisibleSelected = filtered.length > 0 && filtered.every((row) => selectedIds.includes(row.id));
+    Math.ceil(filtered.length / pageSize)
+  );
+  const allVisibleSelected = filtered.length > 0 && filtered.every((row) => selectedIds.includes(row.id));
 
   const updateStatus = async (timesheetId: number, status: TimesheetStatus, rejectionReason?: string) => {
     try {
