@@ -184,7 +184,7 @@ const Jobs = () => {
       if (endDateRange.to && job.endDate && job.endDate > endDateRange.to) return false;
       return true;
     });
-  }, [allJobs, titleFilter, statusFilter, clientFilter, startDateRange, endDateRange]);
+  }, [allJobs, titleFilter, statusFilter, clientFilter, startDateRange, endDateRange, selectedUserId]);
 
   // Sorting + Pagination (unchanged)
   const sorted = useMemo(() => {
