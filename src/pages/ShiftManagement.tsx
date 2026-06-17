@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Plus, Edit, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { usePreferences } from '@/hooks/usePreferences';
 
 interface Shift {
   id: number;
@@ -39,7 +40,6 @@ const ShiftManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalShifts, setTotalShifts] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
@@ -48,9 +48,14 @@ const ShiftManagement = () => {
     startTime: '',
     endTime: ''
   });
+
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  // const { preferences, updateTablePreferences } = usePreferences();
 
   const pageSize = 10;
+
+
 
   const fetchClient = async () => {
     try {
@@ -77,52 +82,43 @@ const ShiftManagement = () => {
     }
   };
 
-  const fetchShifts = async (page = 1) => {
+  const fetchShifts = async () => {
     try {
       setIsLoading(true);
-      const offset = (page - 1) * pageSize;
-      const url = `${API_BASE_URL}/client/${clientId}/shifts?offset=${offset}&limit=${pageSize}`;
-
-      console.log('Fetching shifts from:', url);
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
+      const url = `${API_BASE_URL}/client/${clientId}/shifts?offset=0&limit=9999`;
+      const response = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data: ShiftsResponse = await response.json();
-      console.log('Shifts data received:', data);
-
       setShifts(data.results || []);
       setTotalShifts(data.total || 0);
-      setTotalPages(Math.ceil((data.total || 0) / pageSize));
     } catch (error) {
-      console.error('Error fetching shifts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch shifts",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to fetch shifts", variant: "destructive" });
       setShifts([]);
-      setTotalShifts(0);
-      setTotalPages(0);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const filteredShifts = useMemo(() => {
+    if (!searchTerm.trim()) return shifts;
+    return shifts.filter((shift) =>
+      shift.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [shifts, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredShifts.length / pageSize));
+
+  const paginatedShifts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredShifts.slice(start, start + pageSize);
+  }, [filteredShifts, currentPage, pageSize]);
+
   useEffect(() => {
     if (clientId) {
       fetchClient();
-      fetchShifts(currentPage);
+      fetchShifts();
     }
-  }, [clientId, currentPage]);
+  }, [clientId]);
 
   const handleCreateShift = async () => {
     try {
@@ -149,7 +145,7 @@ const ShiftManagement = () => {
 
       setIsCreateDialogOpen(false);
       setFormData({ name: '', startTime: '', endTime: '' });
-      fetchShifts(currentPage);
+      fetchShifts();
     } catch (error) {
       console.error('Error creating shift:', error);
       toast({
@@ -184,7 +180,7 @@ const ShiftManagement = () => {
       setIsEditDialogOpen(false);
       setEditingShift(null);
       setFormData({ name: '', startTime: '', endTime: '' });
-      fetchShifts(currentPage);
+      fetchShifts();
     } catch (error) {
       console.error('Error updating shift:', error);
       toast({
@@ -306,6 +302,25 @@ const ShiftManagement = () => {
                 <CardTitle className="text-[#000009]">Shifts</CardTitle>
                 <CardDescription>View and manage client shifts</CardDescription>
               </div>
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Input
+                    placeholder="Search shift names..."
+                    value={searchTerm}
+                    onChange={(e) =>{ setSearchTerm(e.target.value); setCurrentPage(1);}}
+                  className="pl-10"
+                  />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 text-gray-400 absolute left-3 top-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
               <Dialog
                 open={isCreateDialogOpen}
                 onOpenChange={handleCreateDialogChange}
@@ -371,7 +386,8 @@ const ShiftManagement = () => {
           <CardContent>
             {!isLoading && (
               <div className="mb-4 text-sm text-gray-600">
-                Showing {shifts.length} of {totalShifts} shifts
+                Showing {paginatedShifts.length} of {filteredShifts.length} shifts
+                {searchTerm && " (filtered)"}
               </div>
             )}
 
@@ -396,7 +412,7 @@ const ShiftManagement = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {shifts.map((shift) => (
+                    {paginatedShifts.map((shift) => (
                       <TableRow key={shift.id}>
                         <TableCell className="font-medium">{shift.id}</TableCell>
                         <TableCell>{shift.name}</TableCell>
