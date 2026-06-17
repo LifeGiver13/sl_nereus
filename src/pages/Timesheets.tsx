@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { API_BASE_URL } from "../config/env";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp, Trash2, Download, Edit } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Download, Edit, ChevronsUpDown } from "lucide-react";
 import RejecteTimesheetModal from "@/components/RejectTimesheetModal";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { usePreferences } from "@/hooks/usePreferences";
@@ -74,6 +74,21 @@ type AdminTimesheetListResponse = {
   offset: number;
   results: Timesheet[];
 };
+
+type SortDirection = 'asc' | 'desc' | null;
+
+
+
+const SortIcon = ({ column, sortColumn, sortDirection }: {
+  column: string;
+  sortColumn: string | null;
+  sortDirection: SortDirection;
+}) => {
+  if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
+  if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
+  return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
+};
+
 
 const statusClasses: Record<TimesheetStatus, string> = {
   draft: "bg-gray-200 text-gray-800",
@@ -259,6 +274,9 @@ const Timesheets = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState<TimesheetStatus | "none">("none");
   const [isSaving, setIsSaving] = useState(false);
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   const [approvedDate, setApprovedDate] = useState("");
 
@@ -285,6 +303,32 @@ const Timesheets = () => {
 
   const navigate = useNavigate()
 
+  //sorthandler
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        setSortColumn(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+
+
+  const SortableTh = ({ column, children }: { column: string; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer select-none whitespace-nowrap"
+      onClick={() => handleSort(column)}
+    >
+      {children}
+      <SortIcon column={column} sortColumn={sortColumn} sortDirection={sortDirection} />
+    </TableHead>
+  );
 
   const splitName = (timesheet: Timesheet) => {
     const profile = timesheet.user?.profile;
@@ -804,10 +848,41 @@ const Timesheets = () => {
     });
   }, [timesheets, userFilter, date, dateFilterType]);
 
+
+
+  const sortedTimesheets = useMemo(() => {
+    if (!sortColumn || !sortDirection) return filtered;
+
+    return [...filtered].sort((a, b) => {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+
+      switch (sortColumn) {
+        case 'id':
+          return (a.id - b.id) * dir;
+        case 'user':
+          return getDisplayName(a).localeCompare(getDisplayName(b)) * dir;
+        case 'client':
+          return (a.client?.name || '').localeCompare(b.client?.name || '') * dir;
+        case 'position':
+          return (a.position?.title || '').localeCompare(b.position?.title || '') * dir;
+        case 'period':
+          return a.startDate.localeCompare(b.startDate) * dir;
+        case 'hours':
+          return (calculateTotalHours(a) - calculateTotalHours(b)) * dir;
+        case 'status':
+          return a.status.localeCompare(b.status) * dir;
+        default:
+          return 0;
+      }
+    });
+  }, [filtered, sortColumn, sortDirection]);
+
+
   const paginatedFiltered = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+    return sortedTimesheets.slice(start, start + pageSize);
+  }, [sortedTimesheets, page, pageSize]);
+
   const totalPages = Math.max(
     1,
     Math.ceil(filtered.length / pageSize)
@@ -1191,7 +1266,7 @@ const Timesheets = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-[#000009]">
-              Timesheet Records ({filtered.length}{filtered.length !== timesheets.length ? ` of ${timesheets.length}` : ''})
+              Timesheet Records ({filtered.length})
             </CardTitle>
             <CardDescription>Approve, reject, inspect, or remove records</CardDescription>
           </CardHeader>
@@ -1210,12 +1285,12 @@ const Timesheets = () => {
                         onCheckedChange={(checked) => toggleSelectAllVisible(Boolean(checked))}
                       />
                     </TableHead>
-                    <TableHead>ID</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead>Hours</TableHead>
+                    <SortableTh column="id">ID</SortableTh>
+                    <SortableTh column="user">User</SortableTh>
+                    <SortableTh column="client">Client</SortableTh>
+                    <SortableTh column="position">Position</SortableTh>
+                    <SortableTh column="period">Period</SortableTh>
+                    <SortableTh column="hours">Hours</SortableTh>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>

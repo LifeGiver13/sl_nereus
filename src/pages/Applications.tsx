@@ -124,7 +124,7 @@ const Applications = () => {
 
     return status.toLowerCase().trim();
   };
-  // Fetch ALL applications once (backend doesn't filter properly)
+
   const fetchApplications = async () => {
     try {
       setIsLoading(true);
@@ -159,7 +159,7 @@ const Applications = () => {
   const filteredApplications = useMemo(() => {
     return allApplications.filter((app) => {
       const matchesUsername = !usernameFilter.trim() ||
-        (app.user?.username?.toLowerCase() || "").includes(usernameFilter.toLowerCase());
+        (app.data?.['Basic Information']?.fields?.firstName?.toLowerCase() || "").includes(usernameFilter.toLowerCase()) || (app.data?.['Basic Information']?.fields?.title?.toLowerCase() || "").includes(usernameFilter.toLowerCase()) || (app.data?.['Basic Information']?.fields?.lastName?.toLowerCase() || "").includes(usernameFilter.toLowerCase());
 
       const matchesStage = !stageFilter || getStageFromMeta(app) === stageFilter;
 
@@ -193,14 +193,25 @@ const Applications = () => {
   };
 
 
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortColumn(column)
+      setSortDirection("asc")
+    }
+  }
 
   const isProcessed = (application: Application): boolean => {
     return getStageFromMeta(application) === "processed";
   };
 
   const getStatusBadge = (status: string) => {
-    const normalizedStatus = status.toLocaleLowerCase();
+    const normalizedStatus = status.toLocaleLowerCase().trim();
+
     const statusColors: { [key: string]: string } = {
       complete: "bg-green-500 hover:bg-green-600",
       submitted: "bg-blue-500 hover:bg-blue-600",
@@ -210,9 +221,12 @@ const Applications = () => {
       processed: "bg-gray-400 hover:bg-gray-500",
     };
 
+    const displayText = STATUS_LABELS[normalizedStatus] ||
+      normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1);
+
     return (
       <Badge variant="default" className={statusColors[normalizedStatus] || "bg-gray-500 hover:bg-gray-600"}>
-        {STATUS_LABELS[normalizedStatus] || status}
+        {displayText}
       </Badge>
     );
   };
@@ -276,7 +290,7 @@ const Applications = () => {
   const handleCreateApplication = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.forename || !formData.surname || !formData.email ) {
+    if (!formData.forename || !formData.surname || !formData.email) {
       toast({
         title: "Error",
         description: "Forename, Surname and Email are required",
@@ -365,6 +379,52 @@ const Applications = () => {
     } finally {
       setNewAppLoading(false);
     }
+  };
+  const sortedApplications = [...paginatedApplications].sort((a, b) => {
+    if (!sortColumn) return 0;
+    const dir = sortDirection === "asc" ? 1 : -1;
+
+    switch (sortColumn) {
+      case "id":
+        return (a.id - b.id) * dir;
+
+      case "username":
+        return (a.data?.['Basic Information']?.fields?.firstName ?? "").localeCompare(b.data?.['Basic Information']?.fields?.firstName ?? "") * dir;
+
+      case "createdAt":
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
+
+      case "updatedAt":
+        return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
+
+      case "status":
+        return (
+          getStatusFromMeta(a).localeCompare(
+            getStatusFromMeta(b)
+          ) * dir
+        );
+
+      case "stage":
+        return (
+          getStageFromMeta(a).localeCompare(
+            getStageFromMeta(b)
+          ) * dir
+        );
+
+      default:
+        return 0;
+    }
+  });
+
+
+  const SortIcon = ({ column, sortColumn, sortDirection }: {
+    column: string;
+    sortColumn: string | null;
+    sortDirection: 'asc' | 'desc';
+  }) => {
+    if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
+    if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
+    return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
   };
 
   const renderPagination = () => {
@@ -527,24 +587,36 @@ const Applications = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Application ID</TableHead>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Stage</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date Created</TableHead>
-                      <TableHead>Last Update</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("id")}>
+                        Application ID <SortIcon column="id" sortColumn={sortColumn} sortDirection={sortDirection} />
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("username")}>
+                        Username <SortIcon column="username" sortColumn={sortColumn} sortDirection={sortDirection} />
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("stage")}>
+                        Stage <SortIcon column="stage" sortColumn={sortColumn} sortDirection={sortDirection} />
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("status")}>
+                        Status <SortIcon column="status" sortColumn={sortColumn} sortDirection={sortDirection} />
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("createdAt")}>
+                        Date Created <SortIcon column="createdAt" sortColumn={sortColumn} sortDirection={sortDirection} />
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort("updatedAt")}>
+                        Last Update <SortIcon column="updatedAt" sortColumn={sortColumn} sortDirection={sortDirection} />
+                      </TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedApplications.map((application) => (
+                    {sortedApplications.map((application) => (
                       <TableRow
                         key={application.id}
                         className="cursor-pointer hover:bg-gray-50"
                         onClick={() => navigate(`/application/${application.id}`)}
                       >
                         <TableCell className="font-medium">#{application.id}</TableCell>
-                        <TableCell>{application.user?.username || "N/A"}</TableCell>
+                        <TableCell>{`${application.data?.['Basic Information']?.fields?.firstName} ${application.data?.['Basic Information']?.fields?.lastName}` || application.user?.profile?.fullName || application.user?.username || "N/A"}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {STAGE_LABELS[getStageFromMeta(application)] || getStageFromMeta(application)}
