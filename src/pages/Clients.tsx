@@ -304,7 +304,7 @@ const Clients = () => {
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {client.status}
+                            {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
                           </span>
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
