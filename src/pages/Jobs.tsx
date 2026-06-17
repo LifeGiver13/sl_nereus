@@ -33,7 +33,7 @@ interface Job {
   createdAt: string;
   updatedAt: string;
   client?: { id: number; name: string };
-  owner?: { id: number; username: string };
+  owner?: { id: number; username: string ; profile: any;};
 }
 
 interface Client {
@@ -403,7 +403,7 @@ const Jobs = () => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-[#000009]">
-                  Jobs ({sorted.length}{sorted.length !== allJobs.length ? ` of ${allJobs.length}` : ''})
+                  Jobs ({sorted.length})
                 </CardTitle>
                 <CardDescription>All job postings in the system</CardDescription>
               </div>
@@ -450,7 +450,7 @@ const Jobs = () => {
                       >
                         <TableCell>{job.id}</TableCell>
                         <TableCell>{job.client?.name ?? `Client #${job.clientId}`}</TableCell>
-                        <TableCell>{job.owner?.username ?? `User #${job.postedBy}`}</TableCell>
+                        <TableCell>{job.owner?.profile?.fullName ?? job.owner?.username ?? `User #${job.postedBy}`}</TableCell>
                         <TableCell className="font-medium">{job.title}</TableCell>
                         <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
                         <TableCell>{job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Ongoing'}</TableCell>
