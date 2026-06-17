@@ -276,7 +276,7 @@ const People = () => {
 
     return (
       <Badge className={statusColors[status] || 'bg-gray-100 text-gray-800'}>
-        {status}
+        {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
   };
@@ -292,7 +292,7 @@ const People = () => {
 
     return (
       <Badge className={roleColors[role] || 'bg-gray-100 text-gray-800'}>
-        {role}
+        {role.charAt(0).toUpperCase() + role.slice(1)}
       </Badge>
     );
   };

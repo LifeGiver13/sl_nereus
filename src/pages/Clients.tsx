@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import EditClientModal from '../components/EditClientModal';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock, Plus, MapPin } from 'lucide-react';
+import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock, Plus, MapPin, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
@@ -32,6 +32,19 @@ interface ClientsResponse {
   total: number;
 }
 
+type SortDirection = 'asc' | 'desc' | null;
+
+const SortIcon = ({ column, sortColumn, sortDirection }: {
+  column: string;
+  sortColumn: string | null;
+  sortDirection: SortDirection;
+}) => {
+  if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
+  if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
+  return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
+};
+
+
 const Clients = () => {
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
@@ -47,11 +60,26 @@ const Clients = () => {
 
   const [pageSize, setPageSize] = useState(10);
 
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') setSortDirection('desc');
+      else if (sortDirection === 'desc') { setSortColumn(null); setSortDirection(null); }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+
   const fetchClients = async (page = 1, search = '') => {
     try {
       setIsLoading(true);
       let url = `${API_BASE_URL}/clients?offset=${(page - 1) * pageSize}&limit=${pageSize}`;
-      
+
       if (search.trim()) {
         const searchObject = {
           name: { "like": `%${search}%` }
@@ -60,7 +88,7 @@ const Clients = () => {
       }
 
       console.log('Fetching clients from:', url);
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -74,7 +102,7 @@ const Clients = () => {
 
       const data: ClientsResponse = await response.json();
       console.log('Clients data received:', data);
-      
+
       setClients(data.results || []);
       setTotalClients(data.total || 0);
       setTotalPages(Math.ceil((data.total || 0) / pageSize));
@@ -160,6 +188,23 @@ const Clients = () => {
       }
     }
   };
+  useEffect(() => {
+    fetchClients(currentPage, searchTerm);
+  }, [currentPage, pageSize, searchTerm]);
+
+  const sortedClients = useMemo(() => {
+    if (!sortColumn || !sortDirection) return clients;
+
+    return [...clients].sort((a, b) => {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+      switch (sortColumn) {
+        case 'id': return (a.id - b.id) * dir;
+        case 'name': return (a.name || '').localeCompare(b.name || '') * dir;
+        case 'status': return (a.status || '').localeCompare(b.status || '') * dir;
+        default: return 0;
+      }
+    });
+  }, [clients, sortColumn, sortDirection]);
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -214,6 +259,17 @@ const Clients = () => {
       </Pagination>
     );
   };
+
+
+  const SortableTh = ({ column, children }: { column: string; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer select-none whitespace-nowrap"
+      onClick={() => handleSort(column)}
+    >
+      {children}
+      <SortIcon column={column} sortColumn={sortColumn} sortDirection={sortDirection} />
+    </TableHead>
+  );
 
   return (
     <AdminLayout>
@@ -287,23 +343,22 @@ const Clients = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
+                      <SortableTh column="id">ID</SortableTh>
+                      <SortableTh column="name">Name</SortableTh>
+                      <SortableTh column="status">Status</SortableTh>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clients.map((client) => (
+                    {sortedClients.map((client) => (
                       <TableRow key={client.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/client/${client.id}`}>
                         <TableCell className="font-medium">{client.id}</TableCell>
                         <TableCell>{client.name}</TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            client.status === 'active' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${client.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                            }`}>
                             {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
                           </span>
                         </TableCell>
@@ -363,7 +418,7 @@ const Clients = () => {
                                     Manage Positions
                                   </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => handleDelete(client.id)}
                                   className="text-destructive"
                                 >
@@ -392,7 +447,7 @@ const Clients = () => {
           client={selectedClient}
           onClientUpdated={handleClientUpdated}
         />
-        
+
         <CreateClientModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}

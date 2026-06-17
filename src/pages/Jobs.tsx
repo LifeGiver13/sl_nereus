@@ -118,16 +118,13 @@ const Jobs = () => {
 
   const allJobs: Job[] = jobsData?.results || [];
 
-  // Client & User search handlers (unchanged)
   const searchClients = async (term: string) => {
     if (term.length < 2) { setClients([]); return; }
-    try {
       const res = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(term)}`);
       if (res.ok) {
         const data = await res.json();
         setClients(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
       }
-    } catch { /* ignore */ }
   };
 
   const handleClientSearch = (value: string) => {
@@ -186,7 +183,6 @@ const Jobs = () => {
     });
   }, [allJobs, titleFilter, statusFilter, clientFilter, startDateRange, endDateRange, selectedUserId]);
 
-  // Sorting + Pagination (unchanged)
   const sorted = useMemo(() => {
     if (!sortColumn || !sortDirection) return filtered;
     return [...filtered].sort((a, b) => {

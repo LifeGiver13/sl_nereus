@@ -308,7 +308,7 @@ const JobDetail = () => {
                     <TableHead>Status</TableHead>
                     <TableCell>
                       <Badge className={getStatusColor(job.status)}>
-                        {job.status}
+                        {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                       </Badge>
                     </TableCell>
                   </TableRow>

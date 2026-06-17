@@ -252,7 +252,7 @@ const ClientDetail = () => {
       address.county,
       address.postcode
     ].filter(Boolean);
-    
+
     return parts.length > 0 ? parts.join(', ') : 'No address provided';
   };
 
@@ -279,7 +279,7 @@ const ClientDetail = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button 
+            <Button
               onClick={handleEditClient}
               className="bg-[#712B71] hover:bg-[#712B71]/90"
             >
@@ -315,11 +315,11 @@ const ClientDetail = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
                   <div className="font-medium text-gray-700">Status</div>
                   <div className="md:col-span-2">
-                    <Badge 
+                    <Badge
                       variant={client.status === 'active' ? 'default' : 'secondary'}
                       className={client.status === 'active' ? 'bg-green-100 text-green-800' : ''}
                     >
-                      {client.status}
+                      {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
                     </Badge>
                   </div>
                 </div>
@@ -356,7 +356,7 @@ const ClientDetail = () => {
                         </TabsTrigger>
                       ))}
                     </TabsList>
-                    
+
                     {Object.entries(viewManager.sections).map(([sectionName, fields]) => (
                       <TabsContent key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
                         <div className="space-y-2">
