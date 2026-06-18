@@ -67,6 +67,18 @@ const ClientDetail = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
 
+  function formatDate(value: string): string {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+  }
+
   useEffect(() => {
     const fetchClient = async () => {
       try {
@@ -325,11 +337,11 @@ const ClientDetail = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
                   <div className="font-medium text-gray-700">Created At</div>
-                  <div className="md:col-span-2 text-gray-900">{new Date(client.createdAt).toLocaleString()}</div>
+                  <div className="md:col-span-2 text-gray-900">{formatDate(client.createdAt).toLocaleString()}</div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2">
                   <div className="font-medium text-gray-700">Updated At</div>
-                  <div className="md:col-span-2 text-gray-900">{new Date(client.updatedAt).toLocaleString()}</div>
+                  <div className="md:col-span-2 text-gray-900">{formatDate(client.updatedAt).toLocaleString()}</div>
                 </div>
               </div>
             </CardContent>

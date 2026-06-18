@@ -33,7 +33,7 @@ interface Job {
   createdAt: string;
   updatedAt: string;
   client?: { id: number; name: string };
-  owner?: { id: number; username: string ; profile: any;};
+  owner?: { id: number; username: string; profile: any; };
 }
 
 interface Client {
@@ -120,11 +120,11 @@ const Jobs = () => {
 
   const searchClients = async (term: string) => {
     if (term.length < 2) { setClients([]); return; }
-      const res = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(term)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setClients(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
-      }
+    const res = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(term)}`);
+    if (res.ok) {
+      const data = await res.json();
+      setClients(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
+    }
   };
 
   const handleClientSearch = (value: string) => {
@@ -160,6 +160,18 @@ const Jobs = () => {
     setUserSearchTerm(user.name);
     setUsers([]);
   };
+
+  function formatDate(value: string): string {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+  }
 
   const filtered = useMemo(() => {
     return allJobs.filter((job) => {
@@ -448,8 +460,8 @@ const Jobs = () => {
                         <TableCell>{job.client?.name ?? `Client #${job.clientId}`}</TableCell>
                         <TableCell>{job.owner?.profile?.fullName ?? job.owner?.username ?? `User #${job.postedBy}`}</TableCell>
                         <TableCell className="font-medium">{job.title}</TableCell>
-                        <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
-                        <TableCell>{job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Ongoing'}</TableCell>
+                        <TableCell>{formatDate(job.startDate)}</TableCell>
+                        <TableCell>{job.endDate ? formatDate(job.endDate) : 'Ongoing'}</TableCell>
                         <TableCell>{job.vacancies}</TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(job.status)}>

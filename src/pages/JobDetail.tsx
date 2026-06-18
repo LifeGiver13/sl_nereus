@@ -163,6 +163,18 @@ const JobDetail = () => {
     setSelectedPlacement(null);
   };
 
+  function formatDate(value: string): string {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+  }
+
   const handleAssignCandidate = async (userId: number, slotId: number, dates: Date[]) => {
     try {
       for (const date of dates) {
@@ -335,11 +347,11 @@ const JobDetail = () => {
                 <TableBody>
                   <TableRow>
                     <TableHead className="w-1/3">Start Date</TableHead>
-                    <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDate(job.startDate)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>End Date</TableHead>
-                    <TableCell>{new Date(job.endDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDate(job.endDate)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>Shift</TableHead>
@@ -359,11 +371,11 @@ const JobDetail = () => {
                   </TableRow>
                   <TableRow>
                     <TableHead>Created</TableHead>
-                    <TableCell>{new Date(job.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatDate(job.createdAt)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>Updated</TableHead>
-                    <TableCell>{new Date(job.updatedAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatDate(job.updatedAt)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

@@ -90,7 +90,7 @@ const JobFill = () => {
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [pendingSource, setPendingSource] = useState<'search' | 'suggested' | null>(null);
   const [overlapDetails, setOverlapDetails] = useState<string>('');
-  
+
   const [showPlacementDetail, setShowPlacementDetail] = useState(false);
   const [showPlacementEdit, setShowPlacementEdit] = useState(false);
   const [selectedPlacement, setSelectedPlacement] = useState<any>(null);
@@ -124,7 +124,7 @@ const JobFill = () => {
       }
       const data = await response.json();
       console.log('Existing placements response:', data);
-      
+
       return {
         results: Array.isArray(data?.results) ? data.results : []
       };
@@ -165,31 +165,31 @@ const JobFill = () => {
   // Calculate occupied dates for a slot based on its placements
   const calculateOccupiedDates = (slotId: number, allPlacements: any[]): Set<string> => {
     const dates = new Set<string>();
-    
+
     // Filter placements for this specific slot (vacancy)
     // Check meta.vacancy first, then top-level vacancy, then default to slot 1
     const slotPlacements = allPlacements.filter(p => (p.meta?.vacancy ?? p.vacancy ?? 1) === slotId);
-    
+
     slotPlacements.forEach(placement => {
       // Each placement represents one date stored in meta.shiftDate
       if (!placement.meta?.shiftDate) {
         console.warn('Placement missing shiftDate:', placement);
         return;
       }
-      
+
       const placementDate = new Date(placement.meta.shiftDate);
-      
+
       // Validate date
       if (isNaN(placementDate.getTime())) {
         console.error('Invalid placement shiftDate:', placement.meta.shiftDate);
         return;
       }
-      
+
       placementDate.setHours(12, 0, 0, 0); // Set to noon for consistency
       const dateString = placementDate.toISOString().split('T')[0];
       dates.add(dateString);
     });
-    
+
     console.log(`Slot ${slotId} occupied dates:`, Array.from(dates));
     return dates;
   };
@@ -197,17 +197,17 @@ const JobFill = () => {
   // Update slots when existing placements are loaded - now using new placement structure
   useEffect(() => {
     console.log('Existing placements data:', existingPlacements);
-    
+
     if (existingPlacements?.results && Array.isArray(existingPlacements.results) && job && slots.length > 0) {
-      const updatedSlots = slots.map(slot => ({ 
-        ...slot, 
+      const updatedSlots = slots.map(slot => ({
+        ...slot,
         placements: [],
         occupiedDates: calculateOccupiedDates(slot.id, existingPlacements.results)
       }));
-      
+
       // Group placements by user to create consolidated placement rows
       const placementsByUser = new Map<number, any[]>();
-      
+
       existingPlacements.results.forEach((placement: any) => {
         const userId = placement.userId;
         if (!placementsByUser.has(userId)) {
@@ -215,7 +215,7 @@ const JobFill = () => {
         }
         placementsByUser.get(userId)!.push(placement);
       });
-      
+
       // Create placement rows for each user, grouping their dates
       placementsByUser.forEach((userPlacements, userId) => {
         const firstPlacement = userPlacements[0];
@@ -223,22 +223,22 @@ const JobFill = () => {
         const lastName = firstPlacement.user?.profile?.Surname || 'User';
         const email = firstPlacement.user?.username || '';
         const displayName = `${firstName} ${lastName} (${email})`;
-        
+
         // Get the vacancy number from the first placement (they should all be the same for this user)
         // Check meta.vacancy first, then top-level vacancy, then default to slot 1
         const assignedSlotId = firstPlacement.meta?.vacancy ?? firstPlacement.vacancy ?? 1;
         const slotIndex = updatedSlots.findIndex(s => s.id === assignedSlotId);
         const targetSlotIndex = slotIndex >= 0 ? slotIndex : 0;
-        
-      // Collect all dates for this user's placements, filtering out invalid dates
-      const availability = userPlacements
-        .map(p => p.meta?.shiftDate || p.shiftDate)
-        .filter(date => {
-          if (!date) return false;
-          const testDate = new Date(date);
-          return !isNaN(testDate.getTime());
-        });
-        
+
+        // Collect all dates for this user's placements, filtering out invalid dates
+        const availability = userPlacements
+          .map(p => p.meta?.shiftDate || p.shiftDate)
+          .filter(date => {
+            if (!date) return false;
+            const testDate = new Date(date);
+            return !isNaN(testDate.getTime());
+          });
+
         const placementRow: PlacementRow = {
           id: firstPlacement.id,
           userId: userId,
@@ -258,10 +258,10 @@ const JobFill = () => {
             notes: firstPlacement.meta?.notes || ''
           }
         };
-        
+
         updatedSlots[targetSlotIndex].placements.push(placementRow);
       });
-      
+
       console.log('Updated slots with placement data:', updatedSlots);
       setSlots(updatedSlots);
     }
@@ -284,14 +284,14 @@ const JobFill = () => {
         console.log('🔍 Placement', placement.id, 'has no shiftDate in meta');
         return false;
       }
-      
+
       const dateStr = new Date(placementDate).toISOString().split('T')[0];
       const hasOverlap = selectedDates.includes(dateStr);
-      
+
       if (hasOverlap) {
         console.log('🔍 OVERLAP FOUND: Placement', placement.id, 'on date', dateStr, 'conflicts with selected dates');
       }
-      
+
       return hasOverlap;
     });
 
@@ -302,7 +302,7 @@ const JobFill = () => {
   const checkSlotAvailability = (slotId: number, proposedAvailability: AvailabilityWindow[]): boolean => {
     const slot = slots.find(s => s.id === slotId);
     if (!slot) return false;
-    
+
     // Check if any of the proposed dates overlap with existing placements in this slot
     for (const window of proposedAvailability) {
       const current = new Date(window.startDate);
@@ -315,7 +315,7 @@ const JobFill = () => {
         current.setDate(current.getDate() + 1);
       }
     }
-    
+
     return true;
   };
 
@@ -331,25 +331,25 @@ const JobFill = () => {
 
   const updateJobRemainingAvailability = async (slotId: number, usedDates: string[]) => {
     if (!job) return;
-    
+
     // Update job meta with remaining availability
     const updatedMeta = { ...job.meta };
     if (!updatedMeta.slotAvailability) {
       updatedMeta.slotAvailability = {};
     }
-    
+
     // Calculate remaining availability for this slot
     const jobStart = new Date(job.startDate);
     const jobEnd = new Date(job.endDate);
     const allDates = [];
-    
+
     for (let d = new Date(jobStart); d <= jobEnd; d.setDate(d.getDate() + 1)) {
       allDates.push(d.toISOString().split('T')[0]);
     }
-    
+
     const remainingDates = allDates.filter(date => !usedDates.includes(date));
     updatedMeta.slotAvailability[slotId] = remainingDates;
-    
+
     try {
       await fetch(`${API_BASE_URL}/job/${job.id}`, {
         method: 'PUT',
@@ -368,7 +368,7 @@ const JobFill = () => {
   // Handle direct assignment from calendar - assign candidate to specific slot/date(s)
   const handleAssignCandidate = async (candidateId: number, slotId: number, dates: Date[]) => {
     console.log('🎯 Assignment request:', { candidateId, slotId, dates });
-    
+
     if (!job) return;
 
     // Fetch complete user data with placements to validate
@@ -378,7 +378,7 @@ const JobFill = () => {
           'x-service-user': localStorage.getItem('session_token') || '',
         },
       });
-      
+
       if (!userResponse.ok) {
         throw new Error('Failed to fetch candidate details');
       }
@@ -386,15 +386,15 @@ const JobFill = () => {
       const candidateData = await userResponse.json();
       console.log('🔍 Candidate data fetched:', candidateData.id, candidateData.username);
       console.log('🔍 Candidate has', candidateData.placements?.length || 0, 'placements');
-      
+
       // Check if candidate has any existing placements on the selected dates
       if (candidateData.placements && candidateData.placements.length > 0) {
         const conflictingDates: string[] = [];
-        
+
         dates.forEach(date => {
           const dateStr = date.toISOString().split('T')[0];
           console.log('🔍 Checking date:', dateStr);
-          
+
           const hasExistingPlacement = candidateData.placements.some((placement: any) => {
             const placementDate = placement.meta?.shiftDate;
             if (placementDate) {
@@ -404,7 +404,7 @@ const JobFill = () => {
             }
             return false;
           });
-          
+
           console.log('  ✅ Has existing placement on', dateStr, ':', hasExistingPlacement);
           if (hasExistingPlacement) {
             conflictingDates.push(dateStr);
@@ -438,7 +438,7 @@ const JobFill = () => {
       const placementPromises = dates.map(date => {
         const placementDate = new Date(date);
         placementDate.setHours(12, 0, 0, 0);
-        
+
         const newPlacement = {
           userId: candidateId,
           jobId: job.id,
@@ -498,23 +498,35 @@ const JobFill = () => {
           'x-service-user': localStorage.getItem('session_token') || '',
         },
       });
-      
+
       if (!userResponse.ok) {
         throw new Error('Failed to fetch user details');
       }
 
       const completeUser = await userResponse.json();
-      
+
       // Check for overlaps on the specific dates being assigned
       const selectedDateStrings = availability.map(date => date.toISOString().split('T')[0]);
       const overlappingPlacements = checkForOverlappingPlacements(completeUser, selectedDateStrings);
-      
+
+      function formatDate(value: string): string {
+        if (!value) return "-";
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return "-";
+
+        return d.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }).replace(/\//g, '/');
+      }
+
       if (overlappingPlacements && overlappingPlacements.length > 0) {
         const conflictDates = overlappingPlacements.map((p: any) => {
           const date = new Date(p.meta?.shiftDate);
           return date.toLocaleDateString();
         }).join(', ');
-        
+
         toast({
           title: "User already assigned",
           description: `${user.profile?.Forename || user.firstName} ${user.profile?.Surname || user.lastName} is already assigned on: ${conflictDates}`,
@@ -528,7 +540,7 @@ const JobFill = () => {
         // Set date to noon to avoid timezone issues
         const placementDate = new Date(date);
         placementDate.setHours(12, 0, 0, 0);
-        
+
         return fetch(`${API_BASE_URL}/placement`, {
           method: 'POST',
           headers: {
@@ -554,21 +566,21 @@ const JobFill = () => {
       });
 
       const responses = await Promise.all(placementPromises);
-      
+
       // Check if all requests were successful
       const failedResponses = responses.filter(response => !response.ok);
       if (failedResponses.length > 0) {
         throw new Error(`Failed to create ${failedResponses.length} placement(s)`);
       }
-        
+
       toast({
         title: "Success",
         description: `${user.profile?.Forename || user.firstName} ${user.profile?.Surname || user.lastName} has been added to the job for ${availability.length} date(s).`,
       });
-      
+
       // Refresh both job and placements data
       await Promise.all([refetchJob(), refetchPlacements()]);
-      
+
       // Clear pending state
       setPendingUser(null);
       setPendingSource(null);
@@ -763,8 +775,8 @@ const JobFill = () => {
         </Card>
 
         {/* Calendar Table View */}
-        <PlacementCalendarTable 
-          job={job} 
+        <PlacementCalendarTable
+          job={job}
           slots={slots}
           existingPlacements={existingPlacements?.results || []}
           onAssignCandidate={handleAssignCandidate}

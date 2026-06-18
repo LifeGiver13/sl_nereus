@@ -184,14 +184,17 @@ const Applications = () => {
     setCurrentPage(1);
   }, [usernameFilter, stageFilter, statusFilter]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  function formatDate(value: string): string {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
 
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/'); // Ensures 18/06/2026
+  }
 
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')

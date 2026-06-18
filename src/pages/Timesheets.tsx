@@ -100,9 +100,16 @@ const statusClasses: Record<TimesheetStatus, string> = {
 
 const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 
-function formatDate(value: string) {
+function formatDate(value: string): string {
+  if (!value) return "-";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+  if (Number.isNaN(d.getTime())) return "-";
+
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).replace(/\//g, '/'); 
 }
 
 function getDisplayName(row: Timesheet) {
@@ -1117,126 +1124,115 @@ const Timesheets = () => {
             <CardDescription>Refine by user name/id , date and status</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <Input
-                placeholder="Filter by user name or ID"
-                value={userFilter}
-                onChange={(e) => { setUserFilter(e.target.value); setPage(1); }} />
-              <Select value={statusFilter} onValueChange={(v) => {
-                setStatusFilter(v); setPage(1);
+            <div className="space-y-6">
+              {/* Main Filters Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {/* User Filter */}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Filter by User</label>
+                  <Input
+                    placeholder="User name or ID"
+                    value={userFilter}
+                    onChange={(e) => { setUserFilter(e.target.value); setPage(1); }}
+                  />
+                </div>
 
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                {/* Status Filter */}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Status</label>
+                  <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={(v) => { setSortBy(v as "period" | "client"); setPage(1); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="period">Sort: Period</SelectItem>
-                  <SelectItem value="client">Sort: Client</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortDir} onValueChange={(v) => { setSortDir(v as "asc" | "desc"); setPage(1); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Direction" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="desc">Descending</SelectItem>
-                  <SelectItem value="asc">Ascending</SelectItem>
-                </SelectContent>
-              </Select>
+                {/* Date Filter */}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Date Filter</label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={dateFilterType}
+                      onValueChange={(v) => { setDateFilterType(v as "period" | "approved"); setPage(1); }}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="period">Timesheet Period</SelectItem>
+                        <SelectItem value="approved">Approval Week</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="date"
+                      value={date}
+                      onChange={(e) => { setDate(e.target.value); setPage(1); }}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
 
-              <div className="flex flex-col gap-1">
-                <Select
-                  value={dateFilterType}
-                  onValueChange={(v) => { setDateFilterType(v as "period" | "approved"); setPage(1); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Date Filter Type' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="period">
-                      Timesheet Period
-                    </SelectItem>
-                    <SelectItem value="approved">
-                      Approval Week
-                    </SelectItem>
-
-                  </SelectContent>
-                </Select>
-                <label className="text-xs text-gray-500">
-                  {dateFilterType === 'period'
-                    ? "Timesheet Week"
-                    : "Approved Week"
-                  }
-                </label>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={(e) => {
-                    setDate(e.target.value);
-                    setPage(1);
-                  }}
-                />
-
-                {selectedWeek && (
-                  <p className="text-xs text-gray-500">
-                    Week: {selectedWeek.monday} → {selectedWeek.sunday}
-                  </p>
-                )}
+                {/* Sort Options */}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Sort</label>
+                  <div className="flex gap-2">
+                    <Select value={sortBy} onValueChange={(v) => { setSortBy(v as "period" | "client"); setPage(1); }}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="period">Period</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={sortDir} onValueChange={(v) => { setSortDir(v as "asc" | "desc"); setPage(1); }}>
+                      <SelectTrigger className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">Newest</SelectItem>
+                        <SelectItem value="asc">Oldest</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setUserFilter("");
-                  setStatusFilter("pending");
-                  setSortBy("period");
-                  setSortDir("desc");
-                  setPage(1);
-                  setDate("")
-                  setDateFilterType("period")
-                }}
-              >
-                Clear filters
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as TimesheetStatus | "none")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Bulk status action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Select status</SelectItem>
-                  <SelectItem value="draft">Set Draft</SelectItem>
-                  <SelectItem value="pending">Set Pending</SelectItem>
-                  <SelectItem value="approved">Set Approved</SelectItem>
-                  <SelectItem value="rejected">Set Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={runBulkStatusUpdate} disabled={bulkStatus === "none" || selectedIds.length === 0 || isSaving}>
-                Apply to selected ({selectedIds.length})
-              </Button>
-              <Button
-                variant="outline"
-                onClick={exportSelectedTimesheetsToCSV}
-                disabled={selectedIds.length === 0}
-              >
-                <Download className="h-4 w-4 mr-1" />
-                Export Selected ({selectedIds.length})
-              </Button>
+              {/* Action Buttons Row */}
+              <div className="flex flex-wrap gap-3 pt-2 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setUserFilter("");
+                    setStatusFilter("pending");
+                    setSortBy("period");
+                    setSortDir("desc");
+                    setPage(1);
+                    setDate("");
+                    setDateFilterType("period");
+                  }}
+                >
+                  Clear Filters
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={exportSelectedTimesheetsToCSV}
+                  disabled={selectedIds.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Selected ({selectedIds.length})
+                </Button>
+              </div>
+
               <Select
                 value={String(pageSize)}
                 onValueChange={(v) => {
