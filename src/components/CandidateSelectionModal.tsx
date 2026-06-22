@@ -385,7 +385,12 @@ const CandidateSelectionModal: React.FC<CandidateSelectionModalProps> = ({
           <DialogTitle>Select Candidate</DialogTitle>
           <DialogDescription>
             Choose a candidate for Slot {slotId}
-            {multiDateMode ? ` for ${selectedDates.length} date(s)` : ` on ${date.toLocaleDateString()}`}
+            {multiDateMode ? ` for ${selectedDates.length} date(s)` : ` on ${date.toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            }).replace(/\//g, '/')}`
+            }
           </DialogDescription>
         </DialogHeader>
 
