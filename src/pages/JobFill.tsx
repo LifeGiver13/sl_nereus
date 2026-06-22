@@ -509,22 +509,17 @@ const JobFill = () => {
       const selectedDateStrings = availability.map(date => date.toISOString().split('T')[0]);
       const overlappingPlacements = checkForOverlappingPlacements(completeUser, selectedDateStrings);
 
-      function formatDate(value: string): string {
-        if (!value) return "-";
-        const d = new Date(value);
-        if (Number.isNaN(d.getTime())) return "-";
-
-        return d.toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }).replace(/\//g, '/');
-      }
 
       if (overlappingPlacements && overlappingPlacements.length > 0) {
         const conflictDates = overlappingPlacements.map((p: any) => {
-          const date = new Date(p.meta?.shiftDate);
-          return date.toLocaleDateString();
+          const d = new Date(p);
+          if (Number.isNaN(d.getTime())) return "-";
+
+          return d.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          }).replace(/\//g, '/');
         }).join(', ');
 
         toast({
@@ -714,7 +709,19 @@ const JobFill = () => {
               <div>
                 <p className="text-sm text-gray-500">Job Duration</p>
                 <p className="font-medium">
-                  {new Date(job.startDate).toLocaleDateString()} - {new Date(job.endDate).toLocaleDateString()}
+                  {new Date(job.startDate).toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  }).replace(/\//g, '/')
+                  }
+                  -
+                  {new Date(job.endDate).toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  }).replace(/\//g, '/')
+                  }
                 </p>
               </div>
               <div>
