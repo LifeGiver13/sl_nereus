@@ -95,11 +95,12 @@ const Applications = () => {
   const { toast } = useToast();
   const TITLE_OPTIONS = ["Mr", "Miss", "Ms", "Mrs", "Madam", "Dr", "Prof"];
   const STAGE_OPTIONS = [
-    { value: "pre-registration", label: "Pre-Registration" },
     { value: "full-registration", label: "Full Registration" },
+    { value: "pre-registration", label: "Pre-Registration" },
+
   ];
 
-  const [selectedStage, setSelectedStage] = useState("pre-registration");
+  const [selectedStage, setSelectedStage] = useState("full-registration");
 
   const { token } = useAuth();
   const { preferences, updateTablePreferences } = usePreferences();
