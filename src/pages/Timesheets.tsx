@@ -109,7 +109,7 @@ function formatDate(value: string): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
-  }).replace(/\//g, '/'); 
+  }).replace(/\//g, '/');
 }
 
 function getDisplayName(row: Timesheet) {
@@ -128,8 +128,12 @@ function calculateEntryHours(entry: TimesheetEntry): number {
   const [endHour, endMinute] = entry.endTime.split(":").map(Number);
   if ([startHour, startMinute, endHour, endMinute].some((v) => Number.isNaN(v))) return 0;
   const startMinutes = startHour * 60 + startMinute;
-  const endMinutes = endHour * 60 + endMinute;
-  const breakMinutes = typeof entry.break === "number" && !Number.isNaN(entry.break) ? entry.break : 0;
+  let endMinutes = endHour * 60 + endMinute;
+  if (endMinutes <= startMinutes) {
+    // overnight shift (e.g. 22:00 greater thab 06:00) - mirrors the day-rollover logic in getEntryInterval
+    endMinutes += 24 * 60;
+  }
+  const breakMinutes = typeof entry.break === "number" && !Number.isNaN(entry.break) ? Math.max(entry.break, 0) : 0;
   const rawMinutes = endMinutes - startMinutes - breakMinutes;
   return Math.max(rawMinutes, 0) / 60;
 }

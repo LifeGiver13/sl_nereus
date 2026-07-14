@@ -78,8 +78,8 @@ const Jobs = () => {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
 
   // User typeahead
-  const [users, setUsers] = useState<User[]>([]);
-  const [userSearchTerm, setUserSearchTerm] = useState('');
+  // const [users, setUsers] = useState<User[]>([]);
+  // const [userSearchTerm, setUserSearchTerm] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   // Sorting
@@ -140,26 +140,26 @@ const Jobs = () => {
     setClients([]);
   };
 
-  const searchUsers = async (term: string) => {
-    if (term.length < 2) { setUsers([]); return; }
-    const res = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
-    if (res.ok) {
-      const data = await res.json();
-      setUsers(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
-    }
-  };
+  // const searchUsers = async (term: string) => {
+  //   if (term.length < 2) { setUsers([]); return; }
+  //   const res = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
+  //   if (res.ok) {
+  //     const data = await res.json();
+  //     setUsers(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
+  //   }
+  // };
 
-  const handleUserSearch = (value: string) => {
-    setUserSearchTerm(value);
-    if (!value) setSelectedUserId(null);
-    searchUsers(value);
-  };
+  // const handleUserSearch = (value: string) => {
+  //   setUserSearchTerm(value);
+  //   if (!value) setSelectedUserId(null);
+  //   searchUsers(value);
+  // };
 
-  const handleUserSelect = (user: User) => {
-    setSelectedUserId(user.id);
-    setUserSearchTerm(user.name);
-    setUsers([]);
-  };
+  // const handleUserSelect = (user: User) => {
+  //   setSelectedUserId(user.id);
+  //   setUserSearchTerm(user.name);
+  //   setUsers([]);
+  // };
 
   function formatDate(value: string): string {
     if (!value) return "-";
@@ -229,7 +229,7 @@ const Jobs = () => {
     setSelectedClientId(null);
     setSelectedUserId(null);
     setClientSearchTerm('');
-    setUserSearchTerm('');
+    // setUserSearchTerm('');
     setCurrentPage(1);
   };
 
@@ -271,6 +271,19 @@ const Jobs = () => {
   }
 
   const uniqueStatuses = Array.from(new Set(allJobs.map(j => j.status))).filter(Boolean);
+
+  const uniqueOwners = useMemo(() => {
+    const map = new Map<number, string>();
+    allJobs.forEach((job) => {
+      if (job.owner?.id) {
+        const name = job.owner.profile?.fullName || job.owner.username || `User #${job.owner.id}`;
+        if (!map.has(job.owner.id)) map.set(job.owner.id, name);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allJobs]);
 
   return (
     <AdminLayout>
@@ -319,15 +332,25 @@ const Jobs = () => {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Posted By</label>
-                <div className="relative">
-                  <Input
-                    value={userSearchTerm}
-                    onChange={(e) => handleUserSearch(e.target.value)}
-                    placeholder="Start typing user name..."
-                  />
-                  {users.length > 0 && (
+              <div className="relative">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Posted By</label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    value={selectedUserId ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedUserId(val ? Number(val) : null);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <option value="">All owners</option>
+                    {uniqueOwners.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* {users.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                       {users.map((user) => (
                         <div
@@ -339,8 +362,7 @@ const Jobs = () => {
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
+                  )} */}
               </div>
 
               <div className="space-y-1">

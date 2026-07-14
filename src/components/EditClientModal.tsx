@@ -36,6 +36,7 @@ interface Client {
       firstName: string;
       telephone: string;
       salutation: string;
+      email: string;
     };
   };
   meta: any;
@@ -69,18 +70,18 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
   const handleInputChange = (path: string, value: string) => {
     setFormData(prev => {
       if (!prev) return null;
-      
+
       const keys = path.split('.');
       const newData = { ...prev };
       let current: any = newData;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
         if (!current[keys[i]]) {
           current[keys[i]] = {};
         }
         current = current[keys[i]];
       }
-      
+
       current[keys[keys.length - 1]] = value;
       return newData;
     });
@@ -109,7 +110,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
         title: "Success",
         description: "Client updated successfully",
       });
-      
+
       onClientUpdated();
       onClose();
     } catch (error) {
@@ -130,7 +131,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
         <DialogHeader>
           <DialogTitle>Edit Client: {formData.name}</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <Card>
@@ -146,7 +147,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Status</label>
                 <Select
@@ -187,7 +188,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.contact.salutation', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">First Name</label>
                 <Input
@@ -195,7 +196,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.contact.firstName', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Last Name</label>
                 <Input
@@ -203,7 +204,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.contact.lastName', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Role</label>
                 <Input
@@ -211,7 +212,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.contact.role', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Telephone</label>
                 <Input
@@ -219,7 +220,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.contact.telephone', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Mobile</label>
                 <Input
@@ -227,7 +228,13 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.contact.mobile', e.target.value)}
                 />
               </div>
-              
+              <div className="space-y-2 col-span-2">
+                <label className="text-sm font-medium">Email</label>
+                <Input
+                  value={formData.profile.contact.email || ''}
+                  onChange={(e) => handleInputChange('profile.contact.email', e.target.value)}
+                />
+              </div>
               <div className="space-y-2 col-span-2">
                 <label className="text-sm font-medium">Fax</label>
                 <Input
@@ -251,7 +258,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.address.line1', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Address Line 2</label>
                 <Input
@@ -259,7 +266,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.address.line2', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Address Line 3</label>
                 <Input
@@ -267,7 +274,9 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   onChange={(e) => handleInputChange('profile.address.line3', e.target.value)}
                 />
               </div>
-              
+
+
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Town</label>
@@ -276,7 +285,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                     onChange={(e) => handleInputChange('profile.address.town', e.target.value)}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">County</label>
                   <Input
@@ -285,7 +294,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Postcode</label>
                 <Input
@@ -295,7 +304,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
               </div>
             </CardContent>
           </Card>
-          
+
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
