@@ -51,6 +51,7 @@ interface Client {
       firstName: string;
       telephone: string;
       salutation: string;
+      email: string;
     };
   };
   meta: any;
@@ -374,6 +375,20 @@ const ClientDetail = () => {
                         <div className="space-y-2">
                           {fields.map((field) => {
                             const value = getNestedProperty(client.profile, field.property);
+
+                            if (value === undefined) {
+                              console.warn(
+                                `ViewManager error: "${field.property}" does not exist`
+                              );
+                            }
+                            console.log("View Manager", viewManager);
+                            console.log({
+                              section: sectionName,
+                              label: field.label,
+                              property: field.property,
+                              value
+                            });
+
                             return (
                               <div key={field.property} className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100 last:border-b-0">
                                 <div className="font-medium text-gray-700">
