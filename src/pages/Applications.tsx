@@ -94,7 +94,13 @@ const Applications = () => {
 
   const { toast } = useToast();
   const TITLE_OPTIONS = ["Mr", "Miss", "Ms", "Mrs", "Madam", "Dr", "Prof"];
+  const STAGE_OPTIONS = [
+    { value: "full-registration", label: "Full Registration" },
+    { value: "pre-registration", label: "Pre-Registration" },
 
+  ];
+
+  const [selectedStage, setSelectedStage] = useState("full-registration");
 
   const { token } = useAuth();
   const { preferences, updateTablePreferences } = usePreferences();
@@ -331,8 +337,15 @@ const Applications = () => {
             }
           },
           meta: {
-            stage: "pre-registration",
-            pre_registration: "pending"
+            stage: selectedStage,
+            ...(selectedStage === "pre-registration" && {
+              pre_registration: "pending",
+            }),
+
+            ...(selectedStage === "full-registration" && {
+              pre_registration: "complete",
+              full_registration: "pending",
+            }),
           }
         }
       };
@@ -783,6 +796,28 @@ const Applications = () => {
                 value={formData.referralCode}
                 onChange={(e) => setFormData({ ...formData, referralCode: e.target.value })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Application Stage</Label>
+
+              <div className="flex flex-col gap-2">
+                {STAGE_OPTIONS.map((stage) => (
+                  <label
+                    key={stage.value}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      type="radio"
+                      name="stage"
+                      value={stage.value}
+                      checked={selectedStage === stage.value}
+                      onChange={(e) => setSelectedStage(e.target.value)}
+                    />
+
+                    <span>{stage.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <DialogFooter>
