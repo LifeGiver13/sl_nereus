@@ -878,6 +878,11 @@ const Timesheets = () => {
           return (calculateTotalHours(a) - calculateTotalHours(b)) * dir;
         case 'status':
           return a.status.localeCompare(b.status) * dir;
+        case 'created':
+          return (
+            new Date(a.createdAt || 0).getTime() -
+            new Date(b.createdAt || 0).getTime()
+          ) * dir;
         default:
           return 0;
       }
@@ -1303,6 +1308,7 @@ const Timesheets = () => {
                     <SortableTh column="client">Client</SortableTh>
                     <SortableTh column="position">Position</SortableTh>
                     <SortableTh column="period">Period</SortableTh>
+                    <SortableTh column="created">Created</SortableTh>
                     <SortableTh column="hours">Hours</SortableTh>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -1330,6 +1336,9 @@ const Timesheets = () => {
                           <TableCell>{row.position?.title || `Position #${row.positionId}`}</TableCell>
                           <TableCell>
                             {formatDate(row.startDate)} - {formatDate(row.endDate)}
+                          </TableCell>
+                          <TableCell>
+                            {row.createdAt ? formatDate(row.createdAt) : "-"}
                           </TableCell>
                           <TableCell>{totalHours.toFixed(2)}h</TableCell>
                           <TableCell>
@@ -1435,7 +1444,7 @@ const Timesheets = () => {
                         </TableRow>
                         {isExpanded && (
                           <TableRow>
-                            <TableCell colSpan={9} className="bg-blue-50/30 border-l-4 border-blue-300">
+                            <TableCell colSpan={10} className="bg-blue-50/30 border-l-4 border-blue-300">
                               <div className="space-y-3 py-2">
                                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-700">
                                   <span><strong>User:</strong> {getDisplayName(row)}</span>
