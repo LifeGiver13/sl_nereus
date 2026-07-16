@@ -66,6 +66,8 @@ type Timesheet = {
   user?: { id: number; username?: string; profile?: { firstName?: string; surname?: string; fullName?: string; } };
   client?: { id: number; name?: string };
   position?: { id: number; title?: string };
+  createdAt?: string;
+
 };
 
 type AdminTimesheetListResponse = {
@@ -297,7 +299,9 @@ const Timesheets = () => {
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [selectedRejectId, setSelectedRejectedId] = useState<number | null>(null)
 
-  const [dateFilterType, setDateFilterType] = useState<"period" | "approved">("period")
+  const [dateFilterType, setDateFilterType] = useState<"period" | "approved" | "created">("period")
+  const [weekAnchor, setWeekAnchor] = useState<"commencing" | "ending">("commencing");
+
 
 
   const { token } = useAuth();
@@ -800,16 +804,9 @@ const Timesheets = () => {
 
   const selectedWeek = useMemo(() => {
     if (!date) return null;
-
-    const { monday, sunday } = getWeekRange(date);
-
-    return {
-      monday: monday.toLocaleDateString(),
-      sunday: sunday.toLocaleDateString(),
-    };
-  }, [date]);
-
-
+    const { start, end } = getWeekRange(date, weekAnchor);
+    return { start: start.toLocaleDateString(), end: end.toLocaleDateString() };
+  }, [date, weekAnchor]);
 
   const filtered = useMemo(() => {
     return timesheets.filter((row) => {
@@ -822,21 +819,16 @@ const Timesheets = () => {
       let matchesDate = true;
 
       if (date) {
-        const { monday, sunday } = getWeekRange(date);
-
-        monday.setHours(0, 0, 0, 0);
-        sunday.setHours(23, 59, 59, 999);
+        const { start, end } = getWeekRange(date, weekAnchor);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
 
         if (dateFilterType === "period") {
           const rowStart = parseLocalDate(row.startDate);
           const rowEnd = parseLocalDate(row.endDate);
-
           rowStart.setHours(0, 0, 0, 0);
           rowEnd.setHours(23, 59, 59, 999);
-
-          matchesDate =
-            rowStart <= sunday &&
-            rowEnd >= monday;
+          matchesDate = rowStart <= end && rowEnd >= start;
         }
 
         if (dateFilterType === "approved") {
@@ -844,21 +836,25 @@ const Timesheets = () => {
             matchesDate = false;
           } else {
             const approved = parseLocalDate(row.approvedAt);
-
             approved.setHours(12, 0, 0, 0);
+            matchesDate = approved >= start && approved <= end;
+          }
+        }
 
-            matchesDate =
-              approved >= monday &&
-              approved <= sunday;
+        if (dateFilterType === "created") {
+          if (!row.createdAt) {
+            matchesDate = false;
+          } else {
+            const created = parseLocalDate(row.createdAt);
+            created.setHours(12, 0, 0, 0);
+            matchesDate = created >= start && created <= end;
           }
         }
       }
 
       return matchesUser && matchesDate;
-
     });
-  }, [timesheets, userFilter, date, dateFilterType]);
-
+  }, [timesheets, userFilter, date, dateFilterType, weekAnchor]);
 
 
   const sortedTimesheets = useMemo(() => {
@@ -994,28 +990,22 @@ const Timesheets = () => {
   };
 
 
-  function getWeekRange(selectedDate: string) {
+  function getWeekRange(selectedDate: string, anchor: "commencing" | "ending") {
     const current = parseLocalDate(selectedDate);
-    // get day index
-    // sunday = 0
-    // monday = 1
-    const day = current.getDay();
 
-    // convert sunday handling
-    const diffToMonday = day === 0 ? -6 : 1 - day;
+    if (anchor === "commencing") {
+      // selectedDate IS the first day of the week
+      const start = new Date(current);
+      const end = new Date(current);
+      end.setDate(end.getDate() + 6);
+      return { start, end };
+    }
 
-    // monday
-    const monday = new Date(current);
-    monday.setDate(current.getDate() + diffToMonday);
-
-    // sunday
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-
-    return {
-      monday,
-      sunday,
-    };
+    // "ending": selectedDate IS the last day of the week
+    const end = new Date(current);
+    const start = new Date(current);
+    start.setDate(start.getDate() - 6);
+    return { start, end };
   }
 
 
@@ -1125,24 +1115,24 @@ const Timesheets = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-[#000009]">Filters</CardTitle>
-            <CardDescription>Refine by user name/id , date and status</CardDescription>
+            <CardDescription>Refine by username, date and status</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
               {/* Main Filters Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {/* User Filter */}
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Filter by User</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+                {/* User Filter — narrow */}
+                <div className="lg:col-span-2 space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Filter by Username</label>
                   <Input
-                    placeholder="User name or ID"
+                    placeholder="Username"
                     value={userFilter}
                     onChange={(e) => { setUserFilter(e.target.value); setPage(1); }}
                   />
                 </div>
 
-                {/* Status Filter */}
-                <div className="space-y-1">
+                {/* Status Filter — narrow */}
+                <div className="lg:col-span-2 space-y-1">
                   <label className="text-sm font-medium text-gray-700">Status</label>
                   <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
                     <SelectTrigger>
@@ -1159,33 +1149,56 @@ const Timesheets = () => {
                   </Select>
                 </div>
 
-                {/* Date Filter */}
-                <div className="space-y-1">
+                {/* Date Filter — wide, holds 3 controls */}
+                <div className="lg:col-span-5 space-y-1">
                   <label className="text-sm font-medium text-gray-700">Date Filter</label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Select
                       value={dateFilterType}
-                      onValueChange={(v) => { setDateFilterType(v as "period" | "approved"); setPage(1); }}
+                      onValueChange={(v) => { setDateFilterType(v as "period" | "approved" | "created"); setPage(1); }}
                     >
-                      <SelectTrigger className="w-40">
+                      <SelectTrigger className="w-full sm:w-auto sm:min-w-[9rem]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="period">Timesheet Period</SelectItem>
                         <SelectItem value="approved">Approval Week</SelectItem>
+                        <SelectItem value="created">Date Created</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={weekAnchor}
+                      onValueChange={(v) => { setWeekAnchor(v as "commencing" | "ending"); setPage(1); }}
+                    >
+                      <SelectTrigger className="w-full sm:w-auto sm:min-w-[10rem]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="commencing">Week Commencing</SelectItem>
+                        <SelectItem value="ending">Week Ending</SelectItem>
                       </SelectContent>
                     </Select>
                     <Input
                       type="date"
                       value={date}
                       onChange={(e) => { setDate(e.target.value); setPage(1); }}
-                      className="flex-1"
+                      className="w-full sm:flex-1"
                     />
                   </div>
+                  {dateFilterType === "approved" && statusFilter === "pending" && (
+                    <p className="text-xs text-amber-600 pt-1">
+                      Pending timesheets have no approval date yet — switch Status to "All" or "Approved" to see results.
+                    </p>
+                  )}
+                  {dateFilterType === "created" && statusFilter === "pending" && (
+                    <p className="text-xs text-gray-500 pt-1">
+                      Tip: switch Status to "All" if you want to see created-date results across every status.
+                    </p>
+                  )}
                 </div>
 
-                {/* Sort Options */}
-                <div className="space-y-1">
+                {/* Sort Options — medium */}
+                <div className="lg:col-span-3 space-y-1">
                   <label className="text-sm font-medium text-gray-700">Sort</label>
                   <div className="flex gap-2">
                     <Select value={sortBy} onValueChange={(v) => { setSortBy(v as "period" | "client"); setPage(1); }}>
@@ -1209,7 +1222,6 @@ const Timesheets = () => {
                   </div>
                 </div>
               </div>
-
               {/* Action Buttons Row */}
               <div className="flex flex-wrap gap-3 pt-2 border-t">
                 <Button
@@ -1222,6 +1234,7 @@ const Timesheets = () => {
                     setPage(1);
                     setDate("");
                     setDateFilterType("period");
+                    setWeekAnchor("commencing")
                   }}
                 >
                   Clear Filters
