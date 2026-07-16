@@ -353,7 +353,7 @@ const PlacementCalendarTable: React.FC<PlacementCalendarTableProps> = ({
                     <TableRow key={slot.id} className="hover:bg-muted/30">
                       <TableCell className="sticky left-0 bg-background border-r">
                         <div className="py-2">
-                          <div className="font-semibold text-sm text-primary">Slot {slot.id}</div>
+                          <div className="font-semibold text-sm text-primary">Vacancy {slot.id}</div>
                         </div>
                       </TableCell>
                       {weekDays.map((day, dayIndex) => {

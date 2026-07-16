@@ -727,7 +727,7 @@ const JobFill = () => {
               <div>
                 <p className="text-sm text-gray-500">Vacancies</p>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{job.vacancies} slots</Badge>
+                  <Badge variant="outline">{job.vacancies} Vacancy</Badge>
                   <span className="text-sm text-gray-500">
                     ({allPlacements.length} assigned)
                   </span>
