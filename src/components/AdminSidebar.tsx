@@ -16,10 +16,12 @@ import {
   ChevronRight,
   Tags,
   LayoutTemplate,
+  User2Icon,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { IconActionButton } from '@/components/IconActionTooltip';
 import { NEREUS_LOGO_MARK_URL } from '../config/env';
+import UserDetail from '@/pages/UserDetail';
 
 interface AdminSidebarProps {
   isCollapsed: boolean;
@@ -34,6 +36,8 @@ const coreNavItems = [
   { icon: ClipboardCheck, label: 'Timesheets', href: '/timesheets' },
   { icon: Users, label: 'People', href: '/people' },
   { icon: Tags, label: 'Skills', href: '/skills' },
+  { icon: User2Icon, label: 'Account', href: '/account' },
+
 ];
 
 const contentNavItems = [
