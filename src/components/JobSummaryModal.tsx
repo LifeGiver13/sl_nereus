@@ -146,7 +146,7 @@ const JobSummaryModal = ({ isOpen, onClose, jobId, placement }: JobSummaryModalP
                   <p className="text-sm font-medium">{job.client?.name || 'N/A'}</p>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-muted-foreground">Department:</span>
+                  <span className="text-sm font-medium text-muted-foreground">Assigned Agency Department:</span>
                   <p className="text-sm font-medium">{job.department?.name || 'N/A'}</p>
                 </div>
                 <div>
@@ -164,7 +164,7 @@ const JobSummaryModal = ({ isOpen, onClose, jobId, placement }: JobSummaryModalP
                   <p className="text-sm font-medium">{job.client?.name || 'N/A'}</p>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-muted-foreground">Department:</span>
+                  <span className="text-sm font-medium text-muted-foreground">Assigned Agency Department:</span>
                   <p className="text-sm font-medium">{job.department?.name || 'N/A'}</p>
                 </div>
                 <div>
