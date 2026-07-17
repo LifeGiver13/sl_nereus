@@ -206,6 +206,7 @@ const Jobs = () => {
         case 'title': return a.title.localeCompare(b.title) * dir;
         case 'startDate': return a.startDate.localeCompare(b.startDate) * dir;
         case 'endDate': return (a.endDate ?? '').localeCompare(b.endDate ?? '') * dir;
+        case 'endDate': return a.createdAt.localeCompare(b.createdAt) * dir;
         case 'vacancies': return (a.vacancies - b.vacancies) * dir;
         case 'status': return a.status.localeCompare(b.status) * dir;
         case 'filled': return (Number(a.filled) - Number(b.filled)) * dir;
@@ -464,9 +465,11 @@ const Jobs = () => {
                       <SortableTh column="title">Title</SortableTh>
                       <SortableTh column="startDate">Start Date</SortableTh>
                       <SortableTh column="endDate">End Date</SortableTh>
+                      <SortableTh column="endDate">Created At</SortableTh>
                       <SortableTh column="vacancies">Vacancies</SortableTh>
                       <SortableTh column="status">Status</SortableTh>
                       <SortableTh column="filled">Filled</SortableTh>
+                      <TableHead>Contact</TableHead>
                       <TableHead>Skills</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -484,6 +487,7 @@ const Jobs = () => {
                         <TableCell className="font-medium">{job.title}</TableCell>
                         <TableCell>{formatDate(job.startDate)}</TableCell>
                         <TableCell>{job.endDate ? formatDate(job.endDate) : 'Ongoing'}</TableCell>
+                        <TableCell>{formatDate(job.createdAt)}</TableCell>
                         <TableCell>{job.vacancies}</TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(job.status)}>
@@ -495,6 +499,7 @@ const Jobs = () => {
                             {job.filled ? 'Yes' : 'No'}
                           </Badge>
                         </TableCell>
+                        <TableCell>{job.vacancies}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1 max-w-xs">
                             {getSkillNames(job.skills || []).map((skillName, index) => (
