@@ -508,7 +508,7 @@ const Jobs = () => {
                               {job.contact.email && <div className="text-xs text-muted-foreground">{job.contact.email}</div>}
                             </div>
                           ) : (
-                            <span className="text-xs text-gray-400"> - </span>
+                            <span className="text-xs text-gray-400"> N/A </span>
                           )}
                         </TableCell>
                         <TableCell>
