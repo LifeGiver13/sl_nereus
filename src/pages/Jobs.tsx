@@ -34,6 +34,8 @@ interface Job {
   updatedAt: string;
   client?: { id: number; name: string };
   owner?: { id: number; username: string; profile: any; };
+  contact?: { id: number; firstName: string; lastName: string; email: string; phone: string; position: string }; // ← added
+
 }
 
 interface Client {
@@ -499,7 +501,16 @@ const Jobs = () => {
                             {job.filled ? 'Yes' : 'No'}
                           </Badge>
                         </TableCell>
-                        <TableCell>{job.vacancies}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {job.contact ? (
+                            <div className="text-sm">
+                              <div className="font-medium">{job.contact.firstName} {job.contact.lastName}</div>
+                              {job.contact.email && <div className="text-xs text-muted-foreground">{job.contact.email}</div>}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400"> - </span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1 max-w-xs">
                             {getSkillNames(job.skills || []).map((skillName, index) => (

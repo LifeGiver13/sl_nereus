@@ -74,6 +74,15 @@ interface Job {
   };
 }
 
+interface Contact {
+  id: number;
+  firstName: string;
+  lastName: string;
+  position: string;
+  email: string;
+  phone: string;
+}
+
 const JobEdit = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -96,6 +105,9 @@ const JobEdit = () => {
     shiftId: '',
     includeWeekends: false
   });
+  const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+
+
 
   // Fetch existing job data
   const { data: job, isLoading: isLoadingJob } = useQuery({
@@ -108,6 +120,21 @@ const JobEdit = () => {
       return response.json();
     }
   });
+
+  const { data: contactsData } = useQuery({
+    queryKey: ['client-contacts', job?.clientId],
+    queryFn: async () => {
+      if (!job?.clientId) return { contacts: [] };
+      const response = await fetch(`${API_BASE_URL}/client-contacts/${job.clientId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch client contacts');
+      }
+      return response.json();
+    },
+    enabled: !!job?.clientId
+  });
+
+  const contacts: Contact[] = contactsData?.contacts || [];
 
   //for modifying a job b4 a 24hrs time limit
   const canModifyClosedJob = () => {
@@ -140,7 +167,7 @@ const JobEdit = () => {
 
 
     const closedDate = new Date(job.meta.closedAt);
-const closeReason = job?.meta?.closeReason
+    const closeReason = job?.meta?.closeReason
     const expiresAt = new Date(
       closedDate.getTime() + 24 * 60 * 60 * 1000
     );
@@ -249,6 +276,10 @@ const closeReason = job?.meta?.closeReason
       // Set position ID if available in job body
       if (job.body?.positionId) {
         setSelectedPositionId(job.body.positionId);
+      }
+
+      if (job.contactId) {
+        setSelectedContactId(job.contactId);
       }
     }
   }, [job]); // Only depend on job, not other data that can change
@@ -371,6 +402,7 @@ const closeReason = job?.meta?.closeReason
         startDate: formData.startDate,
         endDate: formData.endDate || null,
         shiftId: formData.shiftId ? parseInt(formData.shiftId) : null,
+        contactId: selectedContactId,
         vacancies: parseInt(formData.vacancies),
         status: formData.status,
         skills: selectedSkills.map(skill => skill.id),
@@ -599,6 +631,26 @@ const closeReason = job?.meta?.closeReason
                   {selectedPositionId && (
                     <p className="text-xs text-muted-foreground">Selected: {positions.find(p => p.id === selectedPositionId)?.name}</p>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Client Contact</label>
+                  <Select
+                    value={selectedContactId?.toString() || ''}
+                    onValueChange={(value) => setSelectedContactId(value ? parseInt(value) : null)}
+                    disabled={!job?.clientId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={contacts.length ? "Select a contact" : "No contacts for this client"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contacts.map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id.toString()}>
+                          {contact.firstName} {contact.lastName}{contact.position ? ` — ${contact.position}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
