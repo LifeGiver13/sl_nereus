@@ -39,7 +39,7 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
   const [viewManager, setViewManager] = useState<ViewManager | null>(null);
   const [formData, setFormData] = useState<any>({
     name: '',
-    referralCode: '',
+    referral_code: '',
     status: 'active',
     profile: {
       address: { town: '', line1: '', line2: '', line3: '', branch: '', county: '', postcode: '' },
@@ -180,14 +180,14 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
                 />
               </div>
 
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <label className="text-sm font-medium">Referral Code</label>
                 <Input
                   value={formData.referralCode}
                   onChange={(e) => handleInputChange('referralCode', e.target.value)}
                   placeholder="e.g. REF-2025-XYZ"
                 />
-              </div>
+              </div> */}
             </CardContent>
           </Card>
 
@@ -199,7 +199,7 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue={Object.keys(viewManager.sections)[0]}>
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-4">
                     {Object.keys(viewManager.sections).map((name) => (
                       <TabsTrigger key={name} value={name}>
                         {name}
