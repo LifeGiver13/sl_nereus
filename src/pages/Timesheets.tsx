@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { API_BASE_URL } from "../config/env";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp, Trash2, Download, Edit, ChevronsUpDown } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Download, Edit, ChevronsUpDown, Mail } from "lucide-react";
 import RejecteTimesheetModal from "@/components/RejectTimesheetModal";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { usePreferences } from "@/hooks/usePreferences";
@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import CustomAddition from "./UpdateTimesheet";
+import EmailTimesheetModal from "@/components/EmailTimesheetModal";
 
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing";
@@ -302,6 +303,7 @@ const Timesheets = () => {
   const [dateFilterType, setDateFilterType] = useState<"period" | "approved" | "created">("period")
   const [weekAnchor, setWeekAnchor] = useState<"commencing" | "ending">("commencing");
 
+  const [emailModalTimesheet, setEmailModalTimesheet] = useState<{ id: number; clientId: number } | null>(null);
 
 
   const { token } = useAuth();
@@ -1370,6 +1372,7 @@ const Timesheets = () => {
                                 Export
                               </Button>
 
+
                               {/* <Button
                                 variant="outline"
                                 size="sm"
@@ -1380,6 +1383,7 @@ const Timesheets = () => {
                               </Button> */}
 
                               <DropdownMenu>
+
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="outline" size="sm">
                                     <MoreHorizontal className="h-4 w-4" />
@@ -1424,6 +1428,14 @@ const Timesheets = () => {
                                       Reject
                                     </DropdownMenuItem>
                                   )}
+
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setEmailModalTimesheet({ id: row.id, clientId: row.clientId })}
+                                  >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Email to Client
+                                  </DropdownMenuItem>
 
                                   <DropdownMenuSeparator />
 
@@ -1589,6 +1601,15 @@ const Timesheets = () => {
           </CardContent>
         </Card>
       </div>
+
+      <EmailTimesheetModal
+        isOpen={!!emailModalTimesheet}
+        onClose={() => setEmailModalTimesheet(null)}
+        timesheetId={emailModalTimesheet?.id ?? null}
+        clientId={emailModalTimesheet?.clientId ?? null}
+        authHeaders={authHeaders}
+      />
+
       <RejecteTimesheetModal
         open={rejectModalOpen}
         onClose={() => {

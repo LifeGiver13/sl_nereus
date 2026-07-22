@@ -22,6 +22,16 @@ type ViewSection = {
   [sectionName: string]: ViewField[];
 };
 
+interface ClientContact {
+  id: number;
+  clientId: number;
+  firstName: string;
+  lastName: string;
+  position: string;
+  email: string;
+  phone: string;
+}
+
 interface ViewManager {
   id?: number;
   name: string;
@@ -66,6 +76,11 @@ const ClientDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const [contacts, setContacts] = useState<ClientContact[]>([]);
+  const [isContactsLoading, setIsContactsLoading] = useState(false);
+
+
   const { toast } = useToast();
 
   function formatDate(value: string): string {
@@ -79,6 +94,23 @@ const ClientDetail = () => {
       year: 'numeric'
     }).replace(/\//g, '/');
   }
+
+
+  const fetchContacts = async (clientId: string) => {
+    try {
+      setIsContactsLoading(true);
+      const response = await fetch(`${API_BASE_URL}/client-contacts/${clientId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setContacts(data.contacts || []);
+      }
+    } catch (error) {
+      console.error('Error fetching client contacts:', error);
+    } finally {
+      setIsContactsLoading(false);
+    }
+  };
+  
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -110,6 +142,7 @@ const ClientDetail = () => {
       }
     };
 
+
     const fetchViewManager = async () => {
       try {
         setIsViewLoading(true);
@@ -136,6 +169,7 @@ const ClientDetail = () => {
     if (id) {
       fetchClient();
       fetchViewManager();
+      fetchContacts(id)
     }
   }, [id, toast]);
 
@@ -176,6 +210,7 @@ const ClientDetail = () => {
       };
 
       fetchClient();
+      fetchContacts(id)
     }
 
     toast({
@@ -374,20 +409,14 @@ const ClientDetail = () => {
                       <TabsContent key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
                         <div className="space-y-2">
                           {fields.map((field) => {
-                            const value = getNestedProperty(client.profile, field.property);
+                            const lookupSource = { ...client, ...client.profile };
+                            const value = getNestedProperty(lookupSource, field.property);
 
                             if (value === undefined) {
                               console.warn(
                                 `ViewManager error: "${field.property}" does not exist`
                               );
                             }
-                            console.log("View Manager", viewManager);
-                            console.log({
-                              section: sectionName,
-                              label: field.label,
-                              property: field.property,
-                              value
-                            });
 
                             return (
                               <div key={field.property} className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100 last:border-b-0">
@@ -421,7 +450,51 @@ const ClientDetail = () => {
               </CardContent>
             </Card>
           )}
+
+
         </div>
+
+        {/* Contacts */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-[#000009]">Contacts</CardTitle>
+            <CardDescription>Additional contacts associated with this client</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isContactsLoading ? (
+              <p className="text-sm text-gray-500 py-4">Loading contacts...</p>
+            ) : contacts.length === 0 ? (
+              <p className="text-sm text-gray-500 py-4">No additional contacts.</p>
+            ) : (
+              <div className="space-y-3">
+                {contacts.map((contact) => (
+                  <div key={contact.id} className="flex items-center justify-between border rounded-lg p-4">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {contact.firstName} {contact.lastName}
+                      </p>
+                      {contact.position && (
+                        <p className="text-sm text-gray-500">{contact.position}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 text-sm text-gray-600">
+                      {contact.email && (
+                        <span className="flex items-center gap-1">
+                          <Mail className="h-3.5 w-3.5" /> {contact.email}
+                        </span>
+                      )}
+                      {contact.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3.5 w-3.5" /> {contact.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <EditClientModal
           isOpen={isEditModalOpen}

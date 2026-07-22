@@ -7,13 +7,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import { getValueByViewPath, setValueByViewPath } from '@/lib/utils';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+
+interface ViewManager { id: number; name: string; sections: any; meta: any; }
 
 interface Client {
   id: number;
@@ -75,6 +77,8 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<Client | null>(null);
   const [contacts, setContacts] = useState<ClientContact[]>([]);
+  const [viewManager, setViewManager] = useState<ViewManager | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingContact, setEditingContact] = useState<ClientContact | null>(null);
@@ -102,6 +106,28 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
       setFormData(normalized);
     }
   }, [client]);
+
+  useEffect(() => {
+    const fetchViewManager = async () => {
+      try {
+        setViewLoading(true);
+        const res = await fetch(`${API_BASE_URL}/utils/view-managers`);
+        if (res.ok) {
+          const vms = await res.json();
+          const clientVm = vms.find((vm: ViewManager) => vm.name === 'Client Profile - Admin View');
+          setViewManager(clientVm || null);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setViewLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchViewManager();
+    }
+  }, [isOpen]);
 
   // Fetch contacts when client changes
   useEffect(() => {
@@ -159,14 +185,17 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
     }
   };
 
-  // Contact Handlers
   const handleSaveContact = async () => {
     if (!client?.id) return;
 
+    if (editingContact && !editingContact.id) {
+      console.error("Missing contact ID for update");
+      return;
+    }
+
     const payload = {
       clientId: client.id,
-      ...editingContact ? {} : newContact,
-      ...(editingContact ? editingContact : newContact)
+      ...newContact,
     };
 
     setIsLoading(true);
@@ -193,16 +222,18 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
         description: editingContact ? "Contact updated" : "Contact added"
       });
 
-      // Refresh contacts
+      // Refresh state from server
       const refreshRes = await fetch(`${API_BASE_URL}/client-contacts/${client.id}`);
       if (refreshRes.ok) {
         const data = await refreshRes.json();
         setContacts(data.contacts || []);
       }
 
-      // Reset form
+      // Reset forms 
       setNewContact({ firstName: '', lastName: '', position: '', email: '', phone: '' });
       setEditingContact(null);
+
+      onClientUpdated()
     } catch (error) {
       console.error(error);
       toast({ title: "Error", description: "Failed to save contact", variant: "destructive" });
@@ -210,6 +241,8 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
       setIsLoading(false);
     }
   };
+
+
 
   const handleEditContact = (contact: ClientContact) => {
     setEditingContact(contact);
@@ -228,6 +261,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
 
       setContacts(prev => prev.filter(c => c.id !== id));
       toast({ title: "Success", description: "Contact deleted" });
+      onClientUpdated();
     } catch (error) {
       toast({ title: "Error", description: "Failed to delete contact", variant: "destructive" });
     }
@@ -246,10 +280,10 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmitClient} className="space-y-6">
-          {/* Basic Information */}
+          {/* Company Info not part of the view manager sections, always visible */}
           <Card>
             <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
+              <CardTitle>Company</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -276,148 +310,50 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Branch</label>
-                <Input
-                  value={getValueByViewPath(formData, 'address.branch') || ''}
-                  onChange={(e) => handleInputChange('address.branch', e.target.value)}
-                />
-              </div>
-              {/* Admin Details / Referral Code */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Referral Code</label>
-                <Input
-                  value={getValueByViewPath(formData, 'referral_code') || ''}
-                  onChange={(e) => handleInputChange('referral_code', e.target.value)}
-                  placeholder="e.g. REF-ABC123"
-                />
-              </div>
             </CardContent>
           </Card>
 
-          {/* Primary Contact Information */}
+          {/* Profile Information  */}
           <Card>
             <CardHeader>
-              <CardTitle>Primary Contact Information</CardTitle>
+              <CardTitle>Profile Information</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Salutation</label>
-                <Input
-                  value={getValueByViewPath(formData, 'contact.salutation') || ''}
-                  onChange={(e) => handleInputChange('contact.salutation', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">First Name</label>
-                <Input
-                  value={getValueByViewPath(formData, 'contact.firstName') || ''}
-                  onChange={(e) => handleInputChange('contact.firstName', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Last Name</label>
-                <Input
-                  value={getValueByViewPath(formData, 'contact.lastName') || ''}
-                  onChange={(e) => handleInputChange('contact.lastName', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Role</label>
-                <Input
-                  value={getValueByViewPath(formData, 'contact.role') || ''}
-                  onChange={(e) => handleInputChange('contact.role', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Telephone</label>
-                <Input
-                  value={getValueByViewPath(formData, 'contact.telephone') || ''}
-                  onChange={(e) => handleInputChange('contact.telephone', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Mobile</label>
-                <Input
-                  value={getValueByViewPath(formData, 'contact.mobile') || ''}
-                  onChange={(e) => handleInputChange('contact.mobile', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input
-                  value={getValueByViewPath(formData, 'contact.email') || ''}
-                  onChange={(e) => handleInputChange('contact.email', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <label className="text-sm font-medium">Fax</label>
-                <Input
-                  value={getValueByViewPath(formData, 'contact.fax') || ''}
-                  onChange={(e) => handleInputChange('contact.fax', e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            <CardContent>
+              {viewLoading ? (
+                <p className="text-sm text-muted-foreground py-4">Loading fields...</p>
+              ) : viewManager ? (
+                <Tabs defaultValue={Object.keys(viewManager.sections)[0]}>
+                  <TabsList
+                    className="grid w-full"
+                    style={{ gridTemplateColumns: `repeat(${Object.keys(viewManager.sections).length}, 1fr)` }}
+                  >
+                    {Object.keys(viewManager.sections).map((name) => (
+                      <TabsTrigger key={name} value={name}>
+                        {name}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
 
-          {/* Address Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Address Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Address Line 1</label>
-                <Input
-                  value={getValueByViewPath(formData, 'address.line1') || ''}
-                  onChange={(e) => handleInputChange('address.line1', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Address Line 2</label>
-                <Input
-                  value={getValueByViewPath(formData, 'address.line2') || ''}
-                  onChange={(e) => handleInputChange('address.line2', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Address Line 3</label>
-                <Input
-                  value={getValueByViewPath(formData, 'address.line3') || ''}
-                  onChange={(e) => handleInputChange('address.line3', e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Town</label>
-                  <Input
-                    value={getValueByViewPath(formData, 'address.town') || ''}
-                    onChange={(e) => handleInputChange('address.town', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">County</label>
-                  <Input
-                    value={getValueByViewPath(formData, 'address.county') || ''}
-                    onChange={(e) => handleInputChange('address.county', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Postcode</label>
-                <Input
-                  value={getValueByViewPath(formData, 'address.postcode') || ''}
-                  onChange={(e) => handleInputChange('address.postcode', e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Branch</label>
-                <Input
-                  value={getValueByViewPath(formData, 'address.branch') || ''}
-                  onChange={(e) => handleInputChange('address.branch', e.target.value)}
-                />
-              </div>
-
+                  {Object.entries(viewManager.sections).map(([sectionName, fields]: [string, any]) => (
+                    <TabsContent key={sectionName} value={sectionName}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                        {fields.map((field: any) => (
+                          <div key={field.property} className="space-y-2">
+                            <label className="text-sm font-medium">{field.label}</label>
+                            <Input
+                              value={getValueByViewPath(formData, field.property) || ''}
+                              onChange={(e) => handleInputChange(field.property, e.target.value)}
+                              placeholder={field.label}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4">No view configuration found.</p>
+              )}
             </CardContent>
           </Card>
 
@@ -440,7 +376,6 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Contact Form (Add/Edit) */}
               <div className="border rounded-lg p-4 bg-muted/50">
                 <h4 className="font-medium mb-3">
                   {editingContact ? 'Edit Contact' : 'New Contact'}
@@ -505,7 +440,6 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
                 </div>
               </div>
 
-              {/* Contacts List */}
               <div className="space-y-3">
                 {contacts.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">

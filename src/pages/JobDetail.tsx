@@ -46,6 +46,8 @@ interface Job {
   assignees: number[];
   createdAt: string;
   updatedAt: string;
+  contact?: { id: number; firstName: string; lastName: string; email: string; phone: string; position: string }; // ← added
+
 }
 
 interface Skill {
@@ -322,6 +324,19 @@ const JobDetail = () => {
                       <Badge className={getStatusColor(job.status)}>
                         {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                       </Badge>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableHead>Contact</TableHead>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {job.contact ? (
+                        <div className="text-sm">
+                          <div className="font-medium">{job.contact.firstName} {job.contact.lastName}</div>
+                          {job.contact.email && <div className="text-xs text-muted-foreground">{job.contact.email}</div>}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400"> - </span>
+                      )}
                     </TableCell>
                   </TableRow>
                   <TableRow>
