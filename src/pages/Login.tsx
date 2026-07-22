@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,9 +17,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { login, user } = useAuth();
 
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +25,13 @@ const Login = () => {
     setIsSubmitting(true);
 
     try {
-      await login(username, password);
+      const loggedInUser = await login(username, password);
+
+      if (loggedInUser.meta?.passwordGenerated) {
+        navigate("/account", { replace: true, state: { requirePasswordChange: true } });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -63,7 +66,7 @@ const Login = () => {
                   <AlertDescription className="text-red-400">{error}</AlertDescription>
                 </Alert>
               )}
-              
+
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-white">Username</Label>
                 <Input
@@ -76,7 +79,7 @@ const Login = () => {
                   placeholder="Enter your username"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-white">Password</Label>
                 <div className="relative">
@@ -105,7 +108,7 @@ const Login = () => {
                 </div>
               </div>
             </CardContent>
-            
+
             <CardFooter>
               <Button
                 type="submit"

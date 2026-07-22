@@ -15,6 +15,7 @@ import { ArrowLeft, Save, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import CloseJobModal from '@/components/CloseJobModal';
 
 interface Skill {
   id: number;
@@ -66,6 +67,10 @@ interface Job {
   meta?: {
     totalPlacements?: number;
     filledPlacements?: number;
+
+    closeReason?: string;
+    archived?: boolean;
+    closedAt?: string;
   };
 }
 
@@ -79,6 +84,7 @@ const JobEdit = () => {
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
+  const [isCloseModal, setIsCloseModal] = useState(false);
   const [selectedPositionId, setSelectedPositionId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     description: '',
@@ -102,6 +108,51 @@ const JobEdit = () => {
       return response.json();
     }
   });
+
+  //for modifying a job b4 a 24hrs time limit
+  const canModifyClosedJob = () => {
+
+    if (
+      job?.status !== "closed" ||
+      !job?.meta?.closeReason ||
+      !job?.meta?.closedAt
+    ) {
+      return true;
+    }
+
+
+    const closedDate = new Date(job.meta.closedAt);
+
+    const now = new Date();
+
+    const hoursPassed =
+      (now.getTime() - closedDate.getTime()) /
+      (1000 * 60 * 60);
+
+
+    return hoursPassed < 24;
+  };
+
+  //to notify the client or admin of what happens after a job is closed
+  const getClosedMessage = () => {
+
+    if (!job?.meta?.closedAt) return "";
+
+
+    const closedDate = new Date(job.meta.closedAt);
+const closeReason = job?.meta?.closeReason
+    const expiresAt = new Date(
+      closedDate.getTime() + 24 * 60 * 60 * 1000
+    );
+
+
+    return (
+      <>
+        <h1>Job Reason: {closeReason}</h1>
+        <p>This job can only be modified until {expiresAt.toLocaleString()}. After that it will be permanently archived.</p>
+      </>
+    )
+  };
 
   // Fetch skills data
   const { data: skillsData } = useQuery({
@@ -305,8 +356,8 @@ const JobEdit = () => {
 
     try {
       const numberOfWorkingDays = calculateWorkingDays(
-        formData.startDate, 
-        formData.endDate, 
+        formData.startDate,
+        formData.endDate,
         formData.includeWeekends
       );
       const totalPlacements = numberOfWorkingDays * parseInt(formData.vacancies);
@@ -330,8 +381,12 @@ const JobEdit = () => {
           positionId: selectedPositionId
         },
         meta: {
+          ...(job?.meta || {}),
+
           totalPlacements,
-          filledPlacements: job?.meta?.filledPlacements || 0
+
+          filledPlacements:
+            job?.meta?.filledPlacements || 0
         }
       };
 
@@ -365,25 +420,83 @@ const JobEdit = () => {
     }
   };
 
+  const handleCloseJob = async (reason: string) => {
+
+    try {
+
+      const payload = {
+        ...job,
+        status: "closed",
+        meta: {
+          ...(job?.meta || {}),
+          closeReason: reason,
+          archived: true,
+          closedAt: new Date().toISOString(),
+
+        }
+
+      };
+
+
+      const response = await fetch(
+        `${API_BASE_URL}/job/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+
+      if (!response.ok) {
+        throw new Error("Failed closing job");
+      }
+
+
+      toast({
+        title: "Job closed",
+        description: "Job has been closed and archived."
+      });
+
+
+      navigate(`/job/${id}`);
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      toast({
+        title: "Error",
+        description: "Could not close job.",
+        variant: "destructive"
+      });
+
+    }
+
+  };
+
   const calculateWorkingDays = (startDate: string, endDate: string | null, includeWeekends: boolean): number => {
     if (!startDate) return 0;
-    
+
     const start = new Date(startDate);
     const end = endDate ? new Date(endDate) : start;
     let workingDays = 0;
-    
+
     const currentDate = new Date(start);
     while (currentDate <= end) {
       const dayOfWeek = currentDate.getDay();
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      
+
       if (includeWeekends || !isWeekend) {
         workingDays++;
       }
-      
+
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    
+
     return workingDays;
   };
 
@@ -436,7 +549,7 @@ const JobEdit = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Department</label>
+                  <label className="text-sm font-medium">Assigned Agency Department</label>
                   <Select value={formData.departmentId} onValueChange={(value) => handleInputChange('departmentId', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
@@ -513,6 +626,11 @@ const JobEdit = () => {
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formData.status === "closed" && canModifyClosedJob() && (
+                    <p className="text-sm text-orange-600 mt-2">
+                      {getClosedMessage()}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -640,17 +758,34 @@ const JobEdit = () => {
           </div>
 
           <div className="flex justify-end space-x-4 mt-6">
+
+            {formData.status === 'closed' &&
+              !job?.meta?.closeReason &&
+              (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setIsCloseModal(true)}
+                >
+                  Close & Archive
+                </Button>
+              )}
+
             <Link to={`/job/${id}`}>
               <Button variant="outline">Cancel</Button>
             </Link>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-[#712B71] hover:bg-[#712B71]/90"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isSubmitting ? 'Updating...' : 'Update Job'}
-            </Button>
+
+            {canModifyClosedJob() && (
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-[#712B71] hover:bg-[#712B71]/90"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting ? 'Updating...' : 'Update Job'}
+              </Button>
+            )}
           </div>
         </form>
 
@@ -667,6 +802,14 @@ const JobEdit = () => {
               onClose={() => setIsPositionModalOpen(false)}
               clientId={job.clientId}
               onPositionCreated={handlePositionCreated}
+            />
+            <CloseJobModal
+              isOpen={isCloseModal}
+              onClose={() => setIsCloseModal(false)}
+              onConfirm={(reason) => {
+                handleCloseJob(reason);
+                setIsCloseModal(false);
+              }}
             />
           </>
         )}

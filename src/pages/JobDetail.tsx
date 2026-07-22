@@ -309,7 +309,7 @@ const JobDetail = () => {
                     <TableCell>{getClientName(job.clientId, job.client)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableHead>Department</TableHead>
+                    <TableHead>Assigned Agency Department</TableHead>
                     <TableCell>{getDepartmentName(job.departmentId, job.department)}</TableCell>
                   </TableRow>
                   <TableRow>

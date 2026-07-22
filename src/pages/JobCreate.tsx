@@ -506,7 +506,7 @@ const JobCreate = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Department</label>
+                  <label className="text-sm font-medium">Assigned Agency Department</label>
                   <Select value={formData.departmentId} onValueChange={(value) => handleInputChange('departmentId', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />

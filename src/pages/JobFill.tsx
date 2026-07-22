@@ -697,8 +697,8 @@ const JobFill = () => {
                 <p className="font-medium">{job.client?.name || `Client ID: ${job.clientId}`}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Department</p>
-                <p className="font-medium">{job.department?.name || `Department ID: ${job.departmentId}`}</p>
+                <p className="text-sm text-gray-500">Assigned Agency Department</p>
+                <p className="font-medium">{job.department?.name || `Assigned Agency Department ID: ${job.departmentId}`}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Shift</p>
@@ -727,7 +727,7 @@ const JobFill = () => {
               <div>
                 <p className="text-sm text-gray-500">Vacancies</p>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{job.vacancies} slots</Badge>
+                  <Badge variant="outline">{job.vacancies} Vacancy</Badge>
                   <span className="text-sm text-gray-500">
                     ({allPlacements.length} assigned)
                   </span>

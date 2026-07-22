@@ -17,8 +17,6 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     username: '',
-    password: '',
-    confirmPassword: '',
     role: '',
     status: 'active'
   });
@@ -38,30 +36,12 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters long",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setIsSubmitting(true);
 
     try {
       const payload = {
         username: formData.username,
-        password: formData.password,
         role: formData.role,
         status: formData.status
       };
@@ -111,7 +91,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
     <Card className="border-0 shadow-lg">
       <CardHeader>
         <CardTitle className="text-[#000009]">Create New User</CardTitle>
-        <CardDescription>Add a new user to the system</CardDescription>
+        <CardDescription>  Add a new user to the system. Login details will be sent by email. </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -126,28 +106,8 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password *</label>
-            <Input
-              type="password"
-              required
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-              placeholder="Enter password (min 6 characters)"
-              minLength={6}
-            />
-          </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Confirm Password *</label>
-            <Input
-              type="password"
-              required
-              value={formData.confirmPassword}
-              onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-              placeholder="Confirm password"
-            />
-          </div>
+
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Role *</label>
@@ -186,7 +146,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !formData.username || !formData.password || !formData.role}
+              disabled={isSubmitting || !formData.username || !formData.role}
               className="bg-[#712B71] hover:bg-[#712B71]/90"
             >
               {isSubmitting ? 'Creating...' : 'Create User'}

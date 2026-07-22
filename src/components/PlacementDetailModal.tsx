@@ -121,7 +121,7 @@ const PlacementDetailModal: React.FC<PlacementDetailModalProps> = ({
               <p className="font-medium">{placement.shift?.name || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Department</p>
+              <p className="text-sm text-muted-foreground">Assigned Agency Department</p>
               <p className="font-medium">{job?.department?.name || 'Loading...'}</p>
             </div>
           </div>

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config/env';
 
@@ -10,12 +9,28 @@ interface User {
   meta?: any; // for any additional user metadata, e.g. userBucket
 }
 
+interface AccountDetails {
+  id: string;
+  username: string;
+  email?: string;
+  role?: string;
+  [key: string]: any;
+}
+
+interface ChangePasswordResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
+  changeUserPassword: (password: string, id: string) => Promise<ChangePasswordResult>;
+  fetchAccountDetails: (id: string) => Promise<AccountDetails | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -120,6 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       localStorage.setItem("session_user", JSON.stringify(userData));
       localStorage.setItem("session_token", authToken);
+
+      return userData as unknown as User;
     } catch (error) {
       throw error;
     } finally {
@@ -135,12 +152,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = "/";
   };
 
+  const changeUserPassword = async (
+    password: string,
+    id: string
+  ): Promise<ChangePasswordResult> => {
+    try {
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/auth/user/${id}/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SERVICE-USER': token,
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to update password');
+      }
+
+      // Password changed successfully - clear the "temporary password" flag
+      // locally so the user isn't redirected to the force-change screen again.
+      setUser((prevUser) => {
+        if (!prevUser) return prevUser;
+
+        const updatedUser: User = {
+          ...prevUser,
+          meta: {
+            ...prevUser.meta,
+            passwordGenerated: false,
+          },
+        };
+
+        localStorage.setItem('session_user', JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+
+      return { success: true, message: data.message };
+    } catch (error: any) {
+      console.error('Password update error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const fetchAccountDetails = async (id: string): Promise<AccountDetails | null> => {
+    try {
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/user/${id}`, {
+        method: 'GET',
+        headers: { 'X-SERVICE-USER': token },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to fetch account details');
+      }
+
+      return data as AccountDetails;
+    } catch (error) {
+      console.error('Account details fetch error:', error);
+      return null;
+    }
+  };
+
   const value = {
     user,
     token,
     login,
     logout,
     isLoading,
+    changeUserPassword,
+    fetchAccountDetails,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
