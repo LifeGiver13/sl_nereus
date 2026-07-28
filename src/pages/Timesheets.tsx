@@ -301,7 +301,7 @@ const Timesheets = () => {
   const [selectedRejectId, setSelectedRejectedId] = useState<number | null>(null)
 
   const [dateFilterType, setDateFilterType] = useState<"period" | "approved" | "created">("period")
-  const [weekAnchor, setWeekAnchor] = useState<"commencing" | "ending">("commencing");
+  // const [weekAnchor, setWeekAnchor] = useState<"commencing" | "ending">("commencing");
 
   const [emailModalTimesheet, setEmailModalTimesheet] = useState<{ id: number; clientId: number } | null>(null);
 
@@ -806,9 +806,9 @@ const Timesheets = () => {
 
   const selectedWeek = useMemo(() => {
     if (!date) return null;
-    const { start, end } = getWeekRange(date, weekAnchor);
+    const { start, end } = getWeekRange(date);
     return { start: start.toLocaleDateString(), end: end.toLocaleDateString() };
-  }, [date, weekAnchor]);
+  }, [date]);
 
   const filtered = useMemo(() => {
     return timesheets.filter((row) => {
@@ -821,7 +821,7 @@ const Timesheets = () => {
       let matchesDate = true;
 
       if (date) {
-        const { start, end } = getWeekRange(date, weekAnchor);
+        const { start, end } = getWeekRange(date);
         start.setHours(0, 0, 0, 0);
         end.setHours(23, 59, 59, 999);
 
@@ -856,7 +856,7 @@ const Timesheets = () => {
 
       return matchesUser && matchesDate;
     });
-  }, [timesheets, userFilter, date, dateFilterType, weekAnchor]);
+  }, [timesheets, userFilter, date, dateFilterType]);
 
 
   const sortedTimesheets = useMemo(() => {
@@ -997,21 +997,19 @@ const Timesheets = () => {
   };
 
 
-  function getWeekRange(selectedDate: string, anchor: "commencing" | "ending") {
+  function getWeekRange(selectedDate: string) {
     const current = parseLocalDate(selectedDate);
+    const day = current.getDay(); // Sun=0 ... Sat=6
 
-    if (anchor === "commencing") {
-      // selectedDate IS the first day of the week
-      const start = new Date(current);
-      const end = new Date(current);
-      end.setDate(end.getDate() + 6);
-      return { start, end };
-    }
+    // Always resolves to the Monday–Sunday week that contains the selected date
+    const diffToMonday = day === 0 ? -6 : 1 - day;
 
-    // "ending": selectedDate IS the last day of the week
-    const end = new Date(current);
     const start = new Date(current);
-    start.setDate(start.getDate() - 6);
+    start.setDate(start.getDate() + diffToMonday);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+
     return { start, end };
   }
 
@@ -1173,7 +1171,7 @@ const Timesheets = () => {
                         <SelectItem value="created">Date Created</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select
+                    {/* <Select
                       value={weekAnchor}
                       onValueChange={(v) => { setWeekAnchor(v as "commencing" | "ending"); setPage(1); }}
                     >
@@ -1184,19 +1182,25 @@ const Timesheets = () => {
                         <SelectItem value="commencing">Week Commencing</SelectItem>
                         <SelectItem value="ending">Week Ending</SelectItem>
                       </SelectContent>
-                    </Select>
+                    </Select> */}
                     <Input
                       type="date"
                       value={date}
                       onChange={(e) => { setDate(e.target.value); setPage(1); }}
                       className="w-full sm:flex-1"
                     />
+
                   </div>
-                  {dateFilterType === "approved" && statusFilter === "pending" && (
+                  {selectedWeek && (
+                    <p className="text-xs text-gray-500 pt-1">
+                      Filtering week: <span className="font-medium text-gray-700">{formatDate(selectedWeek.start)} – {formatDate(selectedWeek.end)}</span>
+                    </p>
+                  )}
+                  {/* {dateFilterType === "approved" && statusFilter === "pending" && (
                     <p className="text-xs text-amber-600 pt-1">
                       Pending timesheets have no approval date yet — switch Status to "All" or "Approved" to see results.
                     </p>
-                  )}
+                  )} */}
                   {dateFilterType === "created" && statusFilter === "pending" && (
                     <p className="text-xs text-gray-500 pt-1">
                       Tip: switch Status to "All" if you want to see created-date results across every status.
@@ -1241,7 +1245,7 @@ const Timesheets = () => {
                     setPage(1);
                     setDate("");
                     setDateFilterType("period");
-                    setWeekAnchor("commencing")
+                    // setWeekAnchor("commencing")
                   }}
                 >
                   Clear Filters
