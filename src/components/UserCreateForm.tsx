@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +16,9 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     username: '',
+    forename: '',
+    lastname: '',
+    middlename: '',
     role: '',
     status: 'active'
   });
@@ -36,17 +38,21 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-
     setIsSubmitting(true);
 
     try {
       const payload = {
         username: formData.username,
         role: formData.role,
-        status: formData.status
+        status: formData.status,
+        profile: {
+          forename: formData.forename,
+          lastname: formData.lastname,
+          ...(formData.middlename ? { middlename: formData.middlename } : {})
+        }
       };
 
-      console.log('Sending user creation request to:', `${API_BASE_URL}/users`);
+      console.log('Sending user creation request to:', `${API_BASE_URL}/user`);
       console.log('Payload:', payload);
 
       const response = await fetch(`${API_BASE_URL}/user`, {
@@ -57,7 +63,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -66,16 +72,14 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
           'Failed to create user'
         );
       }
-      if (response.ok) {
 
-        toast({
-          title: "Success",
-          description: "User created successfully",
-        });
-      }
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
 
       onUserCreated();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating user:', error);
       toast({
         title: "Error",
@@ -106,8 +110,37 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
             />
           </div>
 
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Forename *</label>
+            <Input
+              type="text"
+              required
+              value={formData.forename}
+              onChange={(e) => handleInputChange('forename', e.target.value)}
+              placeholder="First name"
+            />
+          </div>
 
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Middle Name</label>
+            <Input
+              type="text"
+              value={formData.middlename}
+              onChange={(e) => handleInputChange('middlename', e.target.value)}
+              placeholder="Middle name (optional)"
+            />
+          </div>
 
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Last Name *</label>
+            <Input
+              type="text"
+              required
+              value={formData.lastname}
+              onChange={(e) => handleInputChange('lastname', e.target.value)}
+              placeholder="Last name"
+            />
+          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Role *</label>
@@ -146,7 +179,7 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !formData.username || !formData.role}
+              disabled={isSubmitting || !formData.username || !formData.role || !formData.forename || !formData.lastname}
               className="bg-[#712B71] hover:bg-[#712B71]/90"
             >
               {isSubmitting ? 'Creating...' : 'Create User'}
