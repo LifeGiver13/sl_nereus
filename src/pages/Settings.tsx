@@ -8,6 +8,7 @@ import ViewManagement from '../components/ViewManagement';
 import ApplicationFormsManager from '../components/ApplicationFormsManager';
 import TimesheetCustomManagment from '@/components/TimesheetCustomManagment';
 import AccountRemovalSettings from '@/components/AccountRemovalSettings';
+import AppPlatformUsers from '@/components/AppPlatformUsers';
 
 const Settings = () => {
   return (
@@ -40,6 +41,15 @@ const Settings = () => {
                 </AccordionTrigger>
                 <AccordionContent>
                   <ViewManagement />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="manage-app-tracking">
+                <AccordionTrigger className="text-lg font-semibold">
+                  Track App Download And Users Platforms
+                </AccordionTrigger>
+                <AccordionContent>
+                  <AppPlatformUsers />
                 </AccordionContent>
               </AccordionItem>
 
