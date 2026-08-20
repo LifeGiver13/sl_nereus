@@ -715,7 +715,12 @@ const People = () => {
                           {user.id}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"}
+                          {user?.profile?.fullName ||
+                            (user?.profile?.firstName && user?.profile?.lastName
+                              ? `${user.profile.firstName} ${user.profile.lastName}`
+                              : user?.profile?.firstName || user?.profile?.lastName || "-")}
+
+                          {/* {user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"} */}
                         </TableCell>
                         <TableCell className="font-medium">
                           {user.username}
