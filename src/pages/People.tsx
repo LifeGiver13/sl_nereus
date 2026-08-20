@@ -718,7 +718,7 @@ const People = () => {
                           {user?.profile?.fullName ||
                             (user?.profile?.firstName && user?.profile?.lastName
                               ? `${user.profile.firstName} ${user.profile.lastName}`
-                              : user?.profile?.firstName || user?.profile?.lastName || "-")}
+                              : `${user.profile.Forename || ''} ${user.profile.Surname || ''}` || "-")}
 
                           {/* {user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"} */}
                         </TableCell>
