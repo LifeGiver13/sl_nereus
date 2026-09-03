@@ -7,8 +7,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 
@@ -39,6 +40,7 @@ const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
   const [selection, setSelection] = useState<string>(''); // contact id as string, or 'override'
   const [overrideEmail, setOverrideEmail] = useState('');
   const [overrideName, setOverrideName] = useState('');
+  const [message, setMessage] = useState('');
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
@@ -65,6 +67,7 @@ const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
       setSelection('');
       setOverrideEmail('');
       setOverrideName('');
+      setMessage('');
     }
   }, [isOpen, clientId]);
 
@@ -83,9 +86,12 @@ const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
 
     setIsSending(true);
     try {
-      const payload = isOverride
-        ? { overrideEmail: overrideEmail.trim(), overrideName: overrideName.trim() }
-        : { contactId: parseInt(selection) };
+      const payload = {
+        ...(isOverride
+          ? { overrideEmail: overrideEmail.trim(), overrideName: overrideName.trim() }
+          : { contactId: parseInt(selection) }),
+        ...(message.trim() ? { message: message.trim() } : {}),
+      };
 
       const res = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}/email`, {
         method: 'POST',
@@ -122,6 +128,17 @@ const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="timesheet-message">Message (optional)</Label>
+            <Textarea
+              id="timesheet-message"
+              placeholder="Add a note to include at the top of the email..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+            />
+          </div>
+
           {isLoadingContacts ? (
             <p className="text-sm text-muted-foreground">Loading contacts...</p>
           ) : (
