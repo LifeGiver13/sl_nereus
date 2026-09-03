@@ -51,6 +51,15 @@ interface Position {
   skills: number[];
 }
 
+interface Contact {
+  id: number;
+  firstName: string;
+  lastName: string;
+  position: string;
+  email: string;
+  phone: string;
+}
+
 const JobCreate = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -77,6 +86,23 @@ const JobCreate = () => {
     shiftId: '',
     includeWeekends: false
   });
+  const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
+
+
+  const { data: contactsData, refetch: refetchContacts } = useQuery({
+    queryKey: ['client-contacts', selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId) return { contacts: [] };
+      const response = await fetch(`${API_BASE_URL}/client-contacts/${selectedClientId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch client contacts');
+      }
+      return response.json();
+    },
+    enabled: !!selectedClientId
+  });
+
+  const contacts: Contact[] = contactsData?.contacts || [];
 
   // Check for similar jobs
   const { similarJobs, isLoading: isLoadingSimilarJobs, hasSimilarJobs } = useSimilarJobs({
@@ -186,7 +212,7 @@ const JobCreate = () => {
   useEffect(() => {
     const clientIdParam = searchParams.get('clientId');
     const clientNameParam = searchParams.get('clientName');
-    
+
     if (clientIdParam && clientNameParam) {
       setSelectedClientId(parseInt(clientIdParam));
       setClientSearchTerm(decodeURIComponent(clientNameParam));
@@ -199,6 +225,7 @@ const JobCreate = () => {
     setFormData(prev => ({ ...prev, shiftId: '', title: '', description: '' }));
     setSelectedPositionId(null);
     setSelectedSkills([]);
+    setSelectedContactId(null);
   }, [selectedClientId]);
 
   // Auto-populate fields when position is selected
@@ -270,14 +297,14 @@ const JobCreate = () => {
     console.log('=== SHIFT CREATED ===');
     console.log('New shift received:', newShift);
     console.log('New shift ID:', newShift.id);
-    
+
     // Wait for refetch to complete
     await refetchShifts();
     console.log('Shifts refetched');
-    
+
     const shiftIdString = newShift.id.toString();
     console.log('Setting shift ID to:', shiftIdString);
-    
+
     setFormData(prev => {
       const updated = { ...prev, shiftId: shiftIdString };
       console.log('Updated formData after shift creation:', updated);
@@ -290,11 +317,11 @@ const JobCreate = () => {
     console.log('=== POSITION CREATED ===');
     console.log('New position received:', newPosition);
     console.log('New position ID:', newPosition.id);
-    
+
     // Wait for refetch to complete
     await refetchPositions();
     console.log('Positions refetched');
-    
+
     console.log('Setting position ID to:', newPosition.id);
     setSelectedPositionId(newPosition.id);
     console.log('Selected position ID set to:', newPosition.id);
@@ -366,10 +393,10 @@ const JobCreate = () => {
     try {
       const startDateStr = startDate ? format(startDate, 'yyyy-MM-dd') : '';
       const endDateStr = endDate ? format(endDate, 'yyyy-MM-dd') : '';
-      
+
       const numberOfWorkingDays = calculateWorkingDays(
-        startDateStr, 
-        endDateStr, 
+        startDateStr,
+        endDateStr,
         formData.includeWeekends
       );
       const totalPlacements = numberOfWorkingDays * parseInt(formData.vacancies);
@@ -383,6 +410,7 @@ const JobCreate = () => {
         startDate: startDateStr,
         endDate: endDateStr || null,
         shiftId: formData.shiftId ? parseInt(formData.shiftId) : null,
+        contactId: selectedContactId,
         vacancies: parseInt(formData.vacancies),
         status: 'open',
         skills: selectedSkills.map(skill => skill.id),
@@ -432,23 +460,23 @@ const JobCreate = () => {
 
   const calculateWorkingDays = (startDate: string, endDate: string | null, includeWeekends: boolean): number => {
     if (!startDate) return 0;
-    
+
     const start = new Date(startDate);
     const end = endDate ? new Date(endDate) : start;
     let workingDays = 0;
-    
+
     const currentDate = new Date(start);
     while (currentDate <= end) {
       const dayOfWeek = currentDate.getDay();
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      
+
       if (includeWeekends || !isWeekend) {
         workingDays++;
       }
-      
+
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    
+
     return workingDays;
   };
 
@@ -506,7 +534,7 @@ const JobCreate = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Department</label>
+                  <label className="text-sm font-medium">Assigned Agency Department</label>
                   <Select value={formData.departmentId} onValueChange={(value) => handleInputChange('departmentId', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
@@ -567,6 +595,26 @@ const JobCreate = () => {
                   {selectedPositionId && (
                     <p className="text-xs text-muted-foreground">Selected: {positions.find(p => p.id === selectedPositionId)?.name}</p>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Client Contact</label>
+                  <Select
+                    value={selectedContactId?.toString() || ''}
+                    onValueChange={(value) => setSelectedContactId(value ? parseInt(value) : null)}
+                    disabled={!selectedClientId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedClientId ? (contacts.length ? "Select a contact" : "No contacts for this client") : "Select client first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contacts.map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id.toString()}>
+                          {contact.firstName} {contact.lastName}{contact.position ? ` — ${contact.position}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -783,8 +831,8 @@ const JobCreate = () => {
           {/* Similar Jobs Panel */}
           {(hasSimilarJobs || isLoadingSimilarJobs) && (
             <div className="mt-6">
-              <SimilarJobsPanel 
-                jobs={similarJobs} 
+              <SimilarJobsPanel
+                jobs={similarJobs}
                 isLoading={isLoadingSimilarJobs}
               />
             </div>
@@ -823,7 +871,7 @@ const JobCreate = () => {
                 <Button
                   onClick={() => {
                     setShowDuplicateModal(false);
-                    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+                    handleSubmit({ preventDefault: () => { } } as React.FormEvent);
                   }}
                   className="bg-[#712B71] hover:bg-[#712B71]/90"
                 >

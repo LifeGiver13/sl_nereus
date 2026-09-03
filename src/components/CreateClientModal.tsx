@@ -7,30 +7,22 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
-import { setNestedProperty } from '@/lib/utils';
+import { getValueByViewPath, setValueByViewPath } from '@/lib/utils';
+import { Plus, Trash2 } from 'lucide-react';
 
-type ViewField = {
-  property: string;
-  label: string;
-  type: 'text' | 'image' | 'document';
-  meta: { [key: string]: any };
-};
+interface ViewManager { id: number; name: string; sections: any; meta: any; }
 
-type ViewSection = {
-  [sectionName: string]: ViewField[];
-};
-
-interface ViewManager {
-  id: number;
-  name: string;
-  sections: ViewSection;
-  meta: { [key: string]: any };
+interface Contact {
+  firstName: string;
+  lastName: string;
+  position: string;
+  email: string;
+  phone: string;
+  meta?: any;
 }
 
 interface CreateClientModalProps {
@@ -47,49 +39,58 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
   const [viewManager, setViewManager] = useState<ViewManager | null>(null);
   const [formData, setFormData] = useState<any>({
     name: '',
+    referral_code: '',
+    status: 'active',
     profile: {
-      address: {
-        town: '',
-        line1: '',
-        line2: '',
-        line3: '',
-        branch: '',
-        county: '',
-        postcode: ''
-      },
-      contact: {
-        fax: '',
-        role: '',
-        mobile: '',
-        lastName: '',
-        firstName: '',
-        telephone: '',
-        salutation: ''
-      }
+      address: { town: '', line1: '', line2: '', line3: '', branch: '', county: '', postcode: '' },
+      contact: {}
     },
+    contacts: [] as Contact[],
     meta: {}
   });
+
   const [isLoading, setIsLoading] = useState(false);
   const [viewLoading, setViewLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen) {
+      resetForm();
       fetchViewManager();
     }
   }, [isOpen]);
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      referralCode: '',
+      status: 'active',
+      profile: {
+        address: { town: '', line1: '', line2: '', line3: '', branch: '', county: '', postcode: '' },
+        contact: {}
+      },
+      contacts: [{
+        firstName: '',
+        lastName: '',
+        position: '',
+        email: '',
+        phone: ''
+      }],
+      meta: {}
+    });
+  };
+
   const fetchViewManager = async () => {
     try {
       setViewLoading(true);
-      const response = await fetch(`${API_BASE_URL}/utils/view-managers`);
-      if (response.ok) {
-        const viewManagers = await response.json();
-        const clientViewManager = viewManagers.find((vm: ViewManager) => vm.name === 'Client Profile - Admin View');
-        setViewManager(clientViewManager || null);
+      const res = await fetch(`${API_BASE_URL}/utils/view-managers`);
+      if (res.ok) {
+        const vms = await res.json();
+        const clientVm = vms.find((vm: ViewManager) => vm.name === 'Client Profile - Admin View');
+        setViewManager(clientVm || null);
       }
-    } catch (error) {
-      console.error('Error fetching view manager:', error);
+    } catch (e) {
+      console.error(e);
     } finally {
       setViewLoading(false);
     }
@@ -97,138 +98,74 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
 
   const handleInputChange = (path: string, value: string) => {
     setFormData((prev: any) => {
-      const newData = { ...prev };
-      setNestedProperty(newData, path, value);
+      const newData = JSON.parse(JSON.stringify(prev));
+      setValueByViewPath(newData, path, value);
       return newData;
     });
+  };
+
+  // Contact Handlers
+  const updateContact = (index: number, field: keyof Contact, value: string) => {
+    setFormData((prev: any) => {
+      const contacts = [...prev.contacts];
+      contacts[index] = { ...contacts[index], [field]: value };
+      return { ...prev, contacts };
+    });
+  };
+
+  const addContact = () => {
+    setFormData((prev: any) => ({
+      ...prev,
+      contacts: [...prev.contacts, { firstName: '', lastName: '', position: '', email: '', phone: '' }]
+    }));
+  };
+
+  const removeContact = (index: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      contacts: prev.contacts.filter((_: any, i: number) => i !== index)
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      toast({
-        title: "Error",
-        description: "Company name is required",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Company name is required", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
-
     try {
+      const payload = { ...formData };
+
       const response = await fetch(`${API_BASE_URL}/client`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          status: 'active'
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error('Failed to create client');
 
-      toast({
-        title: "Success",
-        description: "Client created successfully",
-      });
-      
+      toast({ title: "Success", description: "Client created successfully" });
       onClientCreated();
       onClose();
-      
-      // Reset form
-      setFormData({
-        name: '',
-        profile: {
-          address: {
-            town: '',
-            line1: '',
-            line2: '',
-            line3: '',
-            branch: '',
-            county: '',
-            postcode: ''
-          },
-          contact: {
-            fax: '',
-            role: '',
-            mobile: '',
-            lastName: '',
-            firstName: '',
-            telephone: '',
-            salutation: ''
-          }
-        },
-        meta: {}
-      });
     } catch (error) {
-      console.error('Error creating client:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create client",
-        variant: "destructive",
-      });
+      console.error(error);
+      toast({ title: "Error", description: "Failed to create client", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderField = (field: ViewField) => {
-    const value = formData[field.property] || formData.profile?.[field.property] || '';
-    
-    // Handle nested properties
-    let actualValue = value;
-    if (field.property.includes('.')) {
-      const keys = field.property.split('.');
-      let current = formData;
-      for (const key of keys) {
-        current = current?.[key];
-      }
-      actualValue = current || '';
-    }
-
-    switch (field.type) {
-      case 'text':
-        return (
-          <Input
-            value={actualValue}
-            onChange={(e) => handleInputChange(field.property, e.target.value)}
-            placeholder={field.label}
-          />
-        );
-      case 'document':
-        return (
-          <Textarea
-            value={actualValue}
-            onChange={(e) => handleInputChange(field.property, e.target.value)}
-            placeholder={field.label}
-            rows={3}
-          />
-        );
-      default:
-        return (
-          <Input
-            value={actualValue}
-            onChange={(e) => handleInputChange(field.property, e.target.value)}
-            placeholder={field.label}
-          />
-        );
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Client</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
+          {/* Basic Information + Referral Code */}
           <Card>
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
@@ -240,39 +177,47 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   required
-                  placeholder="Enter company name"
                 />
               </div>
+
+              {/* <div className="space-y-2">
+                <label className="text-sm font-medium">Referral Code</label>
+                <Input
+                  value={formData.referralCode}
+                  onChange={(e) => handleInputChange('referralCode', e.target.value)}
+                  placeholder="e.g. REF-2025-XYZ"
+                />
+              </div> */}
             </CardContent>
           </Card>
 
-          {/* Dynamic View Manager Fields */}
-          {viewLoading ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Loading form configuration...</p>
-            </div>
-          ) : viewManager ? (
+          {/* Dynamic Profile Fields */}
+          {viewManager && (
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue={Object.keys(viewManager.sections)[0]?.toLowerCase().replace(/\s+/g, '-')} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    {Object.keys(viewManager.sections).map((sectionName) => (
-                      <TabsTrigger key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
-                        {sectionName}
+                <Tabs defaultValue={Object.keys(viewManager.sections)[0]}>
+                  <TabsList className="grid w-full grid-cols-4">
+                    {Object.keys(viewManager.sections).map((name) => (
+                      <TabsTrigger key={name} value={name}>
+                        {name}
                       </TabsTrigger>
                     ))}
                   </TabsList>
-                  
-                  {Object.entries(viewManager.sections).map(([sectionName, fields]) => (
-                    <TabsContent key={sectionName} value={sectionName.toLowerCase().replace(/\s+/g, '-')}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {fields.map((field) => (
+
+                  {Object.entries(viewManager.sections).map(([sectionName, fields]: [string, any]) => (
+                    <TabsContent key={sectionName} value={sectionName}>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                        {fields.map((field: any) => (
                           <div key={field.property} className="space-y-2">
                             <label className="text-sm font-medium">{field.label}</label>
-                            {renderField(field)}
+                            <Input
+                              value={getValueByViewPath(formData, field.property) || ''}
+                              onChange={(e) => handleInputChange(field.property, e.target.value)}
+                              placeholder={field.label}
+                            />
                           </div>
                         ))}
                       </div>
@@ -281,12 +226,68 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
                 </Tabs>
               </CardContent>
             </Card>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No view manager configured for client profiles.</p>
-            </div>
           )}
-          
+
+          {/* Additional Contacts */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Additional Contacts</CardTitle>
+              <Button type="button" onClick={addContact} size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Contact
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {formData.contacts.map((contact: Contact, index: number) => (
+                <div key={index} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-medium">Contact #{index + 1}</h4>
+                    {formData.contacts.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => removeContact(index)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      placeholder="First Name"
+                      value={contact.firstName}
+                      onChange={(e) => updateContact(index, 'firstName', e.target.value)}
+                    />
+                    <Input
+                      placeholder="Last Name"
+                      value={contact.lastName}
+                      onChange={(e) => updateContact(index, 'lastName', e.target.value)}
+                    />
+                    <Input
+                      placeholder="Position / Role"
+                      value={contact.position}
+                      onChange={(e) => updateContact(index, 'position', e.target.value)}
+                    />
+                    <Input
+                      placeholder="Phone"
+                      value={contact.phone}
+                      onChange={(e) => updateContact(index, 'phone', e.target.value)}
+                    />
+                    <Input
+                      className="col-span-2"
+                      placeholder="Email"
+                      type="email"
+                      value={contact.email}
+                      onChange={(e) => updateContact(index, 'email', e.target.value)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

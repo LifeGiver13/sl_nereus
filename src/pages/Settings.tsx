@@ -7,6 +7,7 @@ import DepartmentManagement from '../components/DepartmentManagement';
 import ViewManagement from '../components/ViewManagement';
 import ApplicationFormsManager from '../components/ApplicationFormsManager';
 import TimesheetCustomManagment from '@/components/TimesheetCustomManagment';
+import AccountRemovalSettings from '@/components/AccountRemovalSettings';
 
 const Settings = () => {
   return (
@@ -58,6 +59,15 @@ const Settings = () => {
                 </AccordionTrigger>
                 <AccordionContent>
                   <TimesheetCustomManagment />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="delete-account-settings">
+                <AccordionTrigger className="text-lg font-semibold">
+                  Delete Account Content Settings
+                </AccordionTrigger>
+                <AccordionContent>
+                  <AccountRemovalSettings />
                 </AccordionContent>
               </AccordionItem>
 

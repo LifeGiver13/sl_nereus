@@ -46,6 +46,8 @@ interface Job {
   assignees: number[];
   createdAt: string;
   updatedAt: string;
+  contact?: { id: number; firstName: string; lastName: string; email: string; phone: string; position: string }; // ← added
+
 }
 
 interface Skill {
@@ -162,6 +164,18 @@ const JobDetail = () => {
     await refetchJob();
     setSelectedPlacement(null);
   };
+
+  function formatDate(value: string): string {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+  }
 
   const handleAssignCandidate = async (userId: number, slotId: number, dates: Date[]) => {
     try {
@@ -297,7 +311,7 @@ const JobDetail = () => {
                     <TableCell>{getClientName(job.clientId, job.client)}</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableHead>Department</TableHead>
+                    <TableHead>Assigned Agency Department</TableHead>
                     <TableCell>{getDepartmentName(job.departmentId, job.department)}</TableCell>
                   </TableRow>
                   <TableRow>
@@ -308,8 +322,21 @@ const JobDetail = () => {
                     <TableHead>Status</TableHead>
                     <TableCell>
                       <Badge className={getStatusColor(job.status)}>
-                        {job.status}
+                        {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                       </Badge>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableHead>Contact</TableHead>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {job.contact ? (
+                        <div className="text-sm">
+                          <div className="font-medium">{job.contact.firstName} {job.contact.lastName}</div>
+                          {job.contact.email && <div className="text-xs text-muted-foreground">{job.contact.email}</div>}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400"> - </span>
+                      )}
                     </TableCell>
                   </TableRow>
                   <TableRow>
@@ -335,11 +362,11 @@ const JobDetail = () => {
                 <TableBody>
                   <TableRow>
                     <TableHead className="w-1/3">Start Date</TableHead>
-                    <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDate(job.startDate)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>End Date</TableHead>
-                    <TableCell>{new Date(job.endDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDate(job.endDate)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>Shift</TableHead>
@@ -359,11 +386,11 @@ const JobDetail = () => {
                   </TableRow>
                   <TableRow>
                     <TableHead>Created</TableHead>
-                    <TableCell>{new Date(job.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatDate(job.createdAt)}</TableCell>
                   </TableRow>
                   <TableRow>
                     <TableHead>Updated</TableHead>
-                    <TableCell>{new Date(job.updatedAt).toLocaleString()}</TableCell>
+                    <TableCell>{formatDate(job.updatedAt)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

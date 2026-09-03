@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { API_BASE_URL } from "../config/env";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp, Trash2, Download, Edit } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Download, Edit, ChevronsUpDown, Mail } from "lucide-react";
 import RejecteTimesheetModal from "@/components/RejectTimesheetModal";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { usePreferences } from "@/hooks/usePreferences";
@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import CustomAddition from "./UpdateTimesheet";
+import EmailTimesheetModal from "@/components/EmailTimesheetModal";
 
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing";
@@ -44,6 +45,8 @@ type TimesheetMeta = {
 
   rejectionReason?: string;
   rejectedAt?: string;
+  processingAt?: string;
+
 };
 
 type Timesheet = {
@@ -64,6 +67,8 @@ type Timesheet = {
   user?: { id: number; username?: string; profile?: { firstName?: string; surname?: string; fullName?: string; } };
   client?: { id: number; name?: string };
   position?: { id: number; title?: string };
+  createdAt?: string;
+
 };
 
 type AdminTimesheetListResponse = {
@@ -72,6 +77,21 @@ type AdminTimesheetListResponse = {
   offset: number;
   results: Timesheet[];
 };
+
+type SortDirection = 'asc' | 'desc' | null;
+
+
+
+const SortIcon = ({ column, sortColumn, sortDirection }: {
+  column: string;
+  sortColumn: string | null;
+  sortDirection: SortDirection;
+}) => {
+  if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
+  if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
+  return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
+};
+
 
 const statusClasses: Record<TimesheetStatus, string> = {
   draft: "bg-gray-200 text-gray-800",
@@ -83,9 +103,16 @@ const statusClasses: Record<TimesheetStatus, string> = {
 
 const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 
-function formatDate(value: string) {
+function formatDate(value: string): string {
+  if (!value) return "-";
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
+  if (Number.isNaN(d.getTime())) return "-";
+
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).replace(/\//g, '/');
 }
 
 function getDisplayName(row: Timesheet) {
@@ -104,8 +131,12 @@ function calculateEntryHours(entry: TimesheetEntry): number {
   const [endHour, endMinute] = entry.endTime.split(":").map(Number);
   if ([startHour, startMinute, endHour, endMinute].some((v) => Number.isNaN(v))) return 0;
   const startMinutes = startHour * 60 + startMinute;
-  const endMinutes = endHour * 60 + endMinute;
-  const breakMinutes = typeof entry.break === "number" && !Number.isNaN(entry.break) ? entry.break : 0;
+  let endMinutes = endHour * 60 + endMinute;
+  if (endMinutes <= startMinutes) {
+    // overnight shift (e.g. 22:00 greater thab 06:00) - mirrors the day-rollover logic in getEntryInterval
+    endMinutes += 24 * 60;
+  }
+  const breakMinutes = typeof entry.break === "number" && !Number.isNaN(entry.break) ? Math.max(entry.break, 0) : 0;
   const rawMinutes = endMinutes - startMinutes - breakMinutes;
   return Math.max(rawMinutes, 0) / 60;
 }
@@ -257,6 +288,9 @@ const Timesheets = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState<TimesheetStatus | "none">("none");
   const [isSaving, setIsSaving] = useState(false);
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
   const [approvedDate, setApprovedDate] = useState("");
 
@@ -266,7 +300,10 @@ const Timesheets = () => {
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [selectedRejectId, setSelectedRejectedId] = useState<number | null>(null)
 
-  const [dateFilterType, setDateFilterType] = useState<"period" | "approved">("period")
+  const [dateFilterType, setDateFilterType] = useState<"period" | "approved" | "created">("period")
+  const [weekAnchor, setWeekAnchor] = useState<"commencing" | "ending">("commencing");
+
+  const [emailModalTimesheet, setEmailModalTimesheet] = useState<{ id: number; clientId: number } | null>(null);
 
 
   const { token } = useAuth();
@@ -283,6 +320,32 @@ const Timesheets = () => {
 
   const navigate = useNavigate()
 
+  //sorthandler
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        setSortColumn(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+
+
+  const SortableTh = ({ column, children }: { column: string; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer select-none whitespace-nowrap"
+      onClick={() => handleSort(column)}
+    >
+      {children}
+      <SortIcon column={column} sortColumn={sortColumn} sortDirection={sortDirection} />
+    </TableHead>
+  );
 
   const splitName = (timesheet: Timesheet) => {
     const profile = timesheet.user?.profile;
@@ -597,8 +660,22 @@ const Timesheets = () => {
     return ordered;
   }
 
+  function getStatusLabel(row: Timesheet): string {
+    const status =
+      row.status.charAt(0).toUpperCase() +
+      row.status.slice(1);
 
+    if (row.status === "approved" && row.approvedAt) {
+      return `${status} (${new Date(row.approvedAt).toLocaleString()})`;
+    }
 
+    if (row.status === "processing" && row.meta?.processingAt) {
+      return `${status} (${new Date(row.meta.processingAt).toLocaleString()})`;
+    }
+
+    return status;
+  }
+  ///export
   const exportTimesheetToCSV = (timesheet: Timesheet) => {
     try {
 
@@ -729,16 +806,9 @@ const Timesheets = () => {
 
   const selectedWeek = useMemo(() => {
     if (!date) return null;
-
-    const { monday, sunday } = getWeekRange(date);
-
-    return {
-      monday: monday.toLocaleDateString(),
-      sunday: sunday.toLocaleDateString(),
-    };
-  }, [date]);
-
-
+    const { start, end } = getWeekRange(date, weekAnchor);
+    return { start: start.toLocaleDateString(), end: end.toLocaleDateString() };
+  }, [date, weekAnchor]);
 
   const filtered = useMemo(() => {
     return timesheets.filter((row) => {
@@ -751,21 +821,16 @@ const Timesheets = () => {
       let matchesDate = true;
 
       if (date) {
-        const { monday, sunday } = getWeekRange(date);
-
-        monday.setHours(0, 0, 0, 0);
-        sunday.setHours(23, 59, 59, 999);
+        const { start, end } = getWeekRange(date, weekAnchor);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
 
         if (dateFilterType === "period") {
           const rowStart = parseLocalDate(row.startDate);
           const rowEnd = parseLocalDate(row.endDate);
-
           rowStart.setHours(0, 0, 0, 0);
           rowEnd.setHours(23, 59, 59, 999);
-
-          matchesDate =
-            rowStart <= sunday &&
-            rowEnd >= monday;
+          matchesDate = rowStart <= end && rowEnd >= start;
         }
 
         if (dateFilterType === "approved") {
@@ -773,25 +838,65 @@ const Timesheets = () => {
             matchesDate = false;
           } else {
             const approved = parseLocalDate(row.approvedAt);
-
             approved.setHours(12, 0, 0, 0);
+            matchesDate = approved >= start && approved <= end;
+          }
+        }
 
-            matchesDate =
-              approved >= monday &&
-              approved <= sunday;
+        if (dateFilterType === "created") {
+          if (!row.createdAt) {
+            matchesDate = false;
+          } else {
+            const created = parseLocalDate(row.createdAt);
+            created.setHours(12, 0, 0, 0);
+            matchesDate = created >= start && created <= end;
           }
         }
       }
 
       return matchesUser && matchesDate;
-
     });
-  }, [timesheets, userFilter, date, dateFilterType]);
+  }, [timesheets, userFilter, date, dateFilterType, weekAnchor]);
+
+
+  const sortedTimesheets = useMemo(() => {
+    if (!sortColumn || !sortDirection) return filtered;
+
+    return [...filtered].sort((a, b) => {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+
+      switch (sortColumn) {
+        case 'id':
+          return (a.id - b.id) * dir;
+        case 'user':
+          return getDisplayName(a).localeCompare(getDisplayName(b)) * dir;
+        case 'client':
+          return (a.client?.name || '').localeCompare(b.client?.name || '') * dir;
+        case 'position':
+          return (a.position?.title || '').localeCompare(b.position?.title || '') * dir;
+        case 'period':
+          return a.startDate.localeCompare(b.startDate) * dir;
+        case 'hours':
+          return (calculateTotalHours(a) - calculateTotalHours(b)) * dir;
+        case 'status':
+          return a.status.localeCompare(b.status) * dir;
+        case 'created':
+          return (
+            new Date(a.createdAt || 0).getTime() -
+            new Date(b.createdAt || 0).getTime()
+          ) * dir;
+        default:
+          return 0;
+      }
+    });
+  }, [filtered, sortColumn, sortDirection]);
+
 
   const paginatedFiltered = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+    return sortedTimesheets.slice(start, start + pageSize);
+  }, [sortedTimesheets, page, pageSize]);
+
   const totalPages = Math.max(
     1,
     Math.ceil(filtered.length / pageSize)
@@ -891,28 +996,23 @@ const Timesheets = () => {
     }
   };
 
-  function getWeekRange(selectedDate: string) {
+
+  function getWeekRange(selectedDate: string, anchor: "commencing" | "ending") {
     const current = parseLocalDate(selectedDate);
-    // get day index
-    // sunday = 0
-    // monday = 1
-    const day = current.getDay();
 
-    // convert sunday handling
-    const diffToMonday = day === 0 ? -6 : 1 - day;
+    if (anchor === "commencing") {
+      // selectedDate IS the first day of the week
+      const start = new Date(current);
+      const end = new Date(current);
+      end.setDate(end.getDate() + 6);
+      return { start, end };
+    }
 
-    // monday
-    const monday = new Date(current);
-    monday.setDate(current.getDate() + diffToMonday);
-
-    // sunday
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-
-    return {
-      monday,
-      sunday,
-    };
+    // "ending": selectedDate IS the last day of the week
+    const end = new Date(current);
+    const start = new Date(current);
+    start.setDate(start.getDate() - 6);
+    return { start, end };
   }
 
 
@@ -1022,129 +1122,141 @@ const Timesheets = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-[#000009]">Filters</CardTitle>
-            <CardDescription>Refine by user name/id , date and status</CardDescription>
+            <CardDescription>Refine by username, date and status</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <Input
-                placeholder="Filter by user name or ID"
-                value={userFilter}
-                onChange={(e) => { setUserFilter(e.target.value); setPage(1); }} />
-              <Select value={statusFilter} onValueChange={(v) => {
-                setStatusFilter(v); setPage(1);
+            <div className="space-y-6">
+              {/* Main Filters Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+                {/* User Filter — narrow */}
+                <div className="lg:col-span-2 space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Filter by Username</label>
+                  <Input
+                    placeholder="Username"
+                    value={userFilter}
+                    onChange={(e) => { setUserFilter(e.target.value); setPage(1); }}
+                  />
+                </div>
 
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                {/* Status Filter — narrow */}
+                <div className="lg:col-span-2 space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Status</label>
+                  <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={(v) => { setSortBy(v as "period" | "client"); setPage(1); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="period">Sort: Period</SelectItem>
-                  <SelectItem value="client">Sort: Client</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={sortDir} onValueChange={(v) => { setSortDir(v as "asc" | "desc"); setPage(1); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Direction" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="desc">Descending</SelectItem>
-                  <SelectItem value="asc">Ascending</SelectItem>
-                </SelectContent>
-              </Select>
+                {/* Date Filter — wide, holds 3 controls */}
+                <div className="lg:col-span-5 space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Date Filter</label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Select
+                      value={dateFilterType}
+                      onValueChange={(v) => { setDateFilterType(v as "period" | "approved" | "created"); setPage(1); }}
+                    >
+                      <SelectTrigger className="w-full sm:w-auto sm:min-w-[9rem]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="period">Timesheet Period</SelectItem>
+                        <SelectItem value="approved">Approval Week</SelectItem>
+                        <SelectItem value="created">Date Created</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={weekAnchor}
+                      onValueChange={(v) => { setWeekAnchor(v as "commencing" | "ending"); setPage(1); }}
+                    >
+                      <SelectTrigger className="w-full sm:w-auto sm:min-w-[10rem]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="commencing">Week Commencing</SelectItem>
+                        <SelectItem value="ending">Week Ending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="date"
+                      value={date}
+                      onChange={(e) => { setDate(e.target.value); setPage(1); }}
+                      className="w-full sm:flex-1"
+                    />
+                  </div>
+                  {dateFilterType === "approved" && statusFilter === "pending" && (
+                    <p className="text-xs text-amber-600 pt-1">
+                      Pending timesheets have no approval date yet — switch Status to "All" or "Approved" to see results.
+                    </p>
+                  )}
+                  {dateFilterType === "created" && statusFilter === "pending" && (
+                    <p className="text-xs text-gray-500 pt-1">
+                      Tip: switch Status to "All" if you want to see created-date results across every status.
+                    </p>
+                  )}
+                </div>
 
-              <div className="flex flex-col gap-1">
-                <Select
-                  value={dateFilterType}
-                  onValueChange={(v) => { setDateFilterType(v as "period" | "approved"); setPage(1); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Date Filter Type' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="period">
-                      Timesheet Period
-                    </SelectItem>
-                    <SelectItem value="approved">
-                      Approval Week
-                    </SelectItem>
-
-                  </SelectContent>
-                </Select>
-                <label className="text-xs text-gray-500">
-                  {dateFilterType === 'period'
-                    ? "Timesheet Week"
-                    : "Approved Week"
-                  }
-                </label>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={(e) => {
-                    setDate(e.target.value);
+                {/* Sort Options — medium */}
+                <div className="lg:col-span-3 space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Sort</label>
+                  <div className="flex gap-2">
+                    <Select value={sortBy} onValueChange={(v) => { setSortBy(v as "period" | "client"); setPage(1); }}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="period">Period</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={sortDir} onValueChange={(v) => { setSortDir(v as "asc" | "desc"); setPage(1); }}>
+                      <SelectTrigger className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">Newest</SelectItem>
+                        <SelectItem value="asc">Oldest</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              {/* Action Buttons Row */}
+              <div className="flex flex-wrap gap-3 pt-2 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setUserFilter("");
+                    setStatusFilter("pending");
+                    setSortBy("period");
+                    setSortDir("desc");
                     setPage(1);
+                    setDate("");
+                    setDateFilterType("period");
+                    setWeekAnchor("commencing")
                   }}
-                />
+                >
+                  Clear Filters
+                </Button>
 
-                {selectedWeek && (
-                  <p className="text-xs text-gray-500">
-                    Week: {selectedWeek.monday} → {selectedWeek.sunday}
-                  </p>
-                )}
+                <Button
+                  variant="outline"
+                  onClick={exportSelectedTimesheetsToCSV}
+                  disabled={selectedIds.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Selected ({selectedIds.length})
+                </Button>
               </div>
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setUserFilter("");
-                  setStatusFilter("pending");
-                  setSortBy("period");
-                  setSortDir("desc");
-                  setPage(1);
-                  setDate("")
-                  setDateFilterType("period")
-                }}
-              >
-                Clear filters
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as TimesheetStatus | "none")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Bulk status action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Select status</SelectItem>
-                  <SelectItem value="draft">Set Draft</SelectItem>
-                  <SelectItem value="pending">Set Pending</SelectItem>
-                  <SelectItem value="approved">Set Approved</SelectItem>
-                  <SelectItem value="rejected">Set Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={runBulkStatusUpdate} disabled={bulkStatus === "none" || selectedIds.length === 0 || isSaving}>
-                Apply to selected ({selectedIds.length})
-              </Button>
-              <Button
-                variant="outline"
-                onClick={exportSelectedTimesheetsToCSV}
-                disabled={selectedIds.length === 0}
-              >
-                <Download className="h-4 w-4 mr-1" />
-                Export Selected ({selectedIds.length})
-              </Button>
               <Select
                 value={String(pageSize)}
                 onValueChange={(v) => {
@@ -1174,7 +1286,7 @@ const Timesheets = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-[#000009]">
-              Timesheet Records ({filtered.length}{filtered.length !== timesheets.length ? ` of ${timesheets.length}` : ''})
+              Timesheet Records ({filtered.length})
             </CardTitle>
             <CardDescription>Approve, reject, inspect, or remove records</CardDescription>
           </CardHeader>
@@ -1193,12 +1305,13 @@ const Timesheets = () => {
                         onCheckedChange={(checked) => toggleSelectAllVisible(Boolean(checked))}
                       />
                     </TableHead>
-                    <TableHead>ID</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Position</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead>Hours</TableHead>
+                    <SortableTh column="id">ID</SortableTh>
+                    <SortableTh column="user">User</SortableTh>
+                    <SortableTh column="client">Client</SortableTh>
+                    <SortableTh column="position">Position</SortableTh>
+                    <SortableTh column="period">Period</SortableTh>
+                    <SortableTh column="created">Created</SortableTh>
+                    <SortableTh column="hours">Hours</SortableTh>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -1226,10 +1339,13 @@ const Timesheets = () => {
                           <TableCell>
                             {formatDate(row.startDate)} - {formatDate(row.endDate)}
                           </TableCell>
+                          <TableCell>
+                            {row.createdAt ? formatDate(row.createdAt) : "-"}
+                          </TableCell>
                           <TableCell>{totalHours.toFixed(2)}h</TableCell>
                           <TableCell>
                             <Badge className={statusClasses[row.status]}>
-                              {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                              {getStatusLabel(row)}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -1256,6 +1372,7 @@ const Timesheets = () => {
                                 Export
                               </Button>
 
+
                               {/* <Button
                                 variant="outline"
                                 size="sm"
@@ -1266,6 +1383,7 @@ const Timesheets = () => {
                               </Button> */}
 
                               <DropdownMenu>
+
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="outline" size="sm">
                                     <MoreHorizontal className="h-4 w-4" />
@@ -1312,6 +1430,14 @@ const Timesheets = () => {
                                   )}
 
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setEmailModalTimesheet({ id: row.id, clientId: row.clientId })}
+                                  >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Email to Client
+                                  </DropdownMenuItem>
+
+                                  <DropdownMenuSeparator />
 
                                   <DropdownMenuItem
                                     className="text-red-600"
@@ -1330,7 +1456,7 @@ const Timesheets = () => {
                         </TableRow>
                         {isExpanded && (
                           <TableRow>
-                            <TableCell colSpan={9} className="bg-blue-50/30 border-l-4 border-blue-300">
+                            <TableCell colSpan={10} className="bg-blue-50/30 border-l-4 border-blue-300">
                               <div className="space-y-3 py-2">
                                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-700">
                                   <span><strong>User:</strong> {getDisplayName(row)}</span>
@@ -1475,6 +1601,15 @@ const Timesheets = () => {
           </CardContent>
         </Card>
       </div>
+
+      <EmailTimesheetModal
+        isOpen={!!emailModalTimesheet}
+        onClose={() => setEmailModalTimesheet(null)}
+        timesheetId={emailModalTimesheet?.id ?? null}
+        clientId={emailModalTimesheet?.clientId ?? null}
+        authHeaders={authHeaders}
+      />
+
       <RejecteTimesheetModal
         open={rejectModalOpen}
         onClose={() => {

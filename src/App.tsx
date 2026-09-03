@@ -34,6 +34,7 @@ import NotFound from "./pages/NotFound";
 import { DocumentProvider } from "./contexts/DocumentContext";
 import CustomAddition from "./pages/UpdateTimesheet";
 import { TimesheetCustomFieldsProvider } from "./contexts/TimesheetContext";
+import AccountChange from "./pages/Account";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,14 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/account"
+                  element={
+                    <ProtectedRoute>
+                      <AccountChange />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/people"
                   element={
                     <ProtectedRoute>
@@ -90,7 +99,7 @@ const App = () => (
                   }
                 />
 
-              
+
 
 
                 <Route

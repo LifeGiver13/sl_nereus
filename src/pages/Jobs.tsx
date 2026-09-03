@@ -33,7 +33,9 @@ interface Job {
   createdAt: string;
   updatedAt: string;
   client?: { id: number; name: string };
-  owner?: { id: number; username: string };
+  owner?: { id: number; username: string; profile: any; };
+  contact?: { id: number; firstName: string; lastName: string; email: string; phone: string; position: string }; // ← added
+
 }
 
 interface Client {
@@ -78,8 +80,8 @@ const Jobs = () => {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
 
   // User typeahead
-  const [users, setUsers] = useState<User[]>([]);
-  const [userSearchTerm, setUserSearchTerm] = useState('');
+  // const [users, setUsers] = useState<User[]>([]);
+  // const [userSearchTerm, setUserSearchTerm] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   // Sorting
@@ -118,16 +120,13 @@ const Jobs = () => {
 
   const allJobs: Job[] = jobsData?.results || [];
 
-  // Client & User search handlers (unchanged)
   const searchClients = async (term: string) => {
     if (term.length < 2) { setClients([]); return; }
-    try {
-      const res = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(term)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setClients(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
-      }
-    } catch { /* ignore */ }
+    const res = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(term)}`);
+    if (res.ok) {
+      const data = await res.json();
+      setClients(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
+    }
   };
 
   const handleClientSearch = (value: string) => {
@@ -143,26 +142,38 @@ const Jobs = () => {
     setClients([]);
   };
 
-  const searchUsers = async (term: string) => {
-    if (term.length < 2) { setUsers([]); return; }
-    const res = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
-    if (res.ok) {
-      const data = await res.json();
-      setUsers(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
-    }
-  };
+  // const searchUsers = async (term: string) => {
+  //   if (term.length < 2) { setUsers([]); return; }
+  //   const res = await fetch(`${API_BASE_URL}/utils/user-list/${encodeURIComponent(term)}`);
+  //   if (res.ok) {
+  //     const data = await res.json();
+  //     setUsers(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));
+  //   }
+  // };
 
-  const handleUserSearch = (value: string) => {
-    setUserSearchTerm(value);
-    if (!value) setSelectedUserId(null);
-    searchUsers(value);
-  };
+  // const handleUserSearch = (value: string) => {
+  //   setUserSearchTerm(value);
+  //   if (!value) setSelectedUserId(null);
+  //   searchUsers(value);
+  // };
 
-  const handleUserSelect = (user: User) => {
-    setSelectedUserId(user.id);
-    setUserSearchTerm(user.name);
-    setUsers([]);
-  };
+  // const handleUserSelect = (user: User) => {
+  //   setSelectedUserId(user.id);
+  //   setUserSearchTerm(user.name);
+  //   setUsers([]);
+  // };
+
+  function formatDate(value: string): string {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+  }
 
   const filtered = useMemo(() => {
     return allJobs.filter((job) => {
@@ -186,7 +197,6 @@ const Jobs = () => {
     });
   }, [allJobs, titleFilter, statusFilter, clientFilter, startDateRange, endDateRange, selectedUserId]);
 
-  // Sorting + Pagination (unchanged)
   const sorted = useMemo(() => {
     if (!sortColumn || !sortDirection) return filtered;
     return [...filtered].sort((a, b) => {
@@ -198,6 +208,7 @@ const Jobs = () => {
         case 'title': return a.title.localeCompare(b.title) * dir;
         case 'startDate': return a.startDate.localeCompare(b.startDate) * dir;
         case 'endDate': return (a.endDate ?? '').localeCompare(b.endDate ?? '') * dir;
+        case 'endDate': return a.createdAt.localeCompare(b.createdAt) * dir;
         case 'vacancies': return (a.vacancies - b.vacancies) * dir;
         case 'status': return a.status.localeCompare(b.status) * dir;
         case 'filled': return (Number(a.filled) - Number(b.filled)) * dir;
@@ -221,7 +232,7 @@ const Jobs = () => {
     setSelectedClientId(null);
     setSelectedUserId(null);
     setClientSearchTerm('');
-    setUserSearchTerm('');
+    // setUserSearchTerm('');
     setCurrentPage(1);
   };
 
@@ -263,6 +274,19 @@ const Jobs = () => {
   }
 
   const uniqueStatuses = Array.from(new Set(allJobs.map(j => j.status))).filter(Boolean);
+
+  const uniqueOwners = useMemo(() => {
+    const map = new Map<number, string>();
+    allJobs.forEach((job) => {
+      if (job.owner?.id) {
+        const name = job.owner.profile?.fullName || job.owner.username || `User #${job.owner.id}`;
+        if (!map.has(job.owner.id)) map.set(job.owner.id, name);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allJobs]);
 
   return (
     <AdminLayout>
@@ -311,15 +335,25 @@ const Jobs = () => {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Posted By</label>
-                <div className="relative">
-                  <Input
-                    value={userSearchTerm}
-                    onChange={(e) => handleUserSearch(e.target.value)}
-                    placeholder="Start typing user name..."
-                  />
-                  {users.length > 0 && (
+              <div className="relative">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Posted By</label>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    value={selectedUserId ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedUserId(val ? Number(val) : null);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <option value="">All owners</option>
+                    {uniqueOwners.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* {users.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                       {users.map((user) => (
                         <div
@@ -331,8 +365,7 @@ const Jobs = () => {
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
+                  )} */}
               </div>
 
               <div className="space-y-1">
@@ -403,7 +436,7 @@ const Jobs = () => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-[#000009]">
-                  Jobs ({sorted.length}{sorted.length !== allJobs.length ? ` of ${allJobs.length}` : ''})
+                  Jobs ({sorted.length})
                 </CardTitle>
                 <CardDescription>All job postings in the system</CardDescription>
               </div>
@@ -434,9 +467,11 @@ const Jobs = () => {
                       <SortableTh column="title">Title</SortableTh>
                       <SortableTh column="startDate">Start Date</SortableTh>
                       <SortableTh column="endDate">End Date</SortableTh>
+                      <SortableTh column="endDate">Created At</SortableTh>
                       <SortableTh column="vacancies">Vacancies</SortableTh>
                       <SortableTh column="status">Status</SortableTh>
                       <SortableTh column="filled">Filled</SortableTh>
+                      <TableHead>Contact</TableHead>
                       <TableHead>Skills</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -450,10 +485,11 @@ const Jobs = () => {
                       >
                         <TableCell>{job.id}</TableCell>
                         <TableCell>{job.client?.name ?? `Client #${job.clientId}`}</TableCell>
-                        <TableCell>{job.owner?.username ?? `User #${job.postedBy}`}</TableCell>
+                        <TableCell>{job.owner?.profile?.fullName ?? job.owner?.username ?? `User #${job.postedBy}`}</TableCell>
                         <TableCell className="font-medium">{job.title}</TableCell>
-                        <TableCell>{new Date(job.startDate).toLocaleDateString()}</TableCell>
-                        <TableCell>{job.endDate ? new Date(job.endDate).toLocaleDateString() : 'Ongoing'}</TableCell>
+                        <TableCell>{formatDate(job.startDate)}</TableCell>
+                        <TableCell>{job.endDate ? formatDate(job.endDate) : 'Ongoing'}</TableCell>
+                        <TableCell>{formatDate(job.createdAt)}</TableCell>
                         <TableCell>{job.vacancies}</TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(job.status)}>
@@ -464,6 +500,16 @@ const Jobs = () => {
                           <Badge className={job.filled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
                             {job.filled ? 'Yes' : 'No'}
                           </Badge>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {job.contact ? (
+                            <div className="text-sm">
+                              <div className="font-medium">{job.contact.firstName} {job.contact.lastName}</div>
+                              {job.contact.email && <div className="text-xs text-muted-foreground">{job.contact.email}</div>}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400"> N/A </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1 max-w-xs">

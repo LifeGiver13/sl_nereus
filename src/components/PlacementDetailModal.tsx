@@ -56,7 +56,7 @@ const PlacementDetailModal: React.FC<PlacementDetailModalProps> = ({
 
   if (!placement) return null;
 
-  const candidateName = placement.user?.profile?.Forename && placement.user?.profile?.Surname 
+  const candidateName = placement.user?.profile?.Forename && placement.user?.profile?.Surname
     ? `${placement.user.profile.Forename} ${placement.user.profile.Surname}`
     : placement.user?.username || 'N/A';
 
@@ -75,6 +75,18 @@ const PlacementDetailModal: React.FC<PlacementDetailModalProps> = ({
     }
   };
 
+  function formatDate(value: string): string {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
@@ -92,7 +104,7 @@ const PlacementDetailModal: React.FC<PlacementDetailModalProps> = ({
             </Button>
           </div>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Summary Details */}
           <div className="grid grid-cols-2 gap-4">
@@ -109,7 +121,7 @@ const PlacementDetailModal: React.FC<PlacementDetailModalProps> = ({
               <p className="font-medium">{placement.shift?.name || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Department</p>
+              <p className="text-sm text-muted-foreground">Assigned Agency Department</p>
               <p className="font-medium">{job?.department?.name || 'Loading...'}</p>
             </div>
           </div>
@@ -124,14 +136,13 @@ const PlacementDetailModal: React.FC<PlacementDetailModalProps> = ({
                   return (
                     <div
                       key={p.id}
-                      className={`flex items-center justify-between p-3 rounded-md border ${
-                        isCurrentDate ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
-                      }`}
+                      className={`flex items-center justify-between p-3 rounded-md border ${isCurrentDate ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
+                        }`}
                     >
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium">
-                          {p.meta?.shiftDate ? format(new Date(p.meta.shiftDate), 'MMM dd, yyyy') : 'No date'}
+                          {p.meta?.shiftDate ? (formatDate(p.meta.shiftDate), 'MMM dd, yyyy') : 'No date'}
                         </span>
                       </div>
                       <Badge className={getStatusColor(p.status)} variant="outline">

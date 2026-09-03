@@ -135,10 +135,16 @@ const UserDetail = () => {
 
     return (
       <Badge className={statusColors[status] || 'bg-gray-100 text-gray-800'}>
-        {status}
+        {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
   };
+
+  const formatRole = (role: string) =>
+    role
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
 
   const getRoleBadge = (role: string) => {
     const roleColors: { [key: string]: string } = {
@@ -151,16 +157,24 @@ const UserDetail = () => {
 
     return (
       <Badge className={roleColors[role] || 'bg-gray-100 text-gray-800'}>
-        {role}
+        {formatRole(role)}
       </Badge>
     );
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'Never';
-    return new Date(dateString).toLocaleString();
-  };
 
+  function formatDate(value: string): string {
+    if (!value) return "Never";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).replace(/\//g, '/');
+  }
+  
   const renderProfileTable = (profile: { [key: string]: any }) => {
     if (!profile || typeof profile !== 'object') {
       return (
@@ -301,7 +315,13 @@ const UserDetail = () => {
             </Link>
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-[#000009]">{user.username}</h1>
+            <h1 className="text-3xl font-bold text-[#000009]">
+              {(
+                [user.profile?.Forename, user.profile?.Surname]
+                  .filter(Boolean)
+                  .join(' ')
+              ) || user.profile?.fullName || user.username}
+            </h1>
             <p className="text-gray-600 mt-1">User Details</p>
           </div>
           <Button
@@ -346,33 +366,43 @@ const UserDetail = () => {
                   <CardTitle className="text-[#000009]">Basic Information</CardTitle>
                   <CardDescription>Core user information</CardDescription>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="pt-6">
                   {/* Profile header with avatar */}
-                  {/* <div className="flex items-center gap-6 mb-6 pb-6 border-b border-gray-100">
-                      <img
-                        src={user.profile?.avatar || defaultAvatar}
-                        alt={user.username}
-                        className="h-20 w-20 rounded-full object-cover border-2 border-gray-200 shadow-sm flex-shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = defaultAvatar;
-                        }}
-                      />
-                      <div>
-                        <h2 className="text-xl font-bold text-[#000009]">
-                          {user.profile?.fullName || user.username}
-                        </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">{user.username}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {getStatusBadge(user.status)}
-                          {getRoleBadge(user.role)}
-                        </div>
+                  <div className="flex items-center gap-6 mb-6 pb-6 border-b border-gray-100">
+                    <img
+                      src={user.profile?.avatar || defaultAvatar}
+                      alt={user.username}
+                      className="h-20 w-20 rounded-full object-cover border-2 border-gray-200 shadow-sm flex-shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = defaultAvatar;
+                      }}
+                    />
+                    <div>
+                      <h2 className="text-xl font-bold text-[#000009]">
+                        {(
+                          [user.profile?.Forename, user.profile?.Surname]
+                            .filter(Boolean)
+                            .join(' ')
+                        ) || user.profile?.fullName || user.username}
+                      </h2>
+                      <p className="text-sm text-gray-500 mt-0.5">{user.username}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        {getStatusBadge(user.status)}
+                        {getRoleBadge(user.role)}
                       </div>
-                    </div> */}
+                    </div>
+                  </div>
 
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
                       <div className="font-medium text-gray-700">ID</div>
                       <div className="md:col-span-2 text-gray-900">{user.id}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                      <div className="font-medium text-gray-700">Full Name</div>
+                      <div className="md:col-span-2 text-gray-900">
+                        {user.profile?.fullName || '-'}
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 py-2 border-b border-gray-100">
                       <div className="font-medium text-gray-700">Username</div>

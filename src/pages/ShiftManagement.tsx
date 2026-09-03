@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Plus, Edit, ArrowLeft } from 'lucide-react';
+import { Plus, Edit, ArrowLeft, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { usePreferences } from '@/hooks/usePreferences';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 interface Shift {
   id: number;
@@ -31,6 +34,18 @@ interface Client {
   id: number;
   name: string;
 }
+type SortDirection = 'asc' | 'desc' | null;
+
+const SortIcon = ({ column, sortColumn, sortDirection }: {
+  column: string;
+  sortColumn: string | null;
+  sortDirection: SortDirection;
+}) => {
+  if (sortColumn !== column) return <ChevronsUpDown className="h-3.5 w-3.5 ml-1 text-gray-400 inline" />;
+  if (sortDirection === 'asc') return <ChevronUp className="h-3.5 w-3.5 ml-1 inline" />;
+  return <ChevronDown className="h-3.5 w-3.5 ml-1 inline" />;
+};
+
 
 const ShiftManagement = () => {
   const { clientId } = useParams<{ clientId: string }>();
@@ -39,7 +54,6 @@ const ShiftManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalShifts, setTotalShifts] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
@@ -48,9 +62,32 @@ const ShiftManagement = () => {
     startTime: '',
     endTime: ''
   });
-  const { toast } = useToast();
 
-  const pageSize = 10;
+  const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
+  // const { preferences, updateTablePreferences } = usePreferences();
+
+  const [pageSize, setPageSize] = useState(10);
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortColumn(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+
+
 
   const fetchClient = async () => {
     try {
@@ -77,52 +114,38 @@ const ShiftManagement = () => {
     }
   };
 
-  const fetchShifts = async (page = 1) => {
+  const fetchShifts = async () => {
     try {
       setIsLoading(true);
-      const offset = (page - 1) * pageSize;
-      const url = `${API_BASE_URL}/client/${clientId}/shifts?offset=${offset}&limit=${pageSize}`;
-
-      console.log('Fetching shifts from:', url);
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
+      const url = `${API_BASE_URL}/client/${clientId}/shifts?offset=0&limit=9999`;
+      const response = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data: ShiftsResponse = await response.json();
-      console.log('Shifts data received:', data);
-
       setShifts(data.results || []);
       setTotalShifts(data.total || 0);
-      setTotalPages(Math.ceil((data.total || 0) / pageSize));
     } catch (error) {
-      console.error('Error fetching shifts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch shifts",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to fetch shifts", variant: "destructive" });
       setShifts([]);
-      setTotalShifts(0);
-      setTotalPages(0);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const filteredShifts = useMemo(() => {
+    if (!searchTerm.trim()) return shifts;
+    return shifts.filter((shift) =>
+      shift.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [shifts, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredShifts.length / pageSize));
+
   useEffect(() => {
     if (clientId) {
       fetchClient();
-      fetchShifts(currentPage);
+      fetchShifts();
     }
-  }, [clientId, currentPage]);
+  }, [clientId]);
 
   const handleCreateShift = async () => {
     try {
@@ -149,7 +172,7 @@ const ShiftManagement = () => {
 
       setIsCreateDialogOpen(false);
       setFormData({ name: '', startTime: '', endTime: '' });
-      fetchShifts(currentPage);
+      fetchShifts();
     } catch (error) {
       console.error('Error creating shift:', error);
       toast({
@@ -184,7 +207,7 @@ const ShiftManagement = () => {
       setIsEditDialogOpen(false);
       setEditingShift(null);
       setFormData({ name: '', startTime: '', endTime: '' });
-      fetchShifts(currentPage);
+      fetchShifts();
     } catch (error) {
       console.error('Error updating shift:', error);
       toast({
@@ -226,6 +249,26 @@ const ShiftManagement = () => {
     }
   }, [isCreateDialogOpen]);
 
+  const sortedShifts = useMemo(() => {
+    if (!sortColumn || !sortDirection) return filteredShifts;
+
+    return [...filteredShifts].sort((a, b) => {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+
+      switch (sortColumn) {
+        case 'id':
+          return (a.id - b.id) * dir;
+        case 'name':
+          return (a.name || '').localeCompare(b.name || '') * dir;
+        case 'startTime':
+          return (a.startTime || '').localeCompare(b.startTime || '') * dir;
+        case 'endTime':
+          return (a.endTime || '').localeCompare(b.endTime || '') * dir;
+        default:
+          return 0;
+      }
+    });
+  }, [filteredShifts, sortColumn, sortDirection]);
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -281,6 +324,23 @@ const ShiftManagement = () => {
     );
   };
 
+  const paginatedShifts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedShifts.slice(start, start + pageSize);
+  }, [sortedShifts, currentPage, pageSize]);
+
+
+  const SortableTh = ({ column, children }: { column: string; children: React.ReactNode }) => (
+    <TableHead
+      className="cursor-pointer select-none whitespace-nowrap"
+      onClick={() => handleSort(column)}
+    >
+      {children}
+      <SortIcon column={column} sortColumn={sortColumn} sortDirection={sortDirection} />
+    </TableHead>
+  );
+
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -305,6 +365,39 @@ const ShiftManagement = () => {
               <div>
                 <CardTitle className="text-[#000009]">Shifts</CardTitle>
                 <CardDescription>View and manage client shifts</CardDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Input
+                    placeholder="Search shift names..."
+                    value={searchTerm}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                    className="pl-10"
+                  />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 text-gray-400 absolute left-3 top-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <Select value={String(pageSize)} onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 per page</SelectItem>
+                    <SelectItem value="20">20 per page</SelectItem>
+                    <SelectItem value="50">50 per page</SelectItem>
+                    <SelectItem value="100">100 per page</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Dialog
                 open={isCreateDialogOpen}
@@ -371,7 +464,8 @@ const ShiftManagement = () => {
           <CardContent>
             {!isLoading && (
               <div className="mb-4 text-sm text-gray-600">
-                Showing {shifts.length} of {totalShifts} shifts
+                Showing {paginatedShifts.length} of {filteredShifts.length} shifts
+                {searchTerm && " (filtered)"}
               </div>
             )}
 
@@ -388,15 +482,15 @@ const ShiftManagement = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Start Time</TableHead>
-                      <TableHead>End Time</TableHead>
+                      <SortableTh column="id">ID</SortableTh>
+                      <SortableTh column="name">Name</SortableTh>
+                      <SortableTh column="startTime">Start Time</SortableTh>
+                      <SortableTh column="endTime">End Time</SortableTh>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {shifts.map((shift) => (
+                    {paginatedShifts.map((shift) => (
                       <TableRow key={shift.id}>
                         <TableCell className="font-medium">{shift.id}</TableCell>
                         <TableCell>{shift.name}</TableCell>
