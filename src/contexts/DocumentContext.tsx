@@ -121,8 +121,7 @@ export const DocumentProvider = ({
 
             const finalFileType = fileType || "general";
 
-            const key = `${rawName}/${finalFileType}_${safeDate}.${extension}`;
-
+            const key = `Staff Records/${rawName}/${finalFileType}_${safeDate}.${extension}`;
 
             // request presigned upload URL from backend
 

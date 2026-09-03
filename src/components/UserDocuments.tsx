@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 import { useDocument } from "../contexts/DocumentContext";
 import { ActivityIcon } from "lucide-react";
 
@@ -31,7 +30,6 @@ const UserDocuments = ({
         useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-
     useEffect(() => {
 
         const loadDocuments = async () => {
@@ -44,7 +42,8 @@ const UserDocuments = ({
                     await getDocumentsByBucket(bucket);
 
                 if (result.success && result.documents) {
-                    setDocuments(result.documents);
+                    const validDocs = result.documents.filter(doc => doc.size && doc.size > 0);
+                    setDocuments(validDocs);
                 }
 
             } catch (error) {
@@ -141,58 +140,57 @@ const UserDocuments = ({
         return <p>Loading documents...</p>;
     }
 
+    if (documents.length === 0) {
+        return <p>No documents found</p>;
+    }
 
     return (
         <div className="space-y-3">
 
-            {documents.length === 0 ? (
-                <p>No documents found</p>
-            ) : (
-                documents.map((doc) => (
-                    <div
-                        key={doc.key}
-                        className="border rounded-lg p-4 flex items-center justify-between"
-                    >
-                        <div>
-                            <p className="font-medium">
-                                {doc.key.charAt(0).toUpperCase() + doc.key.slice(1)}
+            {documents.map((doc) => (
+                <div
+                    key={doc.key}
+                    className="border rounded-lg p-4 flex items-center justify-between"
+                >
+                    <div>
+                        <p className="font-medium">
+                            {doc.key.charAt(0).toUpperCase() + doc.key.slice(1)}
+                        </p>
+
+                        {doc.lastModified && (
+                            <p className="text-sm text-gray-500">
+                                {new Date(
+                                    doc.lastModified
+                                ).toLocaleString()}
                             </p>
-
-                            {doc.lastModified && (
-                                <p className="text-sm text-gray-500">
-                                    {new Date(
-                                        doc.lastModified
-                                    ).toLocaleString()}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="flex gap-2">
-
-                            <button
-                                onClick={() => handleView(doc.key)}
-                                disabled={viewingKey === doc.key}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                            >
-                                {viewingKey === doc.key
-                                    ? <ActivityIcon className="animate-spin" />
-                                    : "View"}
-                            </button>
-
-                            <button
-                                onClick={() => handleDownload(doc.key)}
-                                disabled={downloadingKey === doc.key}
-                                className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 disabled:opacity-50"
-                            >
-                                {downloadingKey === doc.key
-                                    ? <ActivityIcon className="animate-spin" />
-                                    : "Download"}
-                            </button>
-
-                        </div>
+                        )}
                     </div>
-                ))
-            )}
+
+                    <div className="flex gap-2">
+
+                        <button
+                            onClick={() => handleView(doc.key)}
+                            disabled={viewingKey === doc.key}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {viewingKey === doc.key
+                                ? <ActivityIcon className="animate-spin" />
+                                : "View"}
+                        </button>
+
+                        <button
+                            onClick={() => handleDownload(doc.key)}
+                            disabled={downloadingKey === doc.key}
+                            className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 disabled:opacity-50"
+                        >
+                            {downloadingKey === doc.key
+                                ? <ActivityIcon className="animate-spin" />
+                                : "Download"}
+                        </button>
+
+                    </div>
+                </div>
+            ))}
         </div>
     );
 };

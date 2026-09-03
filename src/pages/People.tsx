@@ -15,6 +15,7 @@ import { usePreferences } from '../hooks/usePreferences';
 import { IconActionButton, IconActionTooltip } from '@/components/IconActionTooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import PlatformBadges from '@/components/PlatformBadges';
 
 
 interface User {
@@ -703,6 +704,7 @@ const People = () => {
                           sortDirection={sortDirection}
                         />
                       </TableHead>
+                      <TableHead>Platforms</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -713,7 +715,12 @@ const People = () => {
                           {user.id}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"}
+                          {user?.profile?.fullName ||
+                            (user?.profile?.firstName && user?.profile?.lastName
+                              ? `${user.profile.firstName} ${user.profile.lastName}`
+                              : `${user.profile.Forename || ''} ${user.profile.Surname || ''}` || "-")}
+
+                          {/* {user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"} */}
                         </TableCell>
                         <TableCell className="font-medium">
                           {user.username}
@@ -727,6 +734,9 @@ const People = () => {
                         <TableCell>{formatDate(user.lastLogin)}</TableCell>
                         <TableCell>{formatDate(user.createdAt)}</TableCell>
                         <TableCell>{formatDate(user.updatedAt)}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <PlatformBadges platform={user?.meta?.pushTokens} size="sm" />
+                        </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <IconActionTooltip label="View user">
