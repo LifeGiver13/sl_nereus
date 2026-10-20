@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { getNestedProperty } from '../lib/utils';
 import UserDocuments from '@/components/UserDocuments';
 import UploadUserDocumentModal from '@/components/UploadUserDocumentModal';
 import defaultAvatar from '@/assets/nereus-logo-light.png';
@@ -44,6 +45,47 @@ interface User {
 
 const USER_DETAIL_TABS = ['basic', 'profile', 'documents'] as const;
 type UserDetailTab = (typeof USER_DETAIL_TABS)[number];
+
+const formatProfileLabel = (value: string) =>
+  value
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/[_-]+/g, ' ')
+    .replace(/^./, character => character.toUpperCase());
+
+const renderProfileValue = (value: any): React.ReactNode => {
+  if (value === null || value === undefined || value === '') return 'N/A';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return 'N/A';
+    return value
+      .map(item => {
+        if (item && typeof item === 'object') {
+          return Object.values(item).filter(Boolean).join(', ');
+        }
+        return String(item);
+      })
+      .join(', ');
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value);
+    if (entries.length === 0) return 'N/A';
+
+    return (
+      <dl className="space-y-1">
+        {entries.map(([key, nestedValue]) => (
+          <div key={key} className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+            <dt className="font-medium text-gray-700">{formatProfileLabel(key)}</dt>
+            <dd>{renderProfileValue(nestedValue)}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  return String(value);
+};
 
 const UserDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -316,11 +358,7 @@ const UserDetail = () => {
           </Button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-[#000009]">
-              {(
-                [user.profile?.Forename, user.profile?.Surname]
-                  .filter(Boolean)
-                  .join(' ')
-              ) || user.profile?.fullName || user.username}
+              {user.profile?.fullName || user.username}
             </h1>
             <p className="text-gray-600 mt-1">User Details</p>
           </div>
@@ -380,7 +418,7 @@ const UserDetail = () => {
                     <div>
                       <h2 className="text-xl font-bold text-[#000009]">
                         {(
-                          [user.profile?.Forename, user.profile?.Surname]
+                          [user.profile?.firstName, user.profile?.lastName]
                             .filter(Boolean)
                             .join(' ')
                         ) || user.profile?.fullName || user.username}
@@ -472,7 +510,8 @@ const UserDetail = () => {
                         >
                           <div className="space-y-2">
                             {fields.map((field) => {
-                              const value = user.profile[field.property];
+                              const lookupSource = { ...user, ...user.profile };
+                              const value = getNestedProperty(lookupSource, field.property);
                               return (
                                 <div
                                   key={field.property}
@@ -480,13 +519,7 @@ const UserDetail = () => {
                                 >
                                   <div className="font-medium text-gray-700">{field.label}</div>
                                   <div className="md:col-span-2 text-gray-900">
-                                    {typeof value === 'object' ? (
-                                      <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
-                                        {JSON.stringify(value, null, 2)}
-                                      </pre>
-                                    ) : (
-                                      String(value || 'N/A')
-                                    )}
+                                    {renderProfileValue(value)}
                                   </div>
                                 </div>
                               );

@@ -129,7 +129,7 @@ const People = () => {
       // Build search object
       const searchObj: any = {};
 
-      const searchFeilds = ['username', 'profile.fullName', 'profile.firstName', 'profile.lastName', 'profile.middleNames', 'profile.MiddleNames', 'profile.ForeName', 'profile.Surename']; // fields to search in
+      const searchFeilds = ['username', 'profile.fullName', 'profile.firstName', 'profile.lastName', 'profile.middleNames', 'profile.MiddleNames','profile.middleName', 'profile.MiddleName', 'profile.ForeName', 'profile.Surename']; // fields to search in
 
       if (searchTerm.trim() !== '') {
         searchObj.or = searchFeilds.map((feild) => ({
