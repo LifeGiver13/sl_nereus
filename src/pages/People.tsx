@@ -129,7 +129,7 @@ const People = () => {
       // Build search object
       const searchObj: any = {};
 
-      const searchFeilds = ['username', 'profile.fullName', 'profile.firstName', 'profile.lastName', 'profile.middleNames', 'profile.MiddleNames','profile.middleName', 'profile.MiddleName', 'profile.ForeName', 'profile.Surename']; // fields to search in
+      const searchFeilds = ['username', 'profile.fullName', 'profile.firstName', 'profile.lastName', 'profile.middleNames', 'profile.MiddleNames', 'profile.middleName', 'profile.MiddleName', 'profile.ForeName', 'profile.Surename']; // fields to search in
 
       if (searchTerm.trim() !== '') {
         searchObj.or = searchFeilds.map((feild) => ({
@@ -716,11 +716,9 @@ const People = () => {
                         </TableCell>
                         <TableCell className="font-medium">
                           {user?.profile?.fullName ||
-                            (user?.profile?.firstName && user?.profile?.lastName
-                              ? `${user.profile.firstName} ${user.profile.lastName}`
-                              : `${user.profile.Forename || ''} ${user.profile.Surname || ''}` || "-")}
+                            `${user?.profile?.Forename || ''} ${user?.profile?.Surname || ''}`.trim() || `${user?.profile?.forename || ''} ${user?.profile?.surname || ''}`.trim() ||
 
-                          {/* {user?.profile?.fullName || user?.profile?.firstName || user?.profile?.lastName || "-"} */}
+                            '-'}
                         </TableCell>
                         <TableCell className="font-medium">
                           {user.username}
