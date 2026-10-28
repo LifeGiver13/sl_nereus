@@ -179,54 +179,11 @@ const Applications = () => {
   const total = filteredApplications.length;
   const totalPages = Math.ceil(total / pageSize);
 
-  const [sortColumn, setSortColumn] = useState<string | null>("createdAt")
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-
-  // Sort the full filtered dataset (not just the current page) before paginating,
-  // so header sorting and pagination compose correctly.
-  const sortedApplications = useMemo(() => {
-    if (!sortColumn) return filteredApplications;
-    const dir = sortDirection === "asc" ? 1 : -1;
-
-    return [...filteredApplications].sort((a, b) => {
-      switch (sortColumn) {
-        case "id":
-          return (a.id - b.id) * dir;
-
-        case "username":
-          return (a.data?.['Basic Information']?.fields?.firstName ?? "").localeCompare(b.data?.['Basic Information']?.fields?.firstName ?? "") * dir;
-
-        case "createdAt":
-          return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
-
-        case "updatedAt":
-          return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
-
-        case "status":
-          return (
-            getStatusFromMeta(a).localeCompare(
-              getStatusFromMeta(b)
-            ) * dir
-          );
-
-        case "stage":
-          return (
-            getStageFromMeta(a).localeCompare(
-              getStageFromMeta(b)
-            ) * dir
-          );
-
-        default:
-          return 0;
-      }
-    });
-  }, [filteredApplications, sortColumn, sortDirection]);
-
-  // Current page data (sorted across the whole dataset, then sliced)
+  // Current page data
   const paginatedApplications = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return sortedApplications.slice(start, start + pageSize);
-  }, [sortedApplications, currentPage, pageSize]);
+    return filteredApplications.slice(start, start + pageSize);
+  }, [filteredApplications, currentPage, pageSize]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -244,6 +201,9 @@ const Applications = () => {
       year: 'numeric'
     }).replace(/\//g, '/'); // Ensures 18/06/2026
   }
+
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -436,6 +396,41 @@ const Applications = () => {
       setNewAppLoading(false);
     }
   };
+  const sortedApplications = [...paginatedApplications].sort((a, b) => {
+    if (!sortColumn) return 0;
+    const dir = sortDirection === "asc" ? 1 : -1;
+
+    switch (sortColumn) {
+      case "id":
+        return (a.id - b.id) * dir;
+
+      case "username":
+        return (a.data?.['Basic Information']?.fields?.firstName ?? "").localeCompare(b.data?.['Basic Information']?.fields?.firstName ?? "") * dir;
+
+      case "createdAt":
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
+
+      case "updatedAt":
+        return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
+
+      case "status":
+        return (
+          getStatusFromMeta(a).localeCompare(
+            getStatusFromMeta(b)
+          ) * dir
+        );
+
+      case "stage":
+        return (
+          getStageFromMeta(a).localeCompare(
+            getStageFromMeta(b)
+          ) * dir
+        );
+
+      default:
+        return 0;
+    }
+  });
 
 
   const SortIcon = ({ column, sortColumn, sortDirection }: {
@@ -643,7 +638,7 @@ const Applications = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedApplications.map((application) => (
+                    {sortedApplications.map((application) => (
                       <TableRow
                         key={application.id}
                         className="cursor-pointer hover:bg-gray-50"
