@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, User, Mail, Phone, Calendar, Check, X, MessageSquare, AlertCircle } from "lucide-react";
+import { ArrowLeft, FileText, User, Mail, Phone, Calendar, Check, X, MessageSquare, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,23 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
   const fetchDownloadUrl = async () => {
     setLoading(true);
     try {
-      const response = await apiRequest(`/fs/download-url/${encodeURIComponent(fileName)}`);
+      // Uploaded files are stored as "<userBucket>/<key>"; the backend route
+      // needs those as two separate path segments, not one encoded blob.
+      const slashIndex = fileName.indexOf("/");
+      if (slashIndex === -1) {
+        toast({
+          title: "Error",
+          description: "Malformed file reference — cannot determine document location",
+          variant: "destructive",
+        });
+        return;
+      }
+      const userBucket = fileName.slice(0, slashIndex);
+      const key = fileName.slice(slashIndex + 1);
+
+      const response = await apiRequest(
+        `/fs/download-url/${encodeURIComponent(userBucket)}/${encodeURIComponent(key)}`,
+      );
       if (!response.ok) {
         toast({
           title: "Error",
@@ -125,6 +141,31 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
       <FileText className="h-4 w-4" />
       {loading ? "Generating link..." : "Get Download Link"}
     </Button>
+  );
+};
+
+const RevealablePassword = ({ value }: { value: any }) => {
+  const [revealed, setRevealed] = React.useState(false);
+  const password = typeof value === "object" && value !== null ? value.value : value;
+
+  if (!password) {
+    return <span className="text-muted-foreground">Not provided</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-sm">{revealed ? password : "••••••••"}</span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-6 px-2 text-xs gap-1"
+        onClick={() => setRevealed((r) => !r)}
+      >
+        {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+        {revealed ? "Hide" : "Reveal"}
+      </Button>
+    </div>
   );
 };
 
@@ -523,7 +564,7 @@ const ApplicationDetail = () => {
     }
 
     if (field.type === "password") {
-      return "••••••••";
+      return <RevealablePassword value={value} />;
     }
 
     if (field.type === "agreement") {
@@ -756,6 +797,9 @@ const ApplicationDetail = () => {
     );
   }
 
+  // Decisions can't be revisited once an application has been finalized
+  const isApplicationProcessed = application.meta?.stage === "processed";
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -776,10 +820,7 @@ const ApplicationDetail = () => {
                 variant="outline"
                 className="border-orange-500 text-orange-500 hover:bg-orange-50"
                 onClick={() => handleApplicationDecision("revise")}
-                disabled={
-                  application.meta?.pre_registration !== "submitted" &&
-                  application.meta?.full_registration !== "submitted"
-                }
+                disabled={isApplicationProcessed}
               >
                 <MessageSquare className="h-4 w-4 mr-2" /> Request Revision
               </Button>
@@ -788,10 +829,7 @@ const ApplicationDetail = () => {
                 variant="outline"
                 className="border-green-500 text-green-500 hover:bg-green-50"
                 onClick={() => handleApplicationDecision("approve")}
-                disabled={
-                  application.meta?.pre_registration !== "submitted" &&
-                  application.meta?.full_registration !== "submitted"
-                }
+                disabled={isApplicationProcessed}
               >
                 <Check className="h-4 w-4 mr-2" /> Approve
               </Button>
@@ -800,6 +838,7 @@ const ApplicationDetail = () => {
               variant="outline"
               className="border-red-500 text-red-500 hover:bg-red-50"
               onClick={() => handleApplicationDecision("reject")}
+              disabled={isApplicationProcessed}
             >
               <X className="h-4 w-4 mr-2" /> Reject
             </Button>

@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Applications from "./pages/Applications";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import People from "./pages/People";
+import Onboarding from "./pages/Onboarding";
 import UserDetail from "./pages/UserDetail";
 import UserEdit from "./pages/UserEdit";
 import Clients from "./pages/Clients";
@@ -87,6 +88,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <People />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/onboarding"
+                  element={
+                    <ProtectedRoute>
+                      <Onboarding />
                     </ProtectedRoute>
                   }
                 />

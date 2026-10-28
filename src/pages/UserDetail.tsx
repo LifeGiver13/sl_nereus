@@ -11,6 +11,7 @@ import { API_BASE_URL } from '../config/env';
 import { getNestedProperty } from '../lib/utils';
 import UserDocuments from '@/components/UserDocuments';
 import UploadUserDocumentModal from '@/components/UploadUserDocumentModal';
+import InvitationHistoryPanel from '@/components/InvitationHistoryPanel';
 import defaultAvatar from '@/assets/nereus-logo-light.png';
 
 type ViewField = {
@@ -399,6 +400,7 @@ const UserDetail = () => {
 
 
             <TabsContent value="basic" className="mt-0 focus-visible:outline-none">
+              <div className="space-y-6">
               <Card className="rounded-none border-0 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-[#000009]">Basic Information</CardTitle>
@@ -469,6 +471,9 @@ const UserDetail = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              <InvitationHistoryPanel userId={user.id} />
+              </div>
             </TabsContent>
 
             <TabsContent value="profile" className="mt-0 focus-visible:outline-none">

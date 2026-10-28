@@ -17,6 +17,7 @@ import {
   Tags,
   LayoutTemplate,
   User2Icon,
+  UserPlus,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { IconActionButton } from '@/components/IconActionTooltip';
@@ -35,6 +36,7 @@ const coreNavItems = [
   { icon: Briefcase, label: 'Jobs', href: '/jobs' },
   { icon: ClipboardCheck, label: 'Timesheets', href: '/timesheets' },
   { icon: Users, label: 'People', href: '/people' },
+  { icon: UserPlus, label: 'Onboarding', href: '/onboarding' },
   { icon: Tags, label: 'Skills', href: '/skills' },
   { icon: User2Icon, label: 'Account', href: '/account' },
 

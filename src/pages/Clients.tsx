@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Eye, Edit, Briefcase, Trash2, Search, MoreVertical, Clock, Plus, MapPin, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Eye, Edit, Briefcase, Trash2, MoreVertical, Clock, Plus, MapPin, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
@@ -47,12 +47,10 @@ const SortIcon = ({ column, sortColumn, sortDirection }: {
 
 const Clients = () => {
   const navigate = useNavigate();
-  const [clients, setClients] = useState<Client[]>([]);
+  const [allClients, setAllClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalClients, setTotalClients] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -74,22 +72,12 @@ const Clients = () => {
     }
   };
 
-
-  const fetchClients = async (page = 1, search = '') => {
+  // Fetch the full client list once; filtering/sorting/pagination all happen client-side
+  // so that sorting and "showing X of Y" apply to the whole dataset, not just one page.
+  const fetchClients = async () => {
     try {
       setIsLoading(true);
-      let url = `${API_BASE_URL}/clients?offset=${(page - 1) * pageSize}&limit=${pageSize}`;
-
-      if (search.trim()) {
-        const searchObject = {
-          name: { "like": `%${search}%` }
-        };
-        url += `&search=${encodeURIComponent(JSON.stringify(searchObject))}`;
-      }
-
-      console.log('Fetching clients from:', url);
-
-      const response = await fetch(url, {
+      const response = await fetch(`${API_BASE_URL}/clients?limit=9999&offset=0`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -101,11 +89,7 @@ const Clients = () => {
       }
 
       const data: ClientsResponse = await response.json();
-      console.log('Clients data received:', data);
-
-      setClients(data.results || []);
-      setTotalClients(data.total || 0);
-      setTotalPages(Math.ceil((data.total || 0) / pageSize));
+      setAllClients(data.results || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
       toast({
@@ -113,28 +97,19 @@ const Clients = () => {
         description: "Failed to fetch clients",
         variant: "destructive",
       });
-      setClients([]);
-      setTotalClients(0);
-      setTotalPages(0);
+      setAllClients([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchClients(currentPage, searchTerm);
-  }, [currentPage, pageSize]);
+    fetchClients();
+  }, []);
 
-  const handleSearch = () => {
+  useEffect(() => {
     setCurrentPage(1);
-    fetchClients(1, searchTerm);
-  };
-
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
+  }, [searchTerm]);
 
   const handleEditClient = (client: Client) => {
     setSelectedClient(client);
@@ -142,7 +117,7 @@ const Clients = () => {
   };
 
   const handleClientUpdated = () => {
-    fetchClients(currentPage, searchTerm);
+    fetchClients();
     toast({
       title: "Success",
       description: "Client updated successfully and list refreshed",
@@ -150,7 +125,7 @@ const Clients = () => {
   };
 
   const handleClientCreated = () => {
-    fetchClients(currentPage, searchTerm);
+    fetchClients();
     toast({
       title: "Success",
       description: "Client created successfully",
@@ -176,8 +151,7 @@ const Clients = () => {
           description: "Client deleted successfully",
         });
 
-        // Refresh the current page
-        fetchClients(currentPage, searchTerm);
+        fetchClients();
       } catch (error) {
         console.error('Error deleting client:', error);
         toast({
@@ -188,14 +162,17 @@ const Clients = () => {
       }
     }
   };
-  useEffect(() => {
-    fetchClients(currentPage, searchTerm);
-  }, [currentPage, pageSize, searchTerm]);
+
+  const filteredClients = useMemo(() => {
+    if (!searchTerm.trim()) return allClients;
+    const term = searchTerm.trim().toLowerCase();
+    return allClients.filter((client) => (client.name || '').toLowerCase().includes(term));
+  }, [allClients, searchTerm]);
 
   const sortedClients = useMemo(() => {
-    if (!sortColumn || !sortDirection) return clients;
+    if (!sortColumn || !sortDirection) return filteredClients;
 
-    return [...clients].sort((a, b) => {
+    return [...filteredClients].sort((a, b) => {
       const dir = sortDirection === 'asc' ? 1 : -1;
       switch (sortColumn) {
         case 'id': return (a.id - b.id) * dir;
@@ -204,7 +181,14 @@ const Clients = () => {
         default: return 0;
       }
     });
-  }, [clients, sortColumn, sortDirection]);
+  }, [filteredClients, sortColumn, sortDirection]);
+
+  const totalClients = filteredClients.length;
+  const totalPages = Math.max(1, Math.ceil(totalClients / pageSize));
+  const paginatedClients = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedClients.slice(start, start + pageSize);
+  }, [sortedClients, currentPage, pageSize]);
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
@@ -310,19 +294,14 @@ const Clients = () => {
                   placeholder="Search clients by name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={handleSearchKeyPress}
                 />
               </div>
-              <Button onClick={handleSearch} variant="outline">
-                <Search className="h-4 w-4 mr-2" />
-                Search
-              </Button>
             </div>
 
             {/* Results Summary */}
             {!isLoading && (
               <div className="mb-4 text-sm text-gray-600">
-                Showing {clients.length} of {totalClients} clients
+                Showing {paginatedClients.length} of {totalClients} clients
                 {searchTerm && ` for "${searchTerm}"`}
               </div>
             )}
@@ -332,7 +311,7 @@ const Clients = () => {
               <div className="text-center py-12">
                 <p className="text-gray-500">Loading clients...</p>
               </div>
-            ) : clients.length === 0 ? (
+            ) : sortedClients.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500">
                   {searchTerm ? 'No clients found matching your search.' : 'No clients found.'}
@@ -350,7 +329,7 @@ const Clients = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedClients.map((client) => (
+                    {paginatedClients.map((client) => (
                       <TableRow key={client.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/client/${client.id}`}>
                         <TableCell className="font-medium">{client.id}</TableCell>
                         <TableCell>{client.name}</TableCell>
