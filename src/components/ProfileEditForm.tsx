@@ -87,14 +87,24 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
     setIsLoading(true);
 
     try {
-      const updatedUser = { ...user, profile };
+      const profileToSave = fields
+        ? Object.fromEntries(
+          fields.map((field) => [
+            field.property,
+            profile[field.property] ?? '',
+          ])
+        )
+        : Object.fromEntries(
+          Object.entries(profile).filter(([key, value]) =>
+            JSON.stringify(value) !== JSON.stringify(user.profile?.[key])
+          )
+        );
 
       const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedUser),
+        body: JSON.stringify({ profile: profileToSave }),
       });
-
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       toast({ title: "Success", description: "Profile updated successfully" });
@@ -125,8 +135,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
 
   const displayProfile = fields
     ? Object.fromEntries(
-        fields.map((field) => [field.property, profile[field.property] ?? ''])
-      )
+      fields.map((field) => [field.property, profile[field.property] ?? ''])
+    )
     : profile;
 
   const renderProfileField = (key: string, value: any, field?: ViewField) => {

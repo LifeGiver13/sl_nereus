@@ -227,7 +227,9 @@ const AppPlatformUsers: React.FC = () => {
                 u.profile?.firstName,
                 u.profile?.lastName,
                 u.profile?.middleNames,
+                u.profile?.middleName,
                 u.profile?.MiddleNames,
+                u.profile?.MiddleName,
                 u.profile?.ForeName,
                 u.profile?.Surename,
             ]

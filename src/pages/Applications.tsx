@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, MessageSquare, Check, FileSignature, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Eye, MessageSquare, Check, FileSignature, ChevronUp, ChevronDown, ChevronsUpDown, UserRound } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE_URL } from "../config/env";
 import { PageSizeSelector } from "../components/ui/page-size-selector";
@@ -509,9 +509,22 @@ const Applications = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-[#000009]">Applications</h1>
-          <p className="text-gray-600 mt-1">Manage job applications and candidate submissions</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-[#000009]">
+              Applications
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Manage job applications and candidate submissions
+            </p>
+          </div>
+{/* 
+          <Link
+            to="/people"
+            className="text-[#712B71] hover:underline font-medium"
+          >
+            Go to People →
+          </Link> */}
         </div>
 
         <Card className="border-0 shadow-lg">
@@ -657,6 +670,7 @@ const Applications = () => {
                         <TableCell>{formatDate(application.createdAt)}</TableCell>
                         <TableCell>{formatDate(application.updatedAt)}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
+
                           <div className="flex flex-wrap items-center gap-1.5">
                             <IconActionTooltip label="Review application">
                               <span className="inline-flex">
@@ -672,6 +686,16 @@ const Applications = () => {
                                 </Link>
                               </span>
                             </IconActionTooltip>
+
+                            <IconActionButton
+                              label="View user in People"
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 w-9 p-0 hover:bg-[#712B71] hover:text-white"
+                              onClick={() => navigate(`/user/${application.userId}`)}
+                            >
+                              <UserRound className="h-4 w-4" />
+                            </IconActionButton>
 
                             {!isProcessed(application) && (
                               <>

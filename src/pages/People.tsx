@@ -143,7 +143,41 @@ const People = () => {
     try {
       setIsLoading(true);
 
-      const response = await fetch(`${API_BASE_URL}/users?limit=9999&offset=0`, {
+      let url = `${API_BASE_URL}/users?page=${currentPage}&limit=${itemsPerPage}&offset=${(currentPage - 1) * itemsPerPage}`;
+
+      // Build search object
+      const searchObj: any = {};
+
+      const searchFeilds = ['username', 'profile.fullName', 'profile.firstName', 'profile.lastName', 'profile.middleNames', 'profile.MiddleNames','profile.middleName', 'profile.MiddleName', 'profile.ForeName', 'profile.Surename']; // fields to search in
+
+      if (searchTerm.trim() !== '') {
+        searchObj.or = searchFeilds.map((feild) => ({
+          [feild]: { like: `%${searchTerm}%` }
+        }
+        )
+        )
+
+      }
+
+      if (selectedRole && selectedRole !== 'all') {
+        searchObj.role = selectedRole;
+      }
+      if (selectedStatus && selectedStatus !== 'all') {
+        searchObj.status = selectedStatus;
+      }
+
+      const bounds = getDateRangeBounds(lastLoginRange);
+      if (bounds) {
+        searchObj.createdAt = {
+          gte: bounds.from,
+          lte: bounds.to,
+        };
+      }
+      if (Object.keys(searchObj).length > 0) {
+        url += `&search=${encodeURIComponent(JSON.stringify(searchObj))}`;
+      }
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
