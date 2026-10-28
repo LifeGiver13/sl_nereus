@@ -4,9 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-
-export const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+import { API_BASE_URL } from "@/config/env";
 
 
 interface AccountRemovalPolicy {
