@@ -64,11 +64,11 @@ const STAGE_LABELS: { [key: string]: string } = {
 const STATUS_LABELS: { [key: string]: string } = {
   pending: "In Progress",
   submitted: "Pending Review",
-  complete: "Completed",
+  // complete: "Completed",
   approved: "Approved",
-  rejected: "Rejected",
+  processed: "Complete",
   incomplete: "Incomplete",
-  processed: "NA",
+  rejected: "Rejected",
 };
 
 const Applications = () => {
@@ -110,7 +110,7 @@ const Applications = () => {
 
   const [usernameFilter, setUsernameFilter] = useState('');
   const [stageFilter, setStageFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('pending');
   const getStageFromMeta = (application: Application): string => {
     return application.meta?.stage || "pre-registration";
   };
@@ -227,7 +227,9 @@ const Applications = () => {
       pending: "bg-yellow-500 hover:bg-yellow-600",
       incomplete: "bg-orange-500 hover:bg-orange-600",
       rejected: "bg-red-500 hover:bg-red-600",
-      processed: "bg-gray-400 hover:bg-gray-500",
+      processed: "bg-green-500 hover:bg-green-600",
+      approved: "bg-gray-400 hover:bg-gray-500",
+
     };
 
     const displayText = STATUS_LABELS[normalizedStatus] ||
@@ -513,7 +515,7 @@ const Applications = () => {
               Manage job applications and candidate submissions
             </p>
           </div>
-{/* 
+          {/* 
           <Link
             to="/people"
             className="text-[#712B71] hover:underline font-medium"
@@ -566,7 +568,7 @@ const Applications = () => {
               <Button variant="outline" onClick={() => {
                 setUsernameFilter('');
                 setStageFilter('');
-                setStatusFilter('');
+                setStatusFilter('pending');
               }}>
                 Clear Filters
               </Button>
