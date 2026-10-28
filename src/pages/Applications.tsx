@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, MessageSquare, Check, FileSignature, ChevronUp, ChevronDown, ChevronsUpDown, UserRound } from "lucide-react";
+import { Eye, MessageSquare, Check, FileSignature, ChevronUp, ChevronDown, ChevronsUpDown, UserRound, Delete, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE_URL } from "../config/env";
 import { PageSizeSelector } from "../components/ui/page-size-selector";
@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { DeleteApplicationModal } from "@/components/ApplicationDeletionConfirmationModal";
 
 
 
@@ -82,6 +83,9 @@ const Applications = () => {
 
   const [newAppModalOpen, setNewAppModalOpen] = useState(false);
   const [newAppLoading, setNewAppLoading] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
 
   const [formData, setFormData] = useState({
     title: "Mr",
@@ -694,6 +698,18 @@ const Applications = () => {
                               <UserRound className="h-4 w-4" />
                             </IconActionButton>
 
+                            <IconActionButton
+                              label="Delete Applicant"
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 w-9 p-0 hover:bg-red-500 hover:bg-red-600 hover:text-white"
+                              onClick={() => {
+                                setSelectedApplication(application);
+                                setIsDeleteModalOpen(true);
+                              }}                            >
+                              <Trash2 className="h-4 w-4" />
+                            </IconActionButton>
+
                             {!isProcessed(application) && (
                               <>
                                 {hasUnresolvedRemarks(application) ? (
@@ -869,6 +885,25 @@ const Applications = () => {
           onSuccess={handleDocuSignSuccess}
         />
       )}
+
+      {selectedApplication && (
+        <DeleteApplicationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          applicationId={selectedApplication.id}
+          onSuccess={() => {
+            setIsDeleteModalOpen(false);
+            setSelectedApplication(null)
+            fetchApplications();
+          }}
+          username={[
+            selectedApplication.data?.["Basic Information"]?.fields?.firstName,
+            selectedApplication.data?.["Basic Information"]?.fields?.lastName,
+          ]
+            .filter(Boolean)
+            .join(" ") || selectedApplication.user?.username || "Unknown user"} />
+      )}
+
     </AdminLayout>
   );
 };
