@@ -76,7 +76,7 @@ export const DeleteApplicationModal: React.FC<DeleteApplicationModalProps> = ({
                     <DialogTitle>Delete Application</DialogTitle>
 
                     <DialogDescription>
-                        Deleting {username}'s application will also delete the their account from the
+                        Deleting {username}'s application will also delete their account from the
                         system. Do you want to proceed?
                     </DialogDescription>
                 </DialogHeader>
