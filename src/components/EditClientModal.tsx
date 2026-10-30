@@ -275,9 +275,9 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Client: {formData.name}</DialogTitle>
-        </DialogHeader>
+        <DialogTitle className="font-bold">
+          Edit Client: {formData.name}
+        </DialogTitle>
 
         <form onSubmit={handleSubmitClient} className="space-y-6">
           {/* Company Info not part of the view manager sections, always visible */}
@@ -356,6 +356,17 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
               )}
             </CardContent>
           </Card>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Updating...' : 'Update Client'}
+            </Button>
+          </div>
+
+          <div className="border-t border-gray-200 my-6" />
 
           {/* Additional Contacts Section */}
           <Card>
@@ -483,14 +494,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
             </CardContent>
           </Card>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Updating...' : 'Update Client'}
-            </Button>
-          </div>
+
         </form>
       </DialogContent>
     </Dialog>
