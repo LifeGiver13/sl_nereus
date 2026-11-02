@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDocument } from "../contexts/DocumentContext";
-import { ActivityIcon } from "lucide-react";
+import { Download, Eye, Loader2 } from "lucide-react";
+import { Button } from "./ui/button";
 
 type DocumentItem = {
     key: string;
@@ -12,6 +13,15 @@ type DocumentItem = {
 type UserDocumentsProps = {
     bucket: string;
 };
+
+// Shared button styles: icon + label sit on one line, fixed width so the
+// button doesn't jump in size when the spinner replaces the icon.
+const baseButtonClass =
+    "inline-flex items-center justify-center gap-2 min-w-[120px] px-4 py-2 " +
+    "rounded-md text-sm font-medium text-white transition-colors " +
+    "disabled:opacity-50 disabled:cursor-not-allowed";
+
+const iconClass = "h-4 w-4 shrink-0";
 
 const UserDocuments = ({
     bucket,
@@ -168,25 +178,33 @@ const UserDocuments = ({
 
                     <div className="flex gap-2">
 
-                        <button
+                        <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleView(doc.key)}
                             disabled={viewingKey === doc.key}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
                         >
-                            {viewingKey === doc.key
-                                ? <ActivityIcon className="animate-spin" />
-                                : "View"}
-                        </button>
+                            {viewingKey === doc.key ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Eye className="h-4 w-4 mr-2" />
+                            )}
+                            View
+                        </Button>
 
-                        <button
+                        <Button
+                            size="sm"
                             onClick={() => handleDownload(doc.key)}
                             disabled={downloadingKey === doc.key}
-                            className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 disabled:opacity-50"
+                            className="bg-[#712B71] hover:bg-[#712B71]/90"
                         >
-                            {downloadingKey === doc.key
-                                ? <ActivityIcon className="animate-spin" />
-                                : "Download"}
-                        </button>
+                            {downloadingKey === doc.key ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                                <Download className="h-4 w-4 mr-2" />
+                            )}
+                            Download
+                        </Button>
 
                     </div>
                 </div>
