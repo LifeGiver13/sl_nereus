@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, MessageSquare, Check, FileSignature, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { Eye, MessageSquare, Check, FileSignature, ChevronUp, ChevronDown, ChevronsUpDown, UserRound, Delete, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE_URL } from "../config/env";
 import { PageSizeSelector } from "../components/ui/page-size-selector";
@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { DeleteApplicationModal } from "@/components/ApplicationDeletionConfirmationModal";
 
 
 
@@ -64,11 +65,11 @@ const STAGE_LABELS: { [key: string]: string } = {
 const STATUS_LABELS: { [key: string]: string } = {
   pending: "In Progress",
   submitted: "Pending Review",
-  complete: "Completed",
+  // complete: "Completed",
   approved: "Approved",
-  rejected: "Rejected",
+  processed: "Complete",
   incomplete: "Incomplete",
-  processed: "NA",
+  rejected: "Rejected",
 };
 
 const Applications = () => {
@@ -82,6 +83,9 @@ const Applications = () => {
 
   const [newAppModalOpen, setNewAppModalOpen] = useState(false);
   const [newAppLoading, setNewAppLoading] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
 
   const [formData, setFormData] = useState({
     title: "Mr",
@@ -110,7 +114,7 @@ const Applications = () => {
 
   const [usernameFilter, setUsernameFilter] = useState('');
   const [stageFilter, setStageFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('pending');
   const getStageFromMeta = (application: Application): string => {
     return application.meta?.stage || "pre-registration";
   };
@@ -179,54 +183,11 @@ const Applications = () => {
   const total = filteredApplications.length;
   const totalPages = Math.ceil(total / pageSize);
 
-  const [sortColumn, setSortColumn] = useState<string | null>("createdAt")
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-
-  // Sort the full filtered dataset (not just the current page) before paginating,
-  // so header sorting and pagination compose correctly.
-  const sortedApplications = useMemo(() => {
-    if (!sortColumn) return filteredApplications;
-    const dir = sortDirection === "asc" ? 1 : -1;
-
-    return [...filteredApplications].sort((a, b) => {
-      switch (sortColumn) {
-        case "id":
-          return (a.id - b.id) * dir;
-
-        case "username":
-          return (a.data?.['Basic Information']?.fields?.firstName ?? "").localeCompare(b.data?.['Basic Information']?.fields?.firstName ?? "") * dir;
-
-        case "createdAt":
-          return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
-
-        case "updatedAt":
-          return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
-
-        case "status":
-          return (
-            getStatusFromMeta(a).localeCompare(
-              getStatusFromMeta(b)
-            ) * dir
-          );
-
-        case "stage":
-          return (
-            getStageFromMeta(a).localeCompare(
-              getStageFromMeta(b)
-            ) * dir
-          );
-
-        default:
-          return 0;
-      }
-    });
-  }, [filteredApplications, sortColumn, sortDirection]);
-
-  // Current page data (sorted across the whole dataset, then sliced)
+  // Current page data
   const paginatedApplications = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return sortedApplications.slice(start, start + pageSize);
-  }, [sortedApplications, currentPage, pageSize]);
+    return filteredApplications.slice(start, start + pageSize);
+  }, [filteredApplications, currentPage, pageSize]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -244,6 +205,9 @@ const Applications = () => {
       year: 'numeric'
     }).replace(/\//g, '/'); // Ensures 18/06/2026
   }
+
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -267,7 +231,9 @@ const Applications = () => {
       pending: "bg-yellow-500 hover:bg-yellow-600",
       incomplete: "bg-orange-500 hover:bg-orange-600",
       rejected: "bg-red-500 hover:bg-red-600",
-      processed: "bg-gray-400 hover:bg-gray-500",
+      processed: "bg-green-500 hover:bg-green-600",
+      approved: "bg-gray-400 hover:bg-gray-500",
+
     };
 
     const displayText = STATUS_LABELS[normalizedStatus] ||
@@ -436,6 +402,41 @@ const Applications = () => {
       setNewAppLoading(false);
     }
   };
+  const sortedApplications = [...paginatedApplications].sort((a, b) => {
+    if (!sortColumn) return 0;
+    const dir = sortDirection === "asc" ? 1 : -1;
+
+    switch (sortColumn) {
+      case "id":
+        return (a.id - b.id) * dir;
+
+      case "username":
+        return (a.data?.['Basic Information']?.fields?.firstName ?? "").localeCompare(b.data?.['Basic Information']?.fields?.firstName ?? "") * dir;
+
+      case "createdAt":
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
+
+      case "updatedAt":
+        return (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()) * dir;
+
+      case "status":
+        return (
+          getStatusFromMeta(a).localeCompare(
+            getStatusFromMeta(b)
+          ) * dir
+        );
+
+      case "stage":
+        return (
+          getStageFromMeta(a).localeCompare(
+            getStageFromMeta(b)
+          ) * dir
+        );
+
+      default:
+        return 0;
+    }
+  });
 
 
   const SortIcon = ({ column, sortColumn, sortDirection }: {
@@ -509,9 +510,22 @@ const Applications = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-[#000009]">Applications</h1>
-          <p className="text-gray-600 mt-1">Manage job applications and candidate submissions</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-[#000009]">
+              Applications
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Manage job applications and candidate submissions
+            </p>
+          </div>
+          {/* 
+          <Link
+            to="/people"
+            className="text-[#712B71] hover:underline font-medium"
+          >
+            Go to People →
+          </Link> */}
         </div>
 
         <Card className="border-0 shadow-lg">
@@ -558,7 +572,7 @@ const Applications = () => {
               <Button variant="outline" onClick={() => {
                 setUsernameFilter('');
                 setStageFilter('');
-                setStatusFilter('');
+                setStatusFilter('pending');
               }}>
                 Clear Filters
               </Button>
@@ -630,7 +644,7 @@ const Applications = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedApplications.map((application) => (
+                    {sortedApplications.map((application) => (
                       <TableRow
                         key={application.id}
                         className="cursor-pointer hover:bg-gray-50"
@@ -657,6 +671,7 @@ const Applications = () => {
                         <TableCell>{formatDate(application.createdAt)}</TableCell>
                         <TableCell>{formatDate(application.updatedAt)}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
+
                           <div className="flex flex-wrap items-center gap-1.5">
                             <IconActionTooltip label="Review application">
                               <span className="inline-flex">
@@ -672,6 +687,28 @@ const Applications = () => {
                                 </Link>
                               </span>
                             </IconActionTooltip>
+
+                            <IconActionButton
+                              label="View user in People"
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 w-9 p-0 hover:bg-[#712B71] hover:text-white"
+                              onClick={() => navigate(`/user/${application.userId}`)}
+                            >
+                              <UserRound className="h-4 w-4" />
+                            </IconActionButton>
+
+                            <IconActionButton
+                              label="Delete Applicant"
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 w-9 p-0 hover:bg-red-500 hover:bg-red-600 hover:text-white"
+                              onClick={() => {
+                                setSelectedApplication(application);
+                                setIsDeleteModalOpen(true);
+                              }}                            >
+                              <Trash2 className="h-4 w-4" />
+                            </IconActionButton>
 
                             {!isProcessed(application) && (
                               <>
@@ -848,6 +885,25 @@ const Applications = () => {
           onSuccess={handleDocuSignSuccess}
         />
       )}
+
+      {selectedApplication && (
+        <DeleteApplicationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          applicationId={selectedApplication.id}
+          onSuccess={() => {
+            setIsDeleteModalOpen(false);
+            setSelectedApplication(null)
+            fetchApplications();
+          }}
+          username={[
+            selectedApplication.data?.["Basic Information"]?.fields?.firstName,
+            selectedApplication.data?.["Basic Information"]?.fields?.lastName,
+          ]
+            .filter(Boolean)
+            .join(" ") || selectedApplication.user?.username || "Unknown user"} />
+      )}
+
     </AdminLayout>
   );
 };
