@@ -38,6 +38,18 @@ interface UsersResponse {
 }
 
 type DateRangeOption = 'all' | 'today' | 'this_week' | 'this_month';
+type AppFilterOption = 'all' | 'has_app' | 'ios' | 'android';
+
+// A user "has the app" when they have a push token registered for that
+// platform: tokens are added on app login (with notifications allowed) and
+// removed on app logout.
+const IOS_APP_SEARCH = { 'meta.pushTokens.ios': { ne: '[]' } };
+const ANDROID_APP_SEARCH = { 'meta.pushTokens.android': { ne: '[]' } };
+const APP_FILTER_SEARCH: Record<Exclude<AppFilterOption, 'all'>, object> = {
+  has_app: { or: [IOS_APP_SEARCH, ANDROID_APP_SEARCH] },
+  ios: IOS_APP_SEARCH,
+  android: ANDROID_APP_SEARCH,
+};
 type SortDirection = 'asc' | 'desc' | null;
 
 const SortIcon = ({ column, sortColumn, sortDirection }: {
@@ -96,6 +108,7 @@ const People = () => {
 
   const [selectedRole, setSelectedRole] = useState<string>('worker');
   const [selectedStatus, setSelectedStatus] = useState<string>('active');
+  const [selectedApp, setSelectedApp] = useState<AppFilterOption>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { toast } = useToast();
 
@@ -146,6 +159,10 @@ const People = () => {
       if (selectedStatus && selectedStatus !== 'all') {
         searchObj.status = selectedStatus;
       }
+      if (selectedApp !== 'all') {
+        // Under `and` so it can't collide with the name search's `or`
+        searchObj.and = [APP_FILTER_SEARCH[selectedApp]];
+      }
 
       const bounds = getDateRangeBounds(lastLoginRange);
       if (bounds) {
@@ -187,6 +204,7 @@ const People = () => {
   const clearFilters = () => {
     setSelectedRole('all');
     setSelectedStatus('all');
+    setSelectedApp('all');
     setSearchTerm('');
     setLastLoginRange('all');
     setCurrentPage(1);
@@ -194,7 +212,7 @@ const People = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchTerm, selectedRole, selectedStatus, itemsPerPage, lastLoginRange]);
+  }, [currentPage, searchTerm, selectedRole, selectedStatus, selectedApp, itemsPerPage, lastLoginRange]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -600,6 +618,22 @@ const People = () => {
                       <SelectItem value="today">Today</SelectItem>
                       <SelectItem value="this_week">This Week</SelectItem>
                       <SelectItem value="this_month">This Month</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* App Filter */}
+                <div className="flex flex-col gap-2 min-w-[220px]">
+                  <label className="text-sm font-medium">App</label>
+                  <Select value={selectedApp} onValueChange={(value) => { setSelectedApp(value as AppFilterOption); setCurrentPage(1); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select app filter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Users</SelectItem>
+                      <SelectItem value="has_app">Has the App</SelectItem>
+                      <SelectItem value="ios">iOS</SelectItem>
+                      <SelectItem value="android">Android</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
