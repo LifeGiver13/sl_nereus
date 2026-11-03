@@ -43,13 +43,13 @@ type AppFilterOption = 'all' | 'has_app' | 'ios' | 'android';
 // A user "has the app" when they have a push token registered for that
 // platform: tokens are added on app login (with notifications allowed) and
 // removed on app logout.
-const IOS_APP_SEARCH = { 'meta.pushTokens.ios': { ne: '[]' } };
-const ANDROID_APP_SEARCH = { 'meta.pushTokens.android': { ne: '[]' } };
-const APP_FILTER_SEARCH: Record<Exclude<AppFilterOption, 'all'>, object> = {
-  has_app: { or: [IOS_APP_SEARCH, ANDROID_APP_SEARCH] },
-  ios: IOS_APP_SEARCH,
-  android: ANDROID_APP_SEARCH,
-};
+function userHasApp(user: User, filter: Exclude<AppFilterOption, 'all'>): boolean {
+  const ios: unknown[] = user.meta?.pushTokens?.ios || [];
+  const android: unknown[] = user.meta?.pushTokens?.android || [];
+  if (filter === 'ios') return ios.length > 0;
+  if (filter === 'android') return android.length > 0;
+  return ios.length > 0 || android.length > 0;
+}
 type SortDirection = 'asc' | 'desc' | null;
 
 const SortIcon = ({ column, sortColumn, sortDirection }: {
@@ -98,10 +98,30 @@ const getDateRangeBounds = (range: DateRangeOption): { from: string; to: string 
   };
 };
 
+const SEARCH_FIELDS: Array<[string, (u: User) => unknown]> = [
+  ['username', (u) => u.username],
+  ['profile.fullName', (u) => u.profile?.fullName],
+  ['profile.firstName', (u) => u.profile?.firstName],
+  ['profile.lastName', (u) => u.profile?.lastName],
+  ['profile.middleNames', (u) => u.profile?.middleNames],
+  ['profile.MiddleNames', (u) => u.profile?.MiddleNames],
+  ['profile.ForeName', (u) => u.profile?.ForeName],
+  ['profile.Surename', (u) => u.profile?.Surename],
+];
+
+function isWithinDateBounds(dateStr: string | undefined, bounds: { from: string; to: string } | null): boolean {
+  if (!bounds) return true;
+  if (!dateStr) return false;
+  const t = new Date(dateStr).getTime();
+  if (Number.isNaN(t)) return false;
+  return t >= new Date(bounds.from).getTime() && t <= new Date(bounds.to).getTime();
+}
+
 const People = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>([]);
-  const [total, setTotal] = useState(0);
+  // Full, unfiltered dataset — filtering/sorting/pagination all happen client-side
+  // so they apply to the whole dataset, not just one server-fetched page.
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -114,7 +134,6 @@ const People = () => {
 
   const { preferences, updateTablePreferences } = usePreferences();
   const itemsPerPage = preferences.table.pageSize || 10;
-  const totalPages = Math.ceil(total / itemsPerPage);
 
 
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -137,45 +156,10 @@ const People = () => {
     try {
       setIsLoading(true);
 
-      let url = `${API_BASE_URL}/users?page=${currentPage}&limit=${itemsPerPage}&offset=${(currentPage - 1) * itemsPerPage}`;
-
-      // Build search object
-      const searchObj: any = {};
-
-      const searchFeilds = ['username', 'profile.fullName', 'profile.firstName', 'profile.lastName', 'profile.middleNames', 'profile.MiddleNames', 'profile.middleName', 'profile.MiddleName', 'profile.ForeName', 'profile.Surename']; // fields to search in
-
-      if (searchTerm.trim() !== '') {
-        searchObj.or = searchFeilds.map((feild) => ({
-          [feild]: { like: `%${searchTerm}%` }
-        }
-        )
-        )
-
-      }
-
-      if (selectedRole && selectedRole !== 'all') {
-        searchObj.role = selectedRole;
-      }
-      if (selectedStatus && selectedStatus !== 'all') {
-        searchObj.status = selectedStatus;
-      }
-      if (selectedApp !== 'all') {
-        // Under `and` so it can't collide with the name search's `or`
-        searchObj.and = [APP_FILTER_SEARCH[selectedApp]];
-      }
-
-      const bounds = getDateRangeBounds(lastLoginRange);
-      if (bounds) {
-        searchObj.createdAt = {
-          gte: bounds.from,
-          lte: bounds.to,
-        };
-      }
-      if (Object.keys(searchObj).length > 0) {
-        url += `&search=${encodeURIComponent(JSON.stringify(searchObj))}`;
-      }
-
-      const response = await fetch(url, {
+      // Fetch the full dataset once; filtering/sorting/pagination all happen
+      // client-side below (see `allUsers` comment) so they apply to the whole
+      // dataset, not just one server-fetched page.
+      const response = await fetch(`${API_BASE_URL}/users?limit=9999&offset=0`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -187,9 +171,7 @@ const People = () => {
       }
 
       const data: UsersResponse = await response.json();
-      console.log('Users data received:', data);
-      setUsers(data.results);
-      setTotal(data.total);
+      setAllUsers(data.results);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -212,12 +194,34 @@ const People = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchTerm, selectedRole, selectedStatus, selectedApp, itemsPerPage, lastLoginRange]);
+  }, []);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
   };
+
+  const filteredUsers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    const bounds = getDateRangeBounds(lastLoginRange);
+
+    return allUsers.filter((user) => {
+      if (selectedRole && selectedRole !== 'all' && user.role !== selectedRole) return false;
+      if (selectedStatus && selectedStatus !== 'all' && user.status !== selectedStatus) return false;
+      if (!isWithinDateBounds(user.createdAt, bounds)) return false;
+      if (selectedApp !== 'all' && !userHasApp(user, selectedApp)) return false;
+
+      if (term) {
+        const matches = SEARCH_FIELDS.some(([, getValue]) => {
+          const value = getValue(user);
+          return typeof value === 'string' && value.toLowerCase().includes(term);
+        });
+        if (!matches) return false;
+      }
+
+      return true;
+    });
+  }, [allUsers, searchTerm, selectedRole, selectedStatus, selectedApp, lastLoginRange]);
 
   const getMatchingFields = () => {
     if (!searchTerm.trim()) return [];
@@ -226,7 +230,7 @@ const People = () => {
 
     const matchedCounts: Record<string, number> = {};
 
-    users.forEach((user) => {
+    filteredUsers.forEach((user) => {
       const fieldsToCheck = [
         {
           label: 'Username',
@@ -335,7 +339,7 @@ const People = () => {
   const sortedUsers = useMemo(() => {
 
 
-    let list = [...users];
+    let list = [...filteredUsers];
     if (!sortColumn || !sortDirection) return list;
 
     const dir = sortDirection === 'asc' ? 1 : -1;
@@ -391,9 +395,15 @@ const People = () => {
           return 0;
       }
     });
-  }, [users, sortColumn, sortDirection, lastLoginRange]);
+  }, [filteredUsers, sortColumn, sortDirection]);
 
+  const total = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(total / itemsPerPage));
 
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedUsers.slice(start, start + itemsPerPage);
+  }, [sortedUsers, currentPage, itemsPerPage]);
 
   //pagination
   const renderPagination = () => {
@@ -743,7 +753,7 @@ const People = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedUsers.map((user) => (
+                    {paginatedUsers.map((user) => (
                       <TableRow key={user.id} className="cursor-pointer hover:bg-gray-50" onClick={() => window.location.href = `/user/${user.id}`}>
                         <TableCell>
                           {user.id}
