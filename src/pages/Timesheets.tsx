@@ -267,7 +267,7 @@ function getSignerLabel(timesheet: Timesheet): string {
     const role = timesheet.meta.managerRole ? ` (${timesheet.meta.managerRole})` : "";
     return `${timesheet.meta.signerName}${role}`;
   }
-  if (timesheet.meta?.signerName) {
+  if (timesheet.meta?.signedBy) {
     return `${timesheet.meta.signedBy} (self-certified)`;
   }
   return "Not provided";
@@ -335,7 +335,17 @@ const Timesheets = () => {
     }
   };
 
-
+  function getSortedEntries(entries: TimesheetEntry[]): TimesheetEntry[] {
+    if (!Array.isArray(entries)) return [];
+    return [...entries].sort((a, b) => {
+      const aTime = new Date(`${a.date}T${a.startTime || "00:00"}`).getTime();
+      const bTime = new Date(`${b.date}T${b.startTime || "00:00"}`).getTime();
+      // Push invalid dates to the end
+      if (Number.isNaN(aTime)) return 1;
+      if (Number.isNaN(bTime)) return -1;
+      return aTime - bTime;
+    });
+  }
 
   const SortableTh = ({ column, children }: { column: string; children: React.ReactNode }) => (
     <TableHead
@@ -609,7 +619,8 @@ const Timesheets = () => {
       "Wednesday Hours": `${dayData.Wednesday.hours.toFixed(2)} (${dayData.Wednesday.startTime}-${dayData.Wednesday.endTime})`,
       "Thursday Hours": `${dayData.Thursday.hours.toFixed(2)} (${dayData.Thursday.startTime}-${dayData.Thursday.endTime})`,
       "Friday Hours": `${dayData.Friday.hours.toFixed(2)} (${dayData.Friday.startTime}-${dayData.Friday.endTime})`,
-      "Saturday Hours": `${dayData.Sunday.hours.toFixed(2)} (${dayData.Sunday.startTime}-${dayData.Sunday.endTime})`,
+      "Saturday Hours": `${dayData.Saturday.hours.toFixed(2)} (${dayData.Saturday.startTime}-${dayData.Saturday.endTime})`,
+      "Sunday Hours": `${dayData.Sunday.hours.toFixed(2)} (${dayData.Sunday.startTime}-${dayData.Sunday.endTime})`,
 
       //signature info
       "Signed At": timesheet.meta?.signedAt
@@ -620,8 +631,8 @@ const Timesheets = () => {
       "Manager Note": timesheet.meta?.managerNote || NA,
       "Info Verified": typeof timesheet.meta?.infoVerified === "boolean"
         ? timesheet.meta.infoVerified
-          ? "Yes"
-          : "No"
+          ? "No"
+          : "Yes"
         : NA,
 
       "Rejection Reason": timesheet.meta?.rejectionReason || NA,
@@ -901,8 +912,9 @@ const Timesheets = () => {
     1,
     Math.ceil(filtered.length / pageSize)
   );
-  const allVisibleSelected = filtered.length > 0 && filtered.every((row) => selectedIds.includes(row.id));
-
+  const allVisibleSelected =
+    paginatedFiltered.length > 0 &&
+    paginatedFiltered.every((row) => selectedIds.includes(row.id));
   const updateStatus = async (timesheetId: number, status: TimesheetStatus, rejectionReason?: string) => {
     try {
       setIsSaving(true);
@@ -961,11 +973,14 @@ const Timesheets = () => {
   };
 
   const toggleSelectAllVisible = (checked: boolean) => {
+    const pageIds = paginatedFiltered.map((row) => row.id);
+
     if (!checked) {
-      setSelectedIds((prev) => prev.filter((id) => !filtered.some((row) => row.id === id)));
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
       return;
     }
-    setSelectedIds((prev) => Array.from(new Set([...prev, ...filtered.map((row) => row.id)])));
+
+    setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
   };
 
   const runBulkStatusUpdate = async () => {
@@ -1485,7 +1500,7 @@ const Timesheets = () => {
                                               </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                              {row.entries.map((entry, idx) => {
+                                              {getSortedEntries(row.entries).map((entry, idx) => {
                                                 const entryDate = new Date(entry.date);
                                                 const day = Number.isNaN(entryDate.getTime()) ? "-" : dayFormatter.format(entryDate);
                                                 const hours = calculateEntryHours(entry);
@@ -1527,7 +1542,7 @@ const Timesheets = () => {
                                         {typeof row.meta?.infoVerified === "boolean" && (
                                           <p>
                                             <strong>Info verified:</strong>{" "}
-                                            {row.meta.infoVerified ? "Yes" : "No"}
+                                            {row.meta.infoVerified ? "No" : "Yes"}
                                           </p>
                                         )}
 
