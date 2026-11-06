@@ -12,7 +12,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Eye, Edit, Briefcase, Trash2, MoreVertical, Clock, Plus, MapPin, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
 import { IconActionTooltip } from '@/components/IconActionTooltip';
@@ -77,11 +77,8 @@ const Clients = () => {
   const fetchClients = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_BASE_URL}/clients?limit=9999&offset=0`, {
+      const response = await apiRequest(`/clients?limit=9999&offset=0`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       if (!response.ok) {
@@ -135,11 +132,8 @@ const Clients = () => {
   const handleDelete = async (clientId: number) => {
     if (window.confirm('Are you sure you want to delete this client?')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/client/${clientId}`, {
+        const response = await apiRequest(`/client/${clientId}`, {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
         });
 
         if (!response.ok) {

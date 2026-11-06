@@ -20,7 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, apiRequest } from '@/lib/utils';
 
 interface Client {
   id: number;
@@ -93,7 +93,7 @@ const JobCreate = () => {
     queryKey: ['client-contacts', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return { contacts: [] };
-      const response = await fetch(`${API_BASE_URL}/client-contacts/${selectedClientId}`);
+      const response = await apiRequest(`/client-contacts/${selectedClientId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch client contacts');
       }
@@ -148,7 +148,7 @@ const JobCreate = () => {
     queryKey: ['client-shifts', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return [];
-      const response = await fetch(`${API_BASE_URL}/utils/client/${selectedClientId}/shifts`);
+      const response = await apiRequest(`/utils/client/${selectedClientId}/shifts`);
       if (!response.ok) {
         throw new Error('Failed to fetch shifts');
       }
@@ -162,7 +162,7 @@ const JobCreate = () => {
     queryKey: ['client-positions-list', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return {};
-      const response = await fetch(`${API_BASE_URL}/utils/client/${selectedClientId}/positions`);
+      const response = await apiRequest(`/utils/client/${selectedClientId}/positions`);
       if (!response.ok) {
         throw new Error('Failed to fetch positions');
       }
@@ -176,7 +176,7 @@ const JobCreate = () => {
     queryKey: ['position-detail', selectedClientId, selectedPositionId],
     queryFn: async () => {
       if (!selectedClientId || !selectedPositionId) return null;
-      const response = await fetch(`${API_BASE_URL}/client/${selectedClientId}/position/${selectedPositionId}`);
+      const response = await apiRequest(`/client/${selectedClientId}/position/${selectedPositionId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch position details');
       }
@@ -254,7 +254,7 @@ const JobCreate = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(searchTerm)}`);
+      const response = await apiRequest(`/utils/client-list/${encodeURIComponent(searchTerm)}`);
       if (response.ok) {
         const clientData = await response.json();
         const clientArray = Object.entries(clientData).map(([id, name]) => ({
@@ -426,11 +426,8 @@ const JobCreate = () => {
         }
       };
 
-      const response = await fetch(`${API_BASE_URL}/job`, {
+      const response = await apiRequest(`/job`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
       });
 

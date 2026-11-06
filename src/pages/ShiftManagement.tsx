@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Plus, Edit, ArrowLeft, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { usePreferences } from '@/hooks/usePreferences';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -91,11 +91,8 @@ const ShiftManagement = () => {
 
   const fetchClient = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/client/${clientId}`, {
+      const response = await apiRequest(`/client/${clientId}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       if (!response.ok) {
@@ -117,8 +114,8 @@ const ShiftManagement = () => {
   const fetchShifts = async () => {
     try {
       setIsLoading(true);
-      const url = `${API_BASE_URL}/client/${clientId}/shifts?offset=0&limit=9999`;
-      const response = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      const url = `/client/${clientId}/shifts?offset=0&limit=9999`;
+      const response = await apiRequest(url, { method: 'GET' });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data: ShiftsResponse = await response.json();
       setShifts(data.results || []);
@@ -149,11 +146,8 @@ const ShiftManagement = () => {
 
   const handleCreateShift = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/client/${clientId}/shift`, {
+      const response = await apiRequest(`/client/${clientId}/shift`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(formData),
       });
 
@@ -187,11 +181,8 @@ const ShiftManagement = () => {
     if (!editingShift) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/client/${clientId}/shift/${editingShift.id}`, {
+      const response = await apiRequest(`/client/${clientId}/shift/${editingShift.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ name: formData.name }),
       });
 

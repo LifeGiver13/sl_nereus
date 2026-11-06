@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -138,11 +139,8 @@ const UserEdit: React.FC = () => {
     const fetchUser = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/user/${id}`, {
+        const response = await apiRequest(`/user/${id}`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
         });
 
         if (!response.ok) {
@@ -198,11 +196,8 @@ const UserEdit: React.FC = () => {
     if (!id) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${id}`, {
+      const response = await apiRequest(`/user/${id}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
       if (response.ok) {
         const data: User = await response.json();

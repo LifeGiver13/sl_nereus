@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
-import { getNestedProperty } from '../lib/utils';
+import { getNestedProperty, apiRequest } from '../lib/utils';
 import UserDocuments from '@/components/UserDocuments';
 import UploadUserDocumentModal from '@/components/UploadUserDocumentModal';
 import InvitationHistoryPanel from '@/components/InvitationHistoryPanel';
@@ -113,11 +113,8 @@ const UserDetail = () => {
     const fetchUserDetail = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/user/${id}`, {
+        const response = await apiRequest(`/user/${id}`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
         });
 
         if (!response.ok) {
@@ -264,11 +261,8 @@ const UserDetail = () => {
       const fetchUserDetail = async () => {
         try {
           setIsLoading(true);
-          const response = await fetch(`${API_BASE_URL}/user/${id}`, {
+          const response = await apiRequest(`/user/${id}`, {
             method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
           });
 
           if (!response.ok) {

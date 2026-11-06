@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { MultiDaySelector } from './MultiDaySelector';
 
 interface PlacementEditModalProps {
@@ -164,11 +164,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
     setIsLoading(true);
     try {
       // Update current placement
-      const response = await fetch(`${API_BASE_URL}/placement/${placement.id}`, {
+      const response = await apiRequest(`/placement/${placement.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(saveData),
       });
 
@@ -259,11 +256,8 @@ const PlacementEditModal: React.FC<PlacementEditModalProps> = ({
           
           console.log(`Updating placement ${fp.id} with shiftDate ${fp.meta?.shiftDate}`);
           
-          return fetch(`${API_BASE_URL}/placement/${fp.id}`, {
+          return apiRequest(`/placement/${fp.id}`, {
             method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
             body: JSON.stringify(futureData),
           });
         }));

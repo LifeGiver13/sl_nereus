@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
-import { getValueByViewPath, setValueByViewPath } from '@/lib/utils';
+import { getValueByViewPath, setValueByViewPath, apiRequest } from '@/lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface ViewManager { id: number; name: string; sections: any; meta: any; }
@@ -138,9 +138,8 @@ const CreateClientModal: React.FC<CreateClientModalProps> = ({
     try {
       const payload = { ...formData };
 
-      const response = await fetch(`${API_BASE_URL}/client`, {
+      const response = await apiRequest(`/client`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 

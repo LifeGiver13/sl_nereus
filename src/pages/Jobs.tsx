@@ -10,6 +10,7 @@ import { Search, Plus, Eye, Edit, UserPlus, X, ChevronUp, ChevronDown, ChevronsU
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
 import { IconActionButton, IconActionTooltip } from '@/components/IconActionTooltip';
@@ -112,7 +113,7 @@ const Jobs = () => {
   const { data: jobsData, isLoading, error } = useQuery({
     queryKey: ['jobs-all'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/jobs?limit=9999&offset=0`);
+      const response = await apiRequest(`/jobs?limit=9999&offset=0`);
       if (!response.ok) throw new Error('Failed to fetch jobs');
       return response.json();
     }
@@ -122,7 +123,7 @@ const Jobs = () => {
 
   const searchClients = async (term: string) => {
     if (term.length < 2) { setClients([]); return; }
-    const res = await fetch(`${API_BASE_URL}/utils/client-list/${encodeURIComponent(term)}`);
+    const res = await apiRequest(`/utils/client-list/${encodeURIComponent(term)}`);
     if (res.ok) {
       const data = await res.json();
       setClients(Object.entries(data).map(([id, name]) => ({ id: parseInt(id), name: name as string })));

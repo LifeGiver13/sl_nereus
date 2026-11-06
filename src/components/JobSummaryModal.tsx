@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { ExternalLink, Eye, Calendar as CalendarIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -23,7 +23,7 @@ const JobSummaryModal = ({ isOpen, onClose, jobId, placement }: JobSummaryModalP
   const { data: job, isLoading } = useQuery({
     queryKey: ['job-summary', jobId],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/job/${jobId}`);
+      const response = await apiRequest(`/job/${jobId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch job details');
       }
@@ -36,7 +36,7 @@ const JobSummaryModal = ({ isOpen, onClose, jobId, placement }: JobSummaryModalP
   const { data: placementsData } = useQuery({
     queryKey: placement ? ['candidate-job-placements', placement.userId, jobId] : ['placements-summary', jobId],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/placements/job/${jobId}`);
+      const response = await apiRequest(`/placements/job/${jobId}`);
       if (!response.ok) {
         return { results: [] };
       }

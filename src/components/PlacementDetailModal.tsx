@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Edit, Calendar } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { API_BASE_URL } from '@/config/env';
+import { apiRequest } from '@/lib/utils';
 
 interface PlacementDetailModalProps {
   isOpen: boolean;
@@ -30,9 +30,7 @@ const PlacementDetailModal: React.FC<PlacementDetailModalProps> = ({
   const { data: job } = useQuery({
     queryKey: ['job', placement?.jobId],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/job/${placement.jobId}`, {
-        credentials: 'include'
-      });
+      const response = await apiRequest(`/job/${placement.jobId}`);
       if (!response.ok) throw new Error('Failed to fetch job');
       return response.json();
     },
@@ -43,9 +41,7 @@ const PlacementDetailModal: React.FC<PlacementDetailModalProps> = ({
   const { data: candidatePlacements = [] } = useQuery({
     queryKey: ['candidate-job-placements', placement?.userId, placement?.jobId],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/placements/job/${placement.jobId}`, {
-        credentials: 'include'
-      });
+      const response = await apiRequest(`/placements/job/${placement.jobId}`);
       if (!response.ok) throw new Error('Failed to fetch placements');
       const allPlacements = await response.json();
       // Filter to only this candidate's placements

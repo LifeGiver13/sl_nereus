@@ -9,6 +9,7 @@ import { ArrowLeft, Edit, UserPlus, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import PlacementDetailModal from '../components/PlacementDetailModal';
 import PlacementEditModal from '../components/PlacementEditModal';
 import PlacementCalendarTable from '../components/PlacementCalendarTable';
@@ -66,7 +67,7 @@ const JobDetail = () => {
   const { data: job, isLoading, error, refetch: refetchJob } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/job/${id}`);
+      const response = await apiRequest(`/job/${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch job details');
       }
@@ -88,7 +89,7 @@ const JobDetail = () => {
   const { data: existingPlacements, refetch: refetchPlacements } = useQuery({
     queryKey: ['placements', id],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
+      const response = await apiRequest(`/placements/job/${id}`);
       if (!response.ok) {
         return { results: [] };
       }
@@ -194,9 +195,8 @@ const JobDetail = () => {
           }
         };
 
-        const response = await fetch(`${API_BASE_URL}/placement`, {
+        const response = await apiRequest(`/placement`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(placementData)
         });
 

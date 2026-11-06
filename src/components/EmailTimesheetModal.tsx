@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 
 interface Contact {
   id: number;
@@ -50,7 +51,7 @@ const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
       if (!clientId) return;
       try {
         setIsLoadingContacts(true);
-        const res = await fetch(`${API_BASE_URL}/client-contacts/${clientId}`);
+        const res = await apiRequest(`/client-contacts/${clientId}`);
         if (res.ok) {
           const data = await res.json();
           setContacts(data.contacts || []);

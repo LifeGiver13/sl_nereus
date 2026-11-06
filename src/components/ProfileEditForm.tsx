@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 
 type ViewField = {
@@ -100,9 +100,8 @@ const ProfileEditForm: React.FC<ProfileEditFormProps> = ({
           )
         );
 
-      const response = await fetch(`${API_BASE_URL}/user/${user.id}`, {
+      const response = await apiRequest(`/user/${user.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile: profileToSave }),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

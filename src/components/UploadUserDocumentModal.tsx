@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Upload, Loader2 } from "lucide-react";
 
-import { API_BASE_URL } from "../config/env";
+import { apiRequest } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useDocument } from "../contexts/DocumentContext";
 
@@ -117,14 +117,10 @@ const UploadUserDocumentModal = ({
 
             // update user meta
 
-            const response = await fetch(
-                `${API_BASE_URL}/user/${user.id}`,
+            const response = await apiRequest(
+                `/user/${user.id}`,
                 {
                     method: "PUT",
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-                    },
                     body: JSON.stringify({
                         meta: {
                             ...user.meta,

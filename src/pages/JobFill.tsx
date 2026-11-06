@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import UserSearchForm from '../components/UserSearchForm';
 import PlacementCalendarTable from '../components/PlacementCalendarTable';
 import SuggestedCandidates from '../components/SuggestedCandidates';
@@ -104,7 +105,7 @@ const JobFill = () => {
     queryFn: async () => {
       console.log('JobFill: Fetching job with ID:', id);
       console.log('JobFill: Current URL params:', window.location.pathname);
-      const response = await fetch(`${API_BASE_URL}/job/${id}`);
+      const response = await apiRequest(`/job/${id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch job details');
       }
@@ -118,7 +119,7 @@ const JobFill = () => {
     queryKey: ['placements', id],
     queryFn: async () => {
       console.log('JobFill: Fetching placements for job ID:', id);
-      const response = await fetch(`${API_BASE_URL}/placements/job/${id}`);
+      const response = await apiRequest(`/placements/job/${id}`);
       if (!response.ok) {
         return { results: [] };
       }
@@ -351,11 +352,8 @@ const JobFill = () => {
     updatedMeta.slotAvailability[slotId] = remainingDates;
 
     try {
-      await fetch(`${API_BASE_URL}/job/${job.id}`, {
+      await apiRequest(`/job/${job.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           meta: updatedMeta
         }),

@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Mail, Phone, Clock, Edit, Plus, FileText, Loader2, Download, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
-import { getNestedProperty } from '@/lib/utils';
+import { getNestedProperty, apiRequest } from '@/lib/utils';
 import { useDocument } from '../contexts/DocumentContext';
 
 type ViewField = {
@@ -143,9 +143,8 @@ const ClientDetail = () => {
     if (!id) return;
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_BASE_URL}/client/${id}`, {
+      const response = await apiRequest(`/client/${id}`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
@@ -170,7 +169,7 @@ const ClientDetail = () => {
     if (!id) return;
     try {
       setIsContactsLoading(true);
-      const response = await fetch(`${API_BASE_URL}/client-contacts/${id}`);
+      const response = await apiRequest(`/client-contacts/${id}`);
       if (response.ok) {
         const data = await response.json();
         setContacts(data.contacts || []);

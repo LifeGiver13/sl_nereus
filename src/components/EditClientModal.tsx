@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL } from '../config/env';
-import { getValueByViewPath, setValueByViewPath } from '@/lib/utils';
+import { getValueByViewPath, setValueByViewPath, apiRequest } from '@/lib/utils';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 
 interface ViewManager { id: number; name: string; sections: any; meta: any; }
@@ -134,7 +134,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
     const fetchContacts = async () => {
       if (!client?.id) return;
       try {
-        const response = await fetch(`${API_BASE_URL}/client-contacts/${client.id}`);
+        const response = await apiRequest(`/client-contacts/${client.id}`);
         if (response.ok) {
           const data = await response.json();
           setContacts(data.contacts || []);
@@ -168,9 +168,8 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
     if (!formData) return;
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/client/${formData.id}`, {
+      const response = await apiRequest(`/client/${formData.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -202,15 +201,13 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
     try {
       let response;
       if (editingContact) {
-        response = await fetch(`${API_BASE_URL}/client-contact/${editingContact.id}`, {
+        response = await apiRequest(`/client-contact/${editingContact.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       } else {
-        response = await fetch(`${API_BASE_URL}/client-contact`, {
+        response = await apiRequest(`/client-contact`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       }
@@ -223,7 +220,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
       });
 
       // Refresh state from server
-      const refreshRes = await fetch(`${API_BASE_URL}/client-contacts/${client.id}`);
+      const refreshRes = await apiRequest(`/client-contacts/${client.id}`);
       if (refreshRes.ok) {
         const data = await refreshRes.json();
         setContacts(data.contacts || []);
@@ -253,7 +250,7 @@ const EditClientModal: React.FC<EditClientModalProps> = ({
     if (!confirm("Delete this contact?")) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/client-contact/${id}`, {
+      const response = await apiRequest(`/client-contact/${id}`, {
         method: 'DELETE',
       });
 

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,11 +26,8 @@ const CreateShiftModal = ({ isOpen, onClose, clientId, onShiftCreated }: CreateS
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await fetch(`${API_BASE_URL}/client/${clientId}/shift`, {
+      const response = await apiRequest(`/client/${clientId}/shift`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(data),
       });
       if (!response.ok) {

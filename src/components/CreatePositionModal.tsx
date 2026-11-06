@@ -8,6 +8,7 @@ import { X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 
 interface Skill {
   id: number;
@@ -92,11 +93,8 @@ const CreatePositionModal: React.FC<CreatePositionModalProps> = ({
         skills: selectedSkills.map(skill => skill.id)
       };
 
-      const response = await fetch(`${API_BASE_URL}/client/${clientId}/position`, {
+      const response = await apiRequest(`/client/${clientId}/position`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
       });
 

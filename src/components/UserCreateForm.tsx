@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 
 interface UserCreateFormProps {
   onUserCreated: () => void;
@@ -52,14 +52,11 @@ const UserCreateForm: React.FC<UserCreateFormProps> = ({ onUserCreated, onCancel
         }
       };
 
-      console.log('Sending user creation request to:', `${API_BASE_URL}/user`);
+      console.log('Sending user creation request to:', `/user`);
       console.log('Payload:', payload);
 
-      const response = await fetch(`${API_BASE_URL}/user`, {
+      const response = await apiRequest(`/user`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
       });
 

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, MessageSquare, Check, FileSignature, ChevronUp, ChevronDown, ChevronsUpDown, UserRound, Delete, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { API_BASE_URL } from "../config/env";
+import { apiRequest } from "@/lib/utils";
 import { PageSizeSelector } from "../components/ui/page-size-selector";
 import { usePreferences } from "../hooks/usePreferences";
 import { DocuSignInviteModal } from "../components/DocuSignInviteModal";
@@ -138,12 +139,8 @@ const Applications = () => {
   const fetchApplications = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_BASE_URL}/applications?limit=9999&offset=0`, {
+      const response = await apiRequest(`/applications?limit=9999&offset=0`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
       });
 
       if (!response.ok) throw new Error("Failed to fetch applications");

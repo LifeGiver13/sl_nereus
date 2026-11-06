@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Plus, Edit, ArrowLeft, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 
 interface Position {
   id: number;
@@ -54,11 +54,8 @@ const PositionManagement = () => {
 
   const fetchClient = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/client/${clientId}`, {
+      const response = await apiRequest(`/client/${clientId}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       if (!response.ok) {
@@ -81,15 +78,12 @@ const PositionManagement = () => {
     try {
       setIsLoading(true);
       const offset = (page - 1) * pageSize;
-      const url = `${API_BASE_URL}/client/${clientId}/positions?offset=${offset}&limit=${pageSize}`;
+      const url = `/client/${clientId}/positions?offset=${offset}&limit=${pageSize}`;
 
       console.log('Fetching positions from:', url);
-      
-      const response = await fetch(url, {
+
+      const response = await apiRequest(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       if (!response.ok) {
@@ -126,11 +120,8 @@ const PositionManagement = () => {
 
   const handleCreatePosition = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/client/${clientId}/position`, {
+      const response = await apiRequest(`/client/${clientId}/position`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(formData),
       });
 
@@ -160,11 +151,8 @@ const PositionManagement = () => {
     if (!editingPosition) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/client/${clientId}/position/${editingPosition.id}`, {
+      const response = await apiRequest(`/client/${clientId}/position/${editingPosition.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(formData),
       });
 
@@ -194,11 +182,8 @@ const PositionManagement = () => {
   const handleDeletePosition = async (positionId: number) => {
     if (window.confirm('Are you sure you want to delete this position?')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/client/${clientId}/position/${positionId}`, {
+        const response = await apiRequest(`/client/${clientId}/position/${positionId}`, {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
         });
 
         if (!response.ok) {
