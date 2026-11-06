@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 
 interface User {
@@ -83,11 +83,8 @@ const RoleChangeForm: React.FC<RoleChangeFormProps> = ({ user, onUserUpdated }) 
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/user/${user.id}/role`, {
+      const response = await apiRequest(`/admin/user/${user.id}/role`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ role: newRole }),
       });
 

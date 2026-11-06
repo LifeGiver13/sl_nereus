@@ -9,6 +9,8 @@ interface User {
   meta?: any; // for any additional user metadata, e.g. userBucket
 }
 
+const ADMIN_ROLES = ['admin', 'super_admin'];
+
 interface AccountDetails {
   id: string;
   username: string;
@@ -86,6 +88,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { serviceUserToken: _t, ...userData } = body;
         void _t;
 
+        // Defense in depth: even though login only issues tokens to admin
+        // accounts now, a token saved before that change (or a session
+        // whose role changed after login) should still be rejected here.
+        if (!ADMIN_ROLES.includes((userData as { role?: string }).role ?? '')) {
+          clearSession();
+          return;
+        }
+
         setUser(userData as unknown as User);
         setToken(authToken);
         localStorage.setItem('session_user', JSON.stringify(userData));
@@ -104,7 +114,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/session`, {
+      // Admin-panel-only login endpoint: it applies the same credential
+      // check as /auth/session (used by the native app and the applicant
+      // site) but additionally rejects non-admin roles server-side, so a
+      // worker/client/applicant account can't obtain an admin-panel session
+      // even with correct credentials.
+      const response = await fetch(`${API_BASE_URL}/admin/auth/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,6 +145,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const { serviceUserToken: _t, ...userData } = body;
       void _t;
+
+      if (!ADMIN_ROLES.includes((userData as { role?: string }).role ?? '')) {
+        throw new Error('This account does not have admin access');
+      }
+
       setUser(userData as unknown as User);
       setToken(authToken);
 
