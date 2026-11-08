@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, Edit, Briefcase, ChevronLeft, ChevronRight, Plus, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { API_BASE_URL } from '../config/env';
+import { apiRequest } from '@/lib/utils';
 import { PageSizeSelector } from '../components/ui/page-size-selector';
 import { usePreferences } from '../hooks/usePreferences';
 import { IconActionButton, IconActionTooltip } from '@/components/IconActionTooltip';
@@ -159,11 +159,8 @@ const People = () => {
       // Fetch the full dataset once; filtering/sorting/pagination all happen
       // client-side below (see `allUsers` comment) so they apply to the whole
       // dataset, not just one server-fetched page.
-      const response = await fetch(`${API_BASE_URL}/users?limit=9999&offset=0`, {
+      const response = await apiRequest(`/users?limit=9999&offset=0`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       if (!response.ok) {
