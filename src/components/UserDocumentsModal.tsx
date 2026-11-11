@@ -30,8 +30,13 @@ const UserDocumentsModal = ({ user, isOpen, onClose, onUploaded }: Props) => {
 
     return (
         <>
-            <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto overflow-x-hidden">
+            <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isUploadModalOpen) onClose(); }}>
+                <DialogContent
+                    className="max-w-2xl max-h-[80vh] overflow-y-auto overflow-x-hidden"
+                    onPointerDownOutside={(e) => { if (isUploadModalOpen) e.preventDefault(); }}
+                    onInteractOutside={(e) => { if (isUploadModalOpen) e.preventDefault(); }}
+                    onEscapeKeyDown={(e) => { if (isUploadModalOpen) e.preventDefault(); }}
+                >
                     <DialogHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pr-6">
                         <div className="min-w-0">
                             <DialogTitle className="truncate">Documents — {name}</DialogTitle>

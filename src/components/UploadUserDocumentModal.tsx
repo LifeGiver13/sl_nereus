@@ -53,8 +53,6 @@ const UploadUserDocumentModal = ({
 
     const [bulkFiles, setBulkFiles] = useState<File[]>([]);
 
-    const [bulkDocumentType, setBulkDocumentType] = useState("");
-
     const [uploadProgress, setUploadProgress] =
         useState<{ done: number; total: number } | null>(null);
 
@@ -68,7 +66,6 @@ const UploadUserDocumentModal = ({
         setDocumentType("");
         setExpiryDate("");
         setBulkFiles([]);
-        setBulkDocumentType("");
         setUploadProgress(null);
     };
 
@@ -216,7 +213,7 @@ const UploadUserDocumentModal = ({
             try {
                 const uploadResult = await uploadDocument({
                     file: f,
-                    fileType: bulkDocumentType || "general",
+                    fileType: "general",
                 });
 
                 if (!uploadResult.success || !uploadResult.url) {
@@ -224,7 +221,7 @@ const UploadUserDocumentModal = ({
                 }
 
                 successfulPayloads.push({
-                    documentType: bulkDocumentType || "general",
+                    documentType: "general",
                     documentUrl: uploadResult.url,
                     fileName: f.name,
                 });
@@ -425,35 +422,10 @@ const UploadUserDocumentModal = ({
                     </>
                 ) : (
                     <>
-                        {/* bulk document type (optional, applies to all files) */}
-
-                        <div className="space-y-2 mb-4">
-
-                            <label className="font-medium">
-                                Document Type (optional, applied to all files)
-                            </label>
-
-                            <select
-                                value={bulkDocumentType}
-                                onChange={(e) =>
-                                    setBulkDocumentType(e.target.value)
-                                }
-                                className="w-full border rounded-lg p-3"
-                            >
-                                <option value="">
-                                    General / unspecified
-                                </option>
-
-                                {documentTypes.map((doc) => (
-                                    <option
-                                        key={doc.value}
-                                        value={doc.value}
-                                    >
-                                        {doc.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Each file is saved as a "General / unspecified" document — use
+                            Single Document above if you need to tag a specific type.
+                        </p>
 
                         {/* files */}
 
