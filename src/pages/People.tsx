@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Briefcase, ChevronLeft, ChevronRight, Plus, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Eye, Edit, Briefcase, FileText, ChevronLeft, ChevronRight, Plus, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/utils';
@@ -16,6 +16,8 @@ import { IconActionButton, IconActionTooltip } from '@/components/IconActionTool
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from '@/components/ui/select';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import PlatformBadges from '@/components/PlatformBadges';
+import UserDocumentsModal from '@/components/UserDocumentsModal';
+import { useDocument } from '@/contexts/DocumentContext';
 
 
 interface User {
@@ -122,6 +124,9 @@ const People = () => {
   // Full, unfiltered dataset — filtering/sorting/pagination all happen client-side
   // so they apply to the whole dataset, not just one server-fetched page.
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [documentFolders, setDocumentFolders] = useState<Set<string>>(new Set());
+  const [documentsModalUser, setDocumentsModalUser] = useState<User | null>(null);
+  const { getDocumentFolders } = useDocument();
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -189,8 +194,16 @@ const People = () => {
     setCurrentPage(1);
   };
 
+  const fetchDocumentFolders = async () => {
+    const result = await getDocumentFolders();
+    if (result.success && result.folders) {
+      setDocumentFolders(new Set(result.folders));
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchDocumentFolders();
   }, []);
 
   const handleSearch = (value: string) => {
@@ -807,6 +820,15 @@ const People = () => {
                             >
                               <Briefcase className="h-4 w-4" />
                             </IconActionButton>
+                            <IconActionButton
+                              label={documentFolders.has(user?.meta?.userBucket || user.username) ? "View documents" : "No documents yet — click to add"}
+                              variant="outline"
+                              size="sm"
+                              className={`h-9 w-9 p-0 ${documentFolders.has(user?.meta?.userBucket || user.username) ? '' : 'text-gray-300'}`}
+                              onClick={() => setDocumentsModalUser(user)}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </IconActionButton>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -854,6 +876,13 @@ const People = () => {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onUserCreated={handleUserCreated}
+        />
+
+        <UserDocumentsModal
+          user={documentsModalUser}
+          isOpen={!!documentsModalUser}
+          onClose={() => setDocumentsModalUser(null)}
+          onUploaded={fetchDocumentFolders}
         />
       </div>
     </AdminLayout>

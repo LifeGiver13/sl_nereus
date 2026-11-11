@@ -4,7 +4,7 @@ import React, {
     ReactNode,
 } from "react";
 
-import { API_BASE_URL } from "../config/env";
+import { apiRequest } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 
 
@@ -41,6 +41,12 @@ type DownloadUrlResponse = {
     error?: string;
 };
 
+type GetDocumentFoldersResponse = {
+    success: boolean;
+    folders?: string[];
+    error?: string;
+};
+
 type DocumentContextType = {
     uploadDocument: (
         params: UploadDocumentParams
@@ -54,6 +60,8 @@ type DocumentContextType = {
         bucket: string,
         key: string
     ) => Promise<DownloadUrlResponse>;
+
+    getDocumentFolders: () => Promise<GetDocumentFoldersResponse>;
 };
 
 
@@ -88,7 +96,7 @@ export const DocumentProvider = ({
     children,
 }: DocumentProviderProps) => {
 
-    const { user, token } = useAuth();
+    const { user } = useAuth();
 
 
     // get user bucker name
@@ -125,18 +133,10 @@ export const DocumentProvider = ({
 
             // request presigned upload URL from backend
 
-            const uploadUrlResponse = await fetch(
-                `${API_BASE_URL}/fs/upload-url`,
+            const uploadUrlResponse = await apiRequest(
+                `/fs/upload-url`,
                 {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
                     body: JSON.stringify({
                         key,
                     }),
@@ -197,18 +197,9 @@ export const DocumentProvider = ({
 
         try {
 
-            const response = await fetch(
-                `${API_BASE_URL}/list/${bucket}`,
-                {
-                    method: "GET",
-                    headers: {
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
-                }
+            const response = await apiRequest(
+                `/list/${encodeURIComponent(bucket)}`,
+                { method: "GET" }
             );
 
             const data = await response.json();
@@ -250,18 +241,9 @@ export const DocumentProvider = ({
                 ? key.replace(`${bucket}/`, "")
                 : key;
 
-            const response = await fetch(
-                `${API_BASE_URL}/fs/download-url/${bucket}/${encodeURIComponent(relativeKey)}`,
-                {
-                    method: "GET",
-                    headers: {
-                        ...(token
-                            ? {
-                                Authorization: `Bearer ${token}`,
-                            }
-                            : {}),
-                    },
-                }
+            const response = await apiRequest(
+                `/fs/download-url/${encodeURIComponent(bucket)}/${encodeURIComponent(relativeKey)}`,
+                { method: "GET" }
             );
 
             const data = await response.json();
@@ -292,12 +274,53 @@ export const DocumentProvider = ({
 
 
 
+    // which document folders (userBucket values) actually contain files -
+    // one call for the whole People list, instead of one per row
+
+    const getDocumentFolders = async (): Promise<GetDocumentFoldersResponse> => {
+
+        try {
+
+            const response = await apiRequest(
+                `/admin/documents/folders`,
+                { method: "GET" }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message ||
+                    "Failed to fetch document folders"
+                );
+            }
+
+            return {
+                success: true,
+                folders: data.folders || [],
+            };
+
+        } catch (error) {
+
+            return {
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Failed to fetch document folders",
+            };
+        }
+    };
+
+
+
     return (
         <DocumentContext.Provider
             value={{
                 uploadDocument,
                 getDocumentsByBucket,
                 getDocumentDownloadUrl,
+                getDocumentFolders,
             }}
         >
             {children}
