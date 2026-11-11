@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Upload, Loader2 } from "lucide-react";
+import { X, Upload, Loader2, FileText } from "lucide-react";
 
 import { apiRequest } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,58 @@ const documentTypes = [
 
 type UploadMode = "single" | "multiple";
 
+type FileDropZoneProps = {
+    multiple: boolean;
+    inputRef: React.RefObject<HTMLInputElement>;
+    onFiles: (files: File[]) => void;
+    label: string;
+};
+
+// Shared drag-and-drop target for both the single and bulk file pickers -
+// the native input stays in the DOM (hidden) so "click to browse" keeps
+// working, drop just feeds the same onFiles callback as a file picker would.
+const FileDropZone = ({ multiple, inputRef, onFiles, label }: FileDropZoneProps) => {
+    const [isDragging, setIsDragging] = useState(false);
+
+    return (
+        <div
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+            }}
+            onDragLeave={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+            }}
+            onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const dropped = Array.from(e.dataTransfer.files || []);
+                if (dropped.length > 0) onFiles(dropped);
+            }}
+            className={`w-full border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                isDragging ? "border-[#712B71] bg-[#712B71]/5" : "border-gray-300 hover:border-gray-400"
+            }`}
+        >
+            <input
+                ref={inputRef}
+                type="file"
+                multiple={multiple}
+                accept=".pdf,image/*"
+                className="hidden"
+                onChange={(e) => {
+                    onFiles(Array.from(e.target.files || []));
+                    // allow re-selecting the same file(s) after a reset
+                    e.target.value = "";
+                }}
+            />
+            <Upload className="h-6 w-6 mx-auto text-gray-400 mb-2" />
+            <p className="text-sm text-gray-600">{label}</p>
+        </div>
+    );
+};
+
 const UploadUserDocumentModal = ({
     isOpen,
     onClose,
@@ -36,6 +88,9 @@ const UploadUserDocumentModal = ({
     const { toast } = useToast();
 
     const { uploadDocument } = useDocument();
+
+    const singleFileInputRef = useRef<HTMLInputElement>(null);
+    const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
     const [uploadMode, setUploadMode] = useState<UploadMode>("single");
 
@@ -366,16 +421,15 @@ const UploadUserDocumentModal = ({
                                 Document File
                             </label>
 
-                            <input
-                                type="file"
-                                accept=".pdf,image/*"
-                                onChange={(e) =>
-                                    setFile(
-                                        e.target.files?.[0] ||
-                                        null
-                                    )
+                            <FileDropZone
+                                multiple={false}
+                                inputRef={singleFileInputRef}
+                                onFiles={(files) => setFile(files[0] || null)}
+                                label={
+                                    file
+                                        ? file.name
+                                        : "Drag and drop a file here, or click to browse"
                                 }
-                                className="w-full border rounded-lg p-3"
                             />
                         </div>
 
@@ -435,23 +489,41 @@ const UploadUserDocumentModal = ({
                                 Document Files
                             </label>
 
-                            <input
-                                type="file"
+                            <FileDropZone
                                 multiple
-                                accept=".pdf,image/*"
-                                onChange={(e) =>
-                                    setBulkFiles(
-                                        Array.from(e.target.files || [])
-                                    )
+                                inputRef={bulkFileInputRef}
+                                onFiles={(incoming) =>
+                                    setBulkFiles((prev) => {
+                                        const merged = [...prev];
+                                        for (const f of incoming) {
+                                            if (!merged.some((m) => m.name === f.name && m.size === f.size)) {
+                                                merged.push(f);
+                                            }
+                                        }
+                                        return merged;
+                                    })
                                 }
-                                className="w-full border rounded-lg p-3"
+                                label="Drag and drop files here, or click to browse (adds to selection)"
                             />
 
                             {bulkFiles.length > 0 && (
                                 <ul className="text-sm text-gray-600 space-y-1 max-h-32 overflow-y-auto">
                                     {bulkFiles.map((f, i) => (
-                                        <li key={`${f.name}-${i}`} className="truncate">
-                                            {f.name}
+                                        <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
+                                            <span className="truncate flex items-center gap-1.5 min-w-0">
+                                                <FileText className="h-3.5 w-3.5 shrink-0" />
+                                                <span className="truncate">{f.name}</span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setBulkFiles((prev) => prev.filter((_, idx) => idx !== i))
+                                                }
+                                                className="text-gray-400 hover:text-gray-600 shrink-0"
+                                                aria-label={`Remove ${f.name}`}
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
                                         </li>
                                     ))}
                                 </ul>
