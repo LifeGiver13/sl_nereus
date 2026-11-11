@@ -114,7 +114,7 @@ const FileDownloadLink = ({ fileName }: { fileName: string }) => {
           </div>
           <span className="text-xs text-muted-foreground">Link expires in {formatTime(timeLeft)}</span>
         </div>
-        
+
         {showPreview && (
           <Dialog open={showPreview} onOpenChange={setShowPreview}>
             <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -374,9 +374,9 @@ const ApplicationDetail = () => {
       setApplication((prev) =>
         prev
           ? {
-              ...prev,
-              meta: { ...prev.meta, remarks: updatedRemarks },
-            }
+            ...prev,
+            meta: { ...prev.meta, remarks: updatedRemarks },
+          }
           : null,
       );
 
@@ -399,9 +399,22 @@ const ApplicationDetail = () => {
   const handleAddRemark = (sectionId: string, fieldName: string, comment: string) => {
     if (!user) return;
 
-    const firstName = application?.data["personal-info"]?.fields?.firstName || "";
-    const lastName = application?.data["personal-info"]?.fields?.lastName || "";
-    const userName = `${firstName} ${lastName}`.trim() || user.username || "Unknown User";
+    const profile = application?.user?.profile || {};
+
+    const firstName =
+      profile["Basic Information"]?.fields?.firstName ||
+      profile.Forename ||
+      "";
+
+    const lastName =
+      profile["Basic Information"]?.fields?.lastName ||
+      profile.Surname ||
+      "";
+
+    const userName =
+      `${firstName} ${lastName}`.trim() ||
+      user.username ||
+      "Unknown User";
 
     const newRemark: Remark = {
       id: Date.now().toString(),
@@ -490,7 +503,137 @@ const ApplicationDetail = () => {
     return Object.values(remarks).some((sectionRemarks) => hasUnresolvedRemarks(sectionRemarks));
   };
 
+
+  const renderReferees = (value: any) => {
+    if (!value) {
+      return <span className="text-muted-foreground">No referees provided</span>;
+    }
+
+    let referees: any[] = [];
+
+    try {
+      referees = typeof value === "string" ? JSON.parse(value) : value;
+    } catch (error) {
+      console.error("Failed to parse referees:", error);
+      return (
+        <span className="text-muted-foreground">
+          Unable to display referee information
+        </span>
+      );
+    }
+
+    if (!Array.isArray(referees) || referees.length === 0) {
+      return (
+        <span className="text-muted-foreground">
+          No referees provided
+        </span>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {referees.map((referee: any, refereeIndex: number) => {
+          if (!Array.isArray(referee)) return null;
+
+          const refereeData = referee.reduce(
+            (acc: Record<string, any>, field: any) => {
+              acc[field.name] = field.value;
+              return acc;
+            },
+            {}
+          );
+
+          return (
+            <div
+              key={refereeIndex}
+              className="border rounded-lg p-4 bg-muted/20"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">
+                  Referee {refereeIndex + 1}
+                </h3>
+
+                <Badge variant="secondary">
+                  {refereeData.type || "Referee"}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {referee.map((field: any, fieldIndex: number) => {
+                  let shouldRender = true;
+
+                  if (field.condition) {
+                    const conditionValue =
+                      refereeData[field.condition.field];
+
+                    const targetValue = field.condition.value;
+                    const operator = field.condition.operator || "equals";
+                    const action = field.condition.action || "show";
+
+                    let conditionMet = false;
+
+                    switch (operator) {
+                      case "equals":
+                        conditionMet = conditionValue === targetValue;
+                        break;
+
+                      case "not_equals":
+                      case "does not equal":
+                        conditionMet = conditionValue !== targetValue;
+                        break;
+
+                      case "is set":
+                        conditionMet =
+                          conditionValue !== undefined &&
+                          conditionValue !== null &&
+                          conditionValue !== "";
+                        break;
+
+                      case "is not set":
+                        conditionMet =
+                          conditionValue === undefined ||
+                          conditionValue === null ||
+                          conditionValue === "";
+                        break;
+
+                      default:
+                        conditionMet = conditionValue === targetValue;
+                    }
+
+                    if (action === "show") {
+                      shouldRender = conditionMet;
+                    } else if (action === "hide") {
+                      shouldRender = !conditionMet;
+                    }
+                  }
+
+                  if (!shouldRender) return null;
+
+                  return (
+                    <div key={fieldIndex} className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {field.label}
+                      </p>
+
+                      <p className="text-sm font-medium break-words whitespace-pre-wrap">
+                        {field.value || "Not provided"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+
   const renderFieldValue = (field: Field, value: any) => {
+    if (field.type === "referees") {
+      return renderReferees(value);
+    }
     if (field.type === "declaration") {
       const content = field.meta?.content || "No content provided";
       return (
@@ -619,14 +762,14 @@ const ApplicationDetail = () => {
       <div className="space-y-4">
         {jobs.map((job: any, jobIndex: number) => {
           if (!Array.isArray(job)) return null;
-          
+
           return (
             <div key={jobIndex} className="border rounded-lg p-4 bg-muted/20">
               <div className="grid grid-cols-2 gap-3 mb-3">
                 {job.map((field: any, fieldIndex: number) => {
                   // Skip description field, we'll render it separately
                   if (field.name === "jobDescription") return null;
-                  
+
                   return (
                     <div key={fieldIndex} className="space-y-1">
                       <span className="text-xs font-medium text-muted-foreground">
@@ -639,7 +782,7 @@ const ApplicationDetail = () => {
                   );
                 })}
               </div>
-              
+
               {/* Render description separately if it exists */}
               {job.find((f: any) => f.name === "jobDescription")?.value && (
                 <div className="mt-3 pt-3 border-t">
@@ -658,10 +801,16 @@ const ApplicationDetail = () => {
     );
   };
 
+
+
   const renderSectionContent = (section: FormSection) => {
-    if (!application?.data) return null;
-    // Match form section name with application data keys
-    const sectionData = application.data[section.name]?.fields || {};
+    const profile = application?.user?.profile;
+
+    if (!profile) return null;
+
+    // Read submitted values from the user's profile
+    const sectionData = profile[section.name]?.fields || {};
+
 
     // console.log('=== Rendering Section ===');
     // console.log('Section name:', section.name);
