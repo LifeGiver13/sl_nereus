@@ -160,10 +160,10 @@ const UserDocuments = ({
             {documents.map((doc) => (
                 <div
                     key={doc.key}
-                    className="border rounded-lg p-4 flex items-center justify-between"
+                    className="border rounded-lg p-4 flex items-center justify-between gap-3"
                 >
-                    <div>
-                        <p className="font-medium">
+                    <div className="min-w-0 flex-1">
+                        <p className="font-medium break-words">
                             {doc.key.charAt(0).toUpperCase() + doc.key.slice(1)}
                         </p>
 
@@ -176,7 +176,7 @@ const UserDocuments = ({
                         )}
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
 
                         <Button
                             variant="outline"

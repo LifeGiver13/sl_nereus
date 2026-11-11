@@ -31,15 +31,15 @@ const UserDocumentsModal = ({ user, isOpen, onClose, onUploaded }: Props) => {
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader className="flex flex-row items-center justify-between pr-8">
-                        <div>
-                            <DialogTitle>Documents — {name}</DialogTitle>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto overflow-x-hidden">
+                    <DialogHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pr-6">
+                        <div className="min-w-0">
+                            <DialogTitle className="truncate">Documents — {name}</DialogTitle>
                             <DialogDescription>User uploaded compliance documents</DialogDescription>
                         </div>
                         <Button
                             onClick={() => setIsUploadModalOpen(true)}
-                            className="bg-[#712B71] hover:bg-[#712B71]/90"
+                            className="bg-[#712B71] hover:bg-[#712B71]/90 shrink-0"
                         >
                             Upload Document
                         </Button>

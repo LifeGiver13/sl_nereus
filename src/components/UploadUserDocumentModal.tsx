@@ -173,7 +173,7 @@ const UploadUserDocumentModal = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center">
 
             <div className="bg-white rounded-2xl w-full max-w-lg p-6 relative">
 
