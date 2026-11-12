@@ -17,7 +17,9 @@ import { usePreferences } from "@/hooks/usePreferences";
 import { object } from "zod";
 import { useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Check } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import CustomAddition from "./UpdateTimesheet";
 import EmailTimesheetModal from "@/components/EmailTimesheetModal";
 import TimesheetHistory from "@/components/TimesheetHistory";
@@ -291,6 +293,8 @@ const Timesheets = () => {
   const [userFilter, setUserFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("pending");
   const [actionedByFilter, setActionedByFilter] = useState<string>("all");
+  const [clientFilter, setClientFilter] = useState<number | null>(null);
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [admins, setAdmins] = useState<{ id: number; name: string }[]>([]);
   const [sortBy, setSortBy] = useState<"period" | "client">("period");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -854,8 +858,26 @@ const Timesheets = () => {
     return { start: start.toLocaleDateString(), end: end.toLocaleDateString() };
   }, [date]);
 
+  // Clients that appear in the loaded timesheets, for the client filter
+  const clientOptions = useMemo(() => {
+    const byId = new Map<number, { id: number; name: string; count: number }>();
+    for (const row of timesheets) {
+      const existing = byId.get(row.clientId);
+      if (existing) existing.count += 1;
+      else byId.set(row.clientId, { id: row.clientId, name: row.client?.name || `Client #${row.clientId}`, count: 1 });
+    }
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [timesheets]);
+
+  const selectedClientName =
+    clientFilter === null
+      ? null
+      : clientOptions.find((c) => c.id === clientFilter)?.name ?? `Client #${clientFilter}`;
+
   const filtered = useMemo(() => {
     return timesheets.filter((row) => {
+      if (clientFilter !== null && row.clientId !== clientFilter) return false;
+
       const userTerm = userFilter.trim().toLowerCase();
       const matchesUser =
         !userTerm ||
@@ -900,7 +922,7 @@ const Timesheets = () => {
 
       return matchesUser && matchesDate;
     });
-  }, [timesheets, userFilter, date, dateFilterType]);
+  }, [timesheets, userFilter, date, dateFilterType, clientFilter]);
 
 
   const sortedTimesheets = useMemo(() => {
@@ -1168,7 +1190,7 @@ const Timesheets = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-[#000009]">Filters</CardTitle>
-            <CardDescription>Refine by username, date, status and who actioned it</CardDescription>
+            <CardDescription>Refine by username, client, date, status and who actioned it</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -1273,6 +1295,44 @@ const Timesheets = () => {
                   )}
                 </div>
 
+                {/* Client Filter — searchable, lists clients in the loaded timesheets */}
+                <div className="lg:col-span-3 space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Client</label>
+                  <Popover open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" role="combobox" aria-expanded={clientPickerOpen} className="w-full justify-between font-normal">
+                        <span className="truncate">{selectedClientName ?? "All clients"}</span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[16rem] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search clients..." />
+                        <CommandList>
+                          <CommandEmpty>No clients found.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem value="All clients" onSelect={() => { setClientFilter(null); setPage(1); setClientPickerOpen(false); }}>
+                              <Check className={`mr-2 h-4 w-4 ${clientFilter === null ? "opacity-100" : "opacity-0"}`} />
+                              All clients
+                            </CommandItem>
+                            {clientOptions.map((client) => (
+                              <CommandItem
+                                key={client.id}
+                                value={`${client.name} ${client.id}`}
+                                onSelect={() => { setClientFilter(client.id); setPage(1); setClientPickerOpen(false); }}
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${clientFilter === client.id ? "opacity-100" : "opacity-0"}`} />
+                                <span className="flex-1 truncate">{client.name}</span>
+                                <span className="ml-2 text-xs text-muted-foreground">{client.count}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
                 {/* Sort Options — medium */}
                 <div className="lg:col-span-3 space-y-1">
                   <label className="text-sm font-medium text-gray-700">Sort</label>
@@ -1306,6 +1366,7 @@ const Timesheets = () => {
                     setUserFilter("");
                     setStatusFilter("pending");
                     setActionedByFilter("all");
+                    setClientFilter(null);
                     setSortBy("period");
                     setSortDir("desc");
                     setPage(1);
