@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { MoreHorizontal } from "lucide-react";
 import CustomAddition from "./UpdateTimesheet";
 import EmailTimesheetModal from "@/components/EmailTimesheetModal";
+import TimesheetHistory from "@/components/TimesheetHistory";
 
 
 type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing";
@@ -68,6 +69,15 @@ type Timesheet = {
   client?: { id: number; name?: string };
   position?: { id: number; title?: string };
   createdAt?: string;
+
+  // Who made the most recent status change, from the audit log
+  actionedBy?: {
+    actorId: number | null;
+    actorType: "admin" | "worker" | "system";
+    actorName: string;
+    toStatus: string | null;
+    at: string;
+  } | null;
 
 };
 
@@ -280,6 +290,8 @@ const Timesheets = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userFilter, setUserFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("pending");
+  const [actionedByFilter, setActionedByFilter] = useState<string>("all");
+  const [admins, setAdmins] = useState<{ id: number; name: string }[]>([]);
   const [sortBy, setSortBy] = useState<"period" | "client">("period");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [date, setDate] = useState("");
@@ -406,6 +418,7 @@ const Timesheets = () => {
         sortBy,
         sortDir,
         ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+        ...(actionedByFilter !== "all" ? { actionedBy: actionedByFilter } : {}),
       });
       const response = await fetch(`${API_BASE_URL}/admin/timesheets?${params.toString()}`, {
         method: "GET",
@@ -444,13 +457,32 @@ const Timesheets = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [authHeaders, toast, sortBy, sortDir, statusFilter]);
+  }, [authHeaders, toast, sortBy, sortDir, statusFilter, actionedByFilter]);
 
   useEffect(() => {
     if (token) {
       fetchTimesheets();
     }
   }, [token, fetchTimesheets]);
+
+  // Admin names for the "Actioned By" filter
+  useEffect(() => {
+    if (!token) return;
+    const search = encodeURIComponent(JSON.stringify({ role: { in: ["admin", "super_admin"] } }));
+    fetch(`${API_BASE_URL}/users?limit=200&offset=0&search=${search}`, { headers: authHeaders })
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data: { results?: { id: number; username: string; profile?: Record<string, string> }[] }) => {
+        const names = (data.results ?? []).map((u) => ({
+          id: u.id,
+          name:
+            u.profile?.fullName?.trim() ||
+            [u.profile?.Forename, u.profile?.Surname].filter(Boolean).join(" ").trim() ||
+            u.username,
+        }));
+        setAdmins(names.sort((a, b) => a.name.localeCompare(b.name)));
+      })
+      .catch(() => setAdmins([]));
+  }, [token, authHeaders]);
 
   const HEADER_OVERRIDES: Record<string, string> = {
     srNumber: "SR Number",
@@ -593,6 +625,7 @@ const Timesheets = () => {
       "Client": timesheet.client?.name || NA,
       "Position": timesheet.position?.title || NA,
       "Status": timesheet.status.toUpperCase(),
+      "Actioned By": timesheet.actionedBy?.actorName || NA,
 
       "Start Date": formatDateOnly(timesheet.startDate),
       "End Date": formatDateOnly(timesheet.endDate),
@@ -1135,7 +1168,7 @@ const Timesheets = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-[#000009]">Filters</CardTitle>
-            <CardDescription>Refine by username, date and status</CardDescription>
+            <CardDescription>Refine by username, date, status and who actioned it</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -1165,6 +1198,23 @@ const Timesheets = () => {
                       <SelectItem value="processing">Processing</SelectItem>
                       <SelectItem value="approved">Approved</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Actioned By Filter */}
+                <div className="lg:col-span-3 space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Actioned By</label>
+                  <Select value={actionedByFilter} onValueChange={(v) => { setActionedByFilter(v); setPage(1); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Anyone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Anyone</SelectItem>
+                      {admins.map((admin) => (
+                        <SelectItem key={admin.id} value={String(admin.id)}>{admin.name}</SelectItem>
+                      ))}
+                      <SelectItem value="system">System (automatic)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1255,6 +1305,7 @@ const Timesheets = () => {
                   onClick={() => {
                     setUserFilter("");
                     setStatusFilter("pending");
+                    setActionedByFilter("all");
                     setSortBy("period");
                     setSortDir("desc");
                     setPage(1);
@@ -1332,6 +1383,7 @@ const Timesheets = () => {
                     <SortableTh column="created">Created</SortableTh>
                     <SortableTh column="hours">Hours</SortableTh>
                     <TableHead>Status</TableHead>
+                    <TableHead>Actioned By</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1366,6 +1418,13 @@ const Timesheets = () => {
                             <Badge className={statusClasses[row.status]}>
                               {getStatusLabel(row)}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {row.actionedBy ? (
+                              <span title={new Date(row.actionedBy.at).toLocaleString()}>{row.actionedBy.actorName}</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end items-center gap-2">
@@ -1475,7 +1534,7 @@ const Timesheets = () => {
                         </TableRow>
                         {isExpanded && (
                           <TableRow>
-                            <TableCell colSpan={10} className="bg-blue-50/30 border-l-4 border-blue-300">
+                            <TableCell colSpan={11} className="bg-blue-50/30 border-l-4 border-blue-300">
                               <div className="space-y-3 py-2">
                                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-700">
                                   <span><strong>User:</strong> {getDisplayName(row)}</span>
@@ -1588,6 +1647,7 @@ const Timesheets = () => {
                                     </div>
                                   </div>
                                 </div>
+                                <TimesheetHistory timesheetId={row.id} authHeaders={authHeaders} />
                               </div>
                             </TableCell>
                           </TableRow>
