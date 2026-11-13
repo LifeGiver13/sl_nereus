@@ -34,6 +34,17 @@ type TimesheetEntry = {
   break: number;
 };
 
+type SignatureRecord = {
+  signature?: string;
+  signedAt?: string;
+  signedBy?: string;
+  signerName?: string;
+  managerRole?: string;
+  managerNote?: string;
+  infoVerified?: boolean;
+  certificationReason?: string;
+};
+
 type TimesheetMeta = {
   signature?: string;
   signedAt?: string;
@@ -49,6 +60,8 @@ type TimesheetMeta = {
   rejectionReason?: string;
   rejectedAt?: string;
   processingAt?: string;
+
+  signatureHistory?: SignatureRecord[];
 
 };
 
@@ -274,15 +287,39 @@ function formatCategoryHoursForDisplay(categoryHours: CategoryHours, totalHours:
   };
 }
 
-function getSignerLabel(timesheet: Timesheet): string {
-  if (timesheet.meta?.signerName) {
-    const role = timesheet.meta.managerRole ? ` (${timesheet.meta.managerRole})` : "";
-    return `${timesheet.meta.signerName}${role}`;
+function getSignerLabel(sig: SignatureRecord): string {
+  if (sig.signerName) {
+    const role = sig.managerRole ? ` (${sig.managerRole})` : "";
+    return `${sig.signerName}${role}`;
   }
-  if (timesheet.meta?.signedBy) {
-    return `${timesheet.meta.signedBy} (self-certified)`;
-  }
+  if (sig.signedBy) return `${sig.signedBy} (self-certified)`;
   return "Not provided";
+}
+
+/** All signatures, oldest first: archived history, then the current one. Same order as the email. */
+function getSignatures(meta?: TimesheetMeta): SignatureRecord[] {
+  if (!meta) return [];
+  const list: SignatureRecord[] = Array.isArray(meta.signatureHistory) ? [...meta.signatureHistory] : [];
+  if (meta.signedAt || meta.signature) {
+    list.push({
+      signature: meta.signature,
+      signedAt: meta.signedAt,
+      signedBy: meta.signedBy,
+      signerName: meta.signerName,
+      managerRole: meta.managerRole,
+      managerNote: meta.managerNote,
+      infoVerified: meta.infoVerified,
+      certificationReason: meta.certificationReason,
+    });
+  }
+  return list;
+}
+
+function getSignatureLabel(index: number, total: number): string {
+  if (total === 1) return "Signature";
+  if (index === 0) return "Original signature";
+  if (index === total - 1) return "Latest signature";
+  return "Previous signature";
 }
 
 
@@ -1652,60 +1689,67 @@ const Timesheets = () => {
                                     )}
                                   </div>
                                   <div className="rounded-md border bg-white p-3 text-xs">
-                                    <p className="font-semibold text-sm text-[#000009] mb-3">Signature Details</p>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                      <div className="space-y-2">
-                                        <p><strong>Signed by:</strong> {getSignerLabel(row)}</p>
-                                        {row.meta?.signedAt && (
-                                          <p><strong>Signed at:</strong> {new Date(row.meta.signedAt).toLocaleString()}</p>
-                                        )}
-                                        {typeof row.meta?.infoVerified === "boolean" && (
-                                          <p>
-                                            <strong>Info verified:</strong>{" "}
-                                            {row.meta.infoVerified ? "No" : "Yes"}
-                                          </p>
-                                        )}
+                                    <p className="font-semibold text-sm text-[#000009] mb-3">
+                                      {getSignatures(row.meta).length > 1 ? "Signature History" : "Signature Details"}
+                                    </p>
 
-                                        {row.meta?.certificationReason && (
-                                          <p>
-                                            <strong>Certification reason:</strong>{" "}
-                                            {row.meta.certificationReason}
-                                          </p>
-                                        )}
+                                    {(() => {
+                                      const signatures = getSignatures(row.meta);
+                                      if (signatures.length === 0) {
+                                        return <p className="text-gray-500"><strong>Signature:</strong> Not uploaded</p>;
+                                      }
+                                      return (
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                          {signatures.map((sig, i) => (
+                                            <div
+                                              key={`${row.id}-sig-${i}`}
+                                              className={`rounded-md border p-2 space-y-2 ${i === signatures.length - 1 && signatures.length > 1 ? "border-blue-300 bg-blue-50/30" : "bg-muted/20"}`}
+                                            >
+                                              <p className="text-[10px] font-bold uppercase text-gray-500">
+                                                {getSignatureLabel(i, signatures.length)}
+                                              </p>
+                                              {sig.signature ? (
+                                                <img
+                                                  src={sig.signature}
+                                                  alt={`${getSignatureLabel(i, signatures.length)} for timesheet #${row.id}`}
+                                                  className="mx-auto max-h-32 w-auto rounded bg-white"
+                                                />
+                                              ) : (
+                                                <p className="text-gray-500">No signature image</p>
+                                              )}
+                                              <div className="space-y-1">
+                                                <p><strong>Signed by:</strong> {getSignerLabel(sig)}</p>
+                                                {sig.signedAt && (
+                                                  <p><strong>Signed at:</strong> {new Date(sig.signedAt).toLocaleString()}</p>
+                                                )}
+                                                {typeof sig.infoVerified === "boolean" && (
+                                                  <p><strong>Info verified:</strong> {sig.infoVerified ? "No" : "Yes"}</p>
+                                                )}
+                                                {sig.certificationReason && (
+                                                  <p><strong>Certification reason:</strong> {sig.certificationReason}</p>
+                                                )}
+                                                {sig.managerNote && sig.managerNote !== "None" && (
+                                                  <p><strong>Manager note:</strong> {sig.managerNote}</p>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      );
+                                    })()}
 
-                                        {row.meta?.managerNote && (
-                                          <p>
-                                            <strong>Manager note:</strong>{" "}
-                                            {row.meta.managerNote}
-                                          </p>
-                                        )}
-
+                                    {(row.meta?.rejectionReason || row.meta?.rejectedAt) && (
+                                      <div className="mt-3 border-t pt-2 space-y-1">
                                         {row.meta?.rejectionReason && (
-                                          <p className="text-red-600">
-                                            <strong>Rejection reason:</strong>{" "}
-                                            {row.meta.rejectionReason}
-                                          </p>
+                                          <p className="text-red-600"><strong>Rejection reason:</strong> {row.meta.rejectionReason}</p>
                                         )}
-
                                         {row.meta?.rejectedAt && (
                                           <p className="text-red-500">
-                                            <strong>Rejected at:</strong>{" "}
-                                            {new Date(row.meta.rejectedAt).toLocaleString()}
+                                            <strong>Rejected at:</strong> {new Date(row.meta.rejectedAt).toLocaleString()}
                                           </p>
                                         )}
                                       </div>
-                                      <div className="rounded-md border bg-muted/20 p-2">
-                                        {row.meta?.signature ? (
-                                          <img
-                                            src={row.meta.signature}
-                                            alt={`Signature for timesheet #${row.id}`}
-                                            className="mx-auto max-h-44 w-auto rounded"
-                                          />
-                                        ) : (
-                                          <p className="text-gray-500"><strong>Signature:</strong> Not uploaded</p>
-                                        )}
-                                      </div>
-                                    </div>
+                                    )}
                                   </div>
                                 </div>
                                 <TimesheetHistory timesheetId={row.id} authHeaders={authHeaders} />
