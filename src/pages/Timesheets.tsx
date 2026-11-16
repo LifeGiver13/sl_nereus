@@ -23,15 +23,28 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import CustomAddition from "./UpdateTimesheet";
 import EmailTimesheetModal from "@/components/EmailTimesheetModal";
 import TimesheetHistory from "@/components/TimesheetHistory";
+import DeleteTimesheetModal from "@/components/DeleteTimesheetModalConfirmation";
 
 
-type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing";
+type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing" | "deleted";
+type EditableTimesheetStatus = Exclude<TimesheetStatus, "deleted">;
 
 type TimesheetEntry = {
   date: string;
   startTime: string;
   endTime: string;
   break: number;
+};
+
+type SignatureRecord = {
+  signature?: string;
+  signedAt?: string;
+  signedBy?: string;
+  signerName?: string;
+  managerRole?: string;
+  managerNote?: string;
+  infoVerified?: boolean;
+  certificationReason?: string;
 };
 
 type TimesheetMeta = {
@@ -50,6 +63,8 @@ type TimesheetMeta = {
   rejectedAt?: string;
   processingAt?: string;
 
+  signatureHistory?: SignatureRecord[];
+
 };
 
 type Timesheet = {
@@ -63,6 +78,9 @@ type Timesheet = {
   approvedAt?: string;
   entries: TimesheetEntry[];
   meta?: TimesheetMeta;
+  deletedAt?: string;
+  deletionReason?: string | null;
+
 
   custom?: Record<string, any>;
 
@@ -111,6 +129,8 @@ const statusClasses: Record<TimesheetStatus, string> = {
   approved: "bg-green-100 text-green-800",
   rejected: "bg-red-100 text-red-800",
   processing: "bg-blue-100 text-blue-800",
+  deleted: "bg-gray-300 text-gray-900",
+
 };
 
 const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
@@ -274,15 +294,39 @@ function formatCategoryHoursForDisplay(categoryHours: CategoryHours, totalHours:
   };
 }
 
-function getSignerLabel(timesheet: Timesheet): string {
-  if (timesheet.meta?.signerName) {
-    const role = timesheet.meta.managerRole ? ` (${timesheet.meta.managerRole})` : "";
-    return `${timesheet.meta.signerName}${role}`;
+function getSignerLabel(sig: SignatureRecord): string {
+  if (sig.signerName) {
+    const role = sig.managerRole ? ` (${sig.managerRole})` : "";
+    return `${sig.signerName}${role}`;
   }
-  if (timesheet.meta?.signedBy) {
-    return `${timesheet.meta.signedBy} (self-certified)`;
-  }
+  if (sig.signedBy) return `${sig.signedBy} (self-certified)`;
   return "Not provided";
+}
+
+/** All signatures, oldest first: archived history, then the current one. Same order as the email. */
+function getSignatures(meta?: TimesheetMeta): SignatureRecord[] {
+  if (!meta) return [];
+  const list: SignatureRecord[] = Array.isArray(meta.signatureHistory) ? [...meta.signatureHistory] : [];
+  if (meta.signedAt || meta.signature) {
+    list.push({
+      signature: meta.signature,
+      signedAt: meta.signedAt,
+      signedBy: meta.signedBy,
+      signerName: meta.signerName,
+      managerRole: meta.managerRole,
+      managerNote: meta.managerNote,
+      infoVerified: meta.infoVerified,
+      certificationReason: meta.certificationReason,
+    });
+  }
+  return list;
+}
+
+function getSignatureLabel(index: number, total: number): string {
+  if (total === 1) return "Signature";
+  if (index === 0) return "Original signature";
+  if (index === total - 1) return "Latest signature";
+  return "Previous signature";
 }
 
 
@@ -302,11 +346,15 @@ const Timesheets = () => {
   const [page, setPage] = useState(1);
   const [expandedTimesheetId, setExpandedTimesheetId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [bulkStatus, setBulkStatus] = useState<TimesheetStatus | "none">("none");
+  const [bulkStatus, setBulkStatus] = useState<EditableTimesheetStatus | "none">("none");
   const [isSaving, setIsSaving] = useState(false);
   // Sorting
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [emailModal, setEmailModal] = useState<{ ids: number[]; clientId: number } | null>(null);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedDeleteId, setSelectedDeleteId] = useState<number | null>(null);
 
   const [approvedDate, setApprovedDate] = useState("");
 
@@ -319,7 +367,6 @@ const Timesheets = () => {
   const [dateFilterType, setDateFilterType] = useState<"period" | "approved" | "created">("period")
   // const [weekAnchor, setWeekAnchor] = useState<"commencing" | "ending">("commencing");
 
-  const [emailModalTimesheet, setEmailModalTimesheet] = useState<{ id: number; clientId: number } | null>(null);
 
 
   const { token } = useAuth();
@@ -924,6 +971,18 @@ const Timesheets = () => {
     });
   }, [timesheets, userFilter, date, dateFilterType, clientFilter]);
 
+  const selectedTimesheets = useMemo(
+    () => filtered.filter((t) => selectedIds.includes(t.id)),
+    [filtered, selectedIds]
+  );
+
+  const MAX_BULK_EMAIL = 25;
+
+  const selectedClientIds = new Set(selectedTimesheets.map((t) => t.clientId));
+  const overBulkLimit = selectedTimesheets.length > MAX_BULK_EMAIL;
+  const canBulkEmail =
+    selectedTimesheets.length > 0 && selectedClientIds.size === 1 && !overBulkLimit;
+
 
   const sortedTimesheets = useMemo(() => {
     if (!sortColumn || !sortDirection) return filtered;
@@ -970,7 +1029,7 @@ const Timesheets = () => {
   const allVisibleSelected =
     paginatedFiltered.length > 0 &&
     paginatedFiltered.every((row) => selectedIds.includes(row.id));
-  const updateStatus = async (timesheetId: number, status: TimesheetStatus, rejectionReason?: string) => {
+  const updateStatus = async (timesheetId: number, status: EditableTimesheetStatus, rejectionReason?: string) => {
     try {
       setIsSaving(true);
       const response = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}`, {
@@ -994,28 +1053,54 @@ const Timesheets = () => {
     }
   };
 
-  const deleteTimesheet = async (timesheetId: number) => {
-    const confirmed = window.confirm(`Delete timesheet #${timesheetId}?`);
-    if (!confirmed) return;
+  const openDeleteModal = (timesheetId: number) => {
+    setSelectedDeleteId(timesheetId);
+    setDeleteModalOpen(true);
+  };
+
+  const deleteTimesheet = async (deletionReason: string) => {
+    if (!selectedDeleteId) return;
+
+    const timesheetId = selectedDeleteId;
 
     try {
       setIsSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}`, {
-        method: "DELETE",
-        headers: authHeaders,
-      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/admin/timesheets/${timesheetId}`,
+        {
+          method: "DELETE",
+          headers: authHeaders,
+          body: JSON.stringify({ deletionReason }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error("Failed to delete timesheet");
+        throw new Error(
+          data?.message || data?.error || "Failed to delete timesheet"
+        );
       }
+
       if (expandedTimesheetId === timesheetId) {
         setExpandedTimesheetId(null);
       }
+
+      setDeleteModalOpen(false);
+      setSelectedDeleteId(null);
+
       await fetchTimesheets();
-      toast({ title: "Deleted", description: `Timesheet #${timesheetId} removed` });
+
+      toast({
+        title: "Timesheet Deleted",
+        description: `Timesheet #${timesheetId} has been marked as deleted.`,
+      });
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Delete failed",
+        description:
+          error instanceof Error ? error.message : "Delete failed",
         variant: "destructive",
       });
     } finally {
@@ -1220,6 +1305,7 @@ const Timesheets = () => {
                       <SelectItem value="processing">Processing</SelectItem>
                       <SelectItem value="approved">Approved</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="deleted">Deleted</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1386,6 +1472,39 @@ const Timesheets = () => {
                   <Download className="h-4 w-4 mr-2" />
                   Export Selected ({selectedIds.length})
                 </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!canBulkEmail) return;
+                    setEmailModal({
+                      ids: selectedTimesheets.map((t) => t.id), clientId: selectedTimesheets[0].clientId
+                    })
+                  }
+                  }
+                  disabled={!canBulkEmail}
+                  title={
+                    selectedClientIds.size > 1
+                      ? "Select timesheets from one client only"
+                      : overBulkLimit
+                        ? `Select at most ${MAX_BULK_EMAIL} timesheets`
+                        : undefined
+                  }                >
+
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email Selected to Client ({selectedTimesheets.length})
+
+                </Button>
+                {selectedClientIds.size > 1 && (
+                  <p className="text-xs text-amber-600 self-center">Selected timesheets belong to different clients.</p>
+                )}
+                {overBulkLimit && (
+                  <p className="text-xs text-amber-600 self-center">
+                    You can email at most {MAX_BULK_EMAIL} timesheets at once. You selected {selectedTimesheets.length}.
+                    Deselect some, or narrow by week or status and in groups of 25.
+                  </p>
+                )}
+
               </div>
 
               <Select
@@ -1570,7 +1689,7 @@ const Timesheets = () => {
 
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    onClick={() => setEmailModalTimesheet({ id: row.id, clientId: row.clientId })}
+                                    onClick={() => setEmailModal({ ids: [row.id], clientId: row.clientId })}
                                   >
                                     <Mail className="h-4 w-4 mr-2" />
                                     Email to Client
@@ -1580,13 +1699,12 @@ const Timesheets = () => {
 
                                   <DropdownMenuItem
                                     className="text-red-600"
-                                    onClick={() => deleteTimesheet(row.id)}
-                                    disabled={isSaving}
+                                    onClick={() => openDeleteModal(row.id)}
+                                    disabled={isSaving || row.status === "deleted"}
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Delete
                                   </DropdownMenuItem>
-
                                 </DropdownMenuContent>
                               </DropdownMenu>
 
@@ -1652,60 +1770,83 @@ const Timesheets = () => {
                                     )}
                                   </div>
                                   <div className="rounded-md border bg-white p-3 text-xs">
-                                    <p className="font-semibold text-sm text-[#000009] mb-3">Signature Details</p>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                      <div className="space-y-2">
-                                        <p><strong>Signed by:</strong> {getSignerLabel(row)}</p>
-                                        {row.meta?.signedAt && (
-                                          <p><strong>Signed at:</strong> {new Date(row.meta.signedAt).toLocaleString()}</p>
-                                        )}
-                                        {typeof row.meta?.infoVerified === "boolean" && (
-                                          <p>
-                                            <strong>Info verified:</strong>{" "}
-                                            {row.meta.infoVerified ? "No" : "Yes"}
-                                          </p>
-                                        )}
+                                    <p className="font-semibold text-sm text-[#000009] mb-3">
+                                      {getSignatures(row.meta).length > 1 ? "Signature History" : "Signature Details"}
+                                    </p>
 
-                                        {row.meta?.certificationReason && (
-                                          <p>
-                                            <strong>Certification reason:</strong>{" "}
-                                            {row.meta.certificationReason}
-                                          </p>
-                                        )}
+                                    {(() => {
+                                      const signatures = getSignatures(row.meta);
+                                      if (signatures.length === 0) {
+                                        return <p className="text-gray-500"><strong>Signature:</strong> Not uploaded</p>;
+                                      }
+                                      return (
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                          {signatures.map((sig, i) => (
+                                            <div
+                                              key={`${row.id}-sig-${i}`}
+                                              className={`rounded-md border p-2 space-y-2 ${i === signatures.length - 1 && signatures.length > 1 ? "border-blue-300 bg-blue-50/30" : "bg-muted/20"}`}
+                                            >
+                                              <p className="text-[10px] font-bold uppercase text-gray-500">
+                                                {getSignatureLabel(i, signatures.length)}
+                                              </p>
+                                              {sig.signature ? (
+                                                <img
+                                                  src={sig.signature}
+                                                  alt={`${getSignatureLabel(i, signatures.length)} for timesheet #${row.id}`}
+                                                  className="mx-auto max-h-32 w-auto rounded bg-white"
+                                                />
+                                              ) : (
+                                                <p className="text-gray-500">No signature image</p>
+                                              )}
+                                              <div className="space-y-1">
+                                                <p><strong>Signed by:</strong> {getSignerLabel(sig)}</p>
+                                                {sig.signedAt && (
+                                                  <p><strong>Signed at:</strong> {new Date(sig.signedAt).toLocaleString()}</p>
+                                                )}
+                                                {typeof sig.infoVerified === "boolean" && (
+                                                  <p><strong>Info verified:</strong> {sig.infoVerified ? "No" : "Yes"}</p>
+                                                )}
+                                                {sig.certificationReason && (
+                                                  <p><strong>Certification reason:</strong> {sig.certificationReason}</p>
+                                                )}
+                                                {sig.managerNote && sig.managerNote !== "None" && (
+                                                  <p><strong>Manager note:</strong> {sig.managerNote}</p>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      );
+                                    })()}
 
-                                        {row.meta?.managerNote && (
-                                          <p>
-                                            <strong>Manager note:</strong>{" "}
-                                            {row.meta.managerNote}
-                                          </p>
-                                        )}
-
+                                    {(row.meta?.rejectionReason || row.meta?.rejectedAt) && (
+                                      <div className="mt-3 border-t pt-2 space-y-1">
                                         {row.meta?.rejectionReason && (
-                                          <p className="text-red-600">
-                                            <strong>Rejection reason:</strong>{" "}
-                                            {row.meta.rejectionReason}
-                                          </p>
+                                          <p className="text-red-600"><strong>Rejection reason:</strong> {row.meta.rejectionReason}</p>
                                         )}
-
                                         {row.meta?.rejectedAt && (
                                           <p className="text-red-500">
-                                            <strong>Rejected at:</strong>{" "}
-                                            {new Date(row.meta.rejectedAt).toLocaleString()}
+                                            <strong>Rejected at:</strong> {new Date(row.meta.rejectedAt).toLocaleString()}
                                           </p>
                                         )}
                                       </div>
-                                      <div className="rounded-md border bg-muted/20 p-2">
-                                        {row.meta?.signature ? (
-                                          <img
-                                            src={row.meta.signature}
-                                            alt={`Signature for timesheet #${row.id}`}
-                                            className="mx-auto max-h-44 w-auto rounded"
-                                          />
-                                        ) : (
-                                          <p className="text-gray-500"><strong>Signature:</strong> Not uploaded</p>
+                                    )}
+                                    {(row.deletionReason || row.deletedAt) && (
+                                      <div className="mt-3 border-t pt-2 space-y-1">
+                                        {row.deletionReason && (
+                                          <p className="text-red-600">
+                                            <strong>Deletion reason:</strong> {row.deletionReason}
+                                          </p>
+                                        )}
+
+                                        {row.deletedAt && (
+                                          <p className="text-gray-600">
+                                            <strong>Deleted at:</strong>{" "}
+                                            {new Date(row.deletedAt).toLocaleString()}
+                                          </p>
                                         )}
                                       </div>
-                                    </div>
+                                    )}
                                   </div>
                                 </div>
                                 <TimesheetHistory timesheetId={row.id} authHeaders={authHeaders} />
@@ -1743,10 +1884,10 @@ const Timesheets = () => {
       </div>
 
       <EmailTimesheetModal
-        isOpen={!!emailModalTimesheet}
-        onClose={() => setEmailModalTimesheet(null)}
-        timesheetId={emailModalTimesheet?.id ?? null}
-        clientId={emailModalTimesheet?.clientId ?? null}
+        isOpen={!!emailModal}
+        onClose={() => setEmailModal(null)}
+        timesheetIds={emailModal?.ids ?? []}
+        clientId={emailModal?.clientId ?? null}
         authHeaders={authHeaders}
       />
 
@@ -1767,9 +1908,19 @@ const Timesheets = () => {
             reason
           );
         }}
-
-
       />
+
+      <DeleteTimesheetModal
+        open={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setSelectedDeleteId(null);
+        }}
+        timesheetId={selectedDeleteId}
+        isLoading={isSaving}
+        onConfirm={deleteTimesheet}
+      />
+
     </AdminLayout>
   );
 };
