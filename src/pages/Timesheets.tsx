@@ -1468,9 +1468,7 @@ const Timesheets = () => {
                     Deselect some, or narrow by week or status and in groups of 25.
                   </p>
                 )}
-                {selectedClientIds.size > 1 && (
-                  <p className="text-xs text-amber-600 self-center">Selected timesheets belong to different clients.</p>
-                )}
+               
               </div>
 
               <Select
