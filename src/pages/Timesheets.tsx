@@ -23,9 +23,11 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import CustomAddition from "./UpdateTimesheet";
 import EmailTimesheetModal from "@/components/EmailTimesheetModal";
 import TimesheetHistory from "@/components/TimesheetHistory";
+import DeleteTimesheetModal from "@/components/DeleteTimesheetModalConfirmation";
 
 
-type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing";
+type TimesheetStatus = "draft" | "pending" | "approved" | "rejected" | "processing" | "deleted";
+type EditableTimesheetStatus = Exclude<TimesheetStatus, "deleted">;
 
 type TimesheetEntry = {
   date: string;
@@ -76,6 +78,9 @@ type Timesheet = {
   approvedAt?: string;
   entries: TimesheetEntry[];
   meta?: TimesheetMeta;
+  deletedAt?: string;
+  deletionReason?: string | null;
+
 
   custom?: Record<string, any>;
 
@@ -124,6 +129,8 @@ const statusClasses: Record<TimesheetStatus, string> = {
   approved: "bg-green-100 text-green-800",
   rejected: "bg-red-100 text-red-800",
   processing: "bg-blue-100 text-blue-800",
+  deleted: "bg-gray-300 text-gray-900",
+
 };
 
 const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
@@ -339,13 +346,15 @@ const Timesheets = () => {
   const [page, setPage] = useState(1);
   const [expandedTimesheetId, setExpandedTimesheetId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [bulkStatus, setBulkStatus] = useState<TimesheetStatus | "none">("none");
+  const [bulkStatus, setBulkStatus] = useState<EditableTimesheetStatus | "none">("none");
   const [isSaving, setIsSaving] = useState(false);
   // Sorting
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [emailModal, setEmailModal] = useState<{ ids: number[]; clientId: number } | null>(null);
 
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedDeleteId, setSelectedDeleteId] = useState<number | null>(null);
 
   const [approvedDate, setApprovedDate] = useState("");
 
@@ -1020,7 +1029,7 @@ const Timesheets = () => {
   const allVisibleSelected =
     paginatedFiltered.length > 0 &&
     paginatedFiltered.every((row) => selectedIds.includes(row.id));
-  const updateStatus = async (timesheetId: number, status: TimesheetStatus, rejectionReason?: string) => {
+  const updateStatus = async (timesheetId: number, status: EditableTimesheetStatus, rejectionReason?: string) => {
     try {
       setIsSaving(true);
       const response = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}`, {
@@ -1044,28 +1053,54 @@ const Timesheets = () => {
     }
   };
 
-  const deleteTimesheet = async (timesheetId: number) => {
-    const confirmed = window.confirm(`Delete timesheet #${timesheetId}?`);
-    if (!confirmed) return;
+  const openDeleteModal = (timesheetId: number) => {
+    setSelectedDeleteId(timesheetId);
+    setDeleteModalOpen(true);
+  };
+
+  const deleteTimesheet = async (deletionReason: string) => {
+    if (!selectedDeleteId) return;
+
+    const timesheetId = selectedDeleteId;
 
     try {
       setIsSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}`, {
-        method: "DELETE",
-        headers: authHeaders,
-      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/admin/timesheets/${timesheetId}`,
+        {
+          method: "DELETE",
+          headers: authHeaders,
+          body: JSON.stringify({ deletionReason }),
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error("Failed to delete timesheet");
+        throw new Error(
+          data?.message || data?.error || "Failed to delete timesheet"
+        );
       }
+
       if (expandedTimesheetId === timesheetId) {
         setExpandedTimesheetId(null);
       }
+
+      setDeleteModalOpen(false);
+      setSelectedDeleteId(null);
+
       await fetchTimesheets();
-      toast({ title: "Deleted", description: `Timesheet #${timesheetId} removed` });
+
+      toast({
+        title: "Timesheet Deleted",
+        description: `Timesheet #${timesheetId} has been marked as deleted.`,
+      });
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Delete failed",
+        description:
+          error instanceof Error ? error.message : "Delete failed",
         variant: "destructive",
       });
     } finally {
@@ -1270,6 +1305,7 @@ const Timesheets = () => {
                       <SelectItem value="processing">Processing</SelectItem>
                       <SelectItem value="approved">Approved</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="deleted">Deleted</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1468,9 +1504,7 @@ const Timesheets = () => {
                     Deselect some, or narrow by week or status and in groups of 25.
                   </p>
                 )}
-                {selectedClientIds.size > 1 && (
-                  <p className="text-xs text-amber-600 self-center">Selected timesheets belong to different clients.</p>
-                )}
+
               </div>
 
               <Select
@@ -1665,13 +1699,12 @@ const Timesheets = () => {
 
                                   <DropdownMenuItem
                                     className="text-red-600"
-                                    onClick={() => deleteTimesheet(row.id)}
-                                    disabled={isSaving}
+                                    onClick={() => openDeleteModal(row.id)}
+                                    disabled={isSaving || row.status === "deleted"}
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />
                                     Delete
                                   </DropdownMenuItem>
-
                                 </DropdownMenuContent>
                               </DropdownMenu>
 
@@ -1798,6 +1831,22 @@ const Timesheets = () => {
                                         )}
                                       </div>
                                     )}
+                                    {(row.deletionReason || row.deletedAt) && (
+                                      <div className="mt-3 border-t pt-2 space-y-1">
+                                        {row.deletionReason && (
+                                          <p className="text-red-600">
+                                            <strong>Deletion reason:</strong> {row.deletionReason}
+                                          </p>
+                                        )}
+
+                                        {row.deletedAt && (
+                                          <p className="text-gray-600">
+                                            <strong>Deleted at:</strong>{" "}
+                                            {new Date(row.deletedAt).toLocaleString()}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                                 <TimesheetHistory timesheetId={row.id} authHeaders={authHeaders} />
@@ -1859,9 +1908,19 @@ const Timesheets = () => {
             reason
           );
         }}
-
-
       />
+
+      <DeleteTimesheetModal
+        open={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setSelectedDeleteId(null);
+        }}
+        timesheetId={selectedDeleteId}
+        isLoading={isSaving}
+        onConfirm={deleteTimesheet}
+      />
+
     </AdminLayout>
   );
 };
