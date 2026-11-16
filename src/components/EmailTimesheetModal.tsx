@@ -25,7 +25,7 @@ interface Contact {
 interface EmailTimesheetModalProps {
   isOpen: boolean;
   onClose: () => void;
-  timesheetId: number | null;
+  timesheetIds: number[];
   clientId: number | null;
   authHeaders: Record<string, string>;
 }
@@ -33,7 +33,7 @@ interface EmailTimesheetModalProps {
 const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
   isOpen,
   onClose,
-  timesheetId,
+  timesheetIds,
   clientId,
   authHeaders,
 }) => {
@@ -73,7 +73,12 @@ const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
   }, [isOpen, clientId]);
 
   const handleSend = async () => {
-    if (!timesheetId) return;
+    if (!timesheetIds) return;
+
+    if (timesheetIds.length > 25) {
+      toast({ title: 'Too many timesheets', description: 'You can email at most 50 at once.', variant: 'destructive' });
+      return;
+    }
 
     const isOverride = selection === 'override';
     if (isOverride && !overrideEmail.trim()) {
@@ -94,28 +99,48 @@ const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
         ...(message.trim() ? { message: message.trim() } : {}),
       };
 
-      const res = await fetch(`${API_BASE_URL}/admin/timesheets/${timesheetId}/email`, {
+      const isBulk = timesheetIds.length > 1;
+      const url = isBulk
+        ? `${API_BASE_URL}/admin/timesheets/email`                      // bulk route
+        : `${API_BASE_URL}/admin/timesheets/${timesheetIds[0]}/email`;  // existing single route
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...(isBulk ? { ids: timesheetIds } : {}),
+          ...payload,
+        }),
       });
 
-      if (!res.ok) throw new Error('Failed to send');
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || 'Failed to send');
+      }
 
       const data = await res.json();
 
       if (data.method === 'link') {
+        const links: { timesheetId: number; shareUrl: string }[] =
+          data.shareLinks ?? (data.shareUrl ? [{ timesheetId: timesheetIds[0], shareUrl: data.shareUrl }] : []);
         toast({
-          title: 'Email failed — link generated instead',
-          description: `Share this link with the recipient: ${data.shareUrl}`,
+          title: 'Email failed — links generated instead',
+          description: links.map((l) => `#${l.timesheetId}: ${l.shareUrl}`).join('\n'),
         });
       } else {
-        toast({ title: 'Sent', description: 'Timesheet emailed successfully' });
+        toast({
+          title: 'Sent',
+          description: isBulk ? `${timesheetIds.length} timesheets emailed successfully` : 'Timesheet emailed successfully',
+        });
       }
 
       onClose();
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to email timesheet', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to email timesheet',
+        variant: 'destructive',
+      });
     } finally {
       setIsSending(false);
     }
@@ -125,7 +150,9 @@ const EmailTimesheetModal: React.FC<EmailTimesheetModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Email Timesheet</DialogTitle>
+          <DialogTitle>
+            {timesheetIds.length > 1 ? `Email ${timesheetIds.length} Timesheets` : 'Email Timesheet'}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

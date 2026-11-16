@@ -344,6 +344,8 @@ const Timesheets = () => {
   // Sorting
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [emailModal, setEmailModal] = useState<{ ids: number[]; clientId: number } | null>(null);
+
 
   const [approvedDate, setApprovedDate] = useState("");
 
@@ -356,7 +358,6 @@ const Timesheets = () => {
   const [dateFilterType, setDateFilterType] = useState<"period" | "approved" | "created">("period")
   // const [weekAnchor, setWeekAnchor] = useState<"commencing" | "ending">("commencing");
 
-  const [emailModalTimesheet, setEmailModalTimesheet] = useState<{ id: number; clientId: number } | null>(null);
 
 
   const { token } = useAuth();
@@ -961,6 +962,18 @@ const Timesheets = () => {
     });
   }, [timesheets, userFilter, date, dateFilterType, clientFilter]);
 
+  const selectedTimesheets = useMemo(
+    () => filtered.filter((t) => selectedIds.includes(t.id)),
+    [filtered, selectedIds]
+  );
+
+  const MAX_BULK_EMAIL = 25;
+
+  const selectedClientIds = new Set(selectedTimesheets.map((t) => t.clientId));
+  const overBulkLimit = selectedTimesheets.length > MAX_BULK_EMAIL;
+  const canBulkEmail =
+    selectedTimesheets.length > 0 && selectedClientIds.size === 1 && !overBulkLimit;
+
 
   const sortedTimesheets = useMemo(() => {
     if (!sortColumn || !sortDirection) return filtered;
@@ -1423,6 +1436,41 @@ const Timesheets = () => {
                   <Download className="h-4 w-4 mr-2" />
                   Export Selected ({selectedIds.length})
                 </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!canBulkEmail) return;
+                    setEmailModal({
+                      ids: selectedTimesheets.map((t) => t.id), clientId: selectedTimesheets[0].clientId
+                    })
+                  }
+                  }
+                  disabled={!canBulkEmail}
+                  title={
+                    selectedClientIds.size > 1
+                      ? "Select timesheets from one client only"
+                      : overBulkLimit
+                        ? `Select at most ${MAX_BULK_EMAIL} timesheets`
+                        : undefined
+                  }                >
+
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email Selected to Client ({selectedTimesheets.length})
+
+                </Button>
+                {selectedClientIds.size > 1 && (
+                  <p className="text-xs text-amber-600 self-center">Selected timesheets belong to different clients.</p>
+                )}
+                {overBulkLimit && (
+                  <p className="text-xs text-amber-600 self-center">
+                    You can email at most {MAX_BULK_EMAIL} timesheets at once. You selected {selectedTimesheets.length}.
+                    Deselect some, or narrow by week or status and in groups of 25.
+                  </p>
+                )}
+                {selectedClientIds.size > 1 && (
+                  <p className="text-xs text-amber-600 self-center">Selected timesheets belong to different clients.</p>
+                )}
               </div>
 
               <Select
@@ -1607,7 +1655,7 @@ const Timesheets = () => {
 
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    onClick={() => setEmailModalTimesheet({ id: row.id, clientId: row.clientId })}
+                                    onClick={() => setEmailModal({ ids: [row.id], clientId: row.clientId })}
                                   >
                                     <Mail className="h-4 w-4 mr-2" />
                                     Email to Client
@@ -1787,10 +1835,10 @@ const Timesheets = () => {
       </div>
 
       <EmailTimesheetModal
-        isOpen={!!emailModalTimesheet}
-        onClose={() => setEmailModalTimesheet(null)}
-        timesheetId={emailModalTimesheet?.id ?? null}
-        clientId={emailModalTimesheet?.clientId ?? null}
+        isOpen={!!emailModal}
+        onClose={() => setEmailModal(null)}
+        timesheetIds={emailModal?.ids ?? []}
+        clientId={emailModal?.clientId ?? null}
         authHeaders={authHeaders}
       />
 
