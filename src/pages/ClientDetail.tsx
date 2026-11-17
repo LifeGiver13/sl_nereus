@@ -184,20 +184,42 @@ const ClientDetail = () => {
   // Documents live in a bucket named after the client id
   const fetchDocuments = useCallback(async () => {
     if (!id) return;
+
     setIsDocumentsLoading(true);
-    const result = await documentApiRef.current.getDocumentsByBucket(clientBucketParam);
-    if (result.success) {
-      setDocuments((result.documents || []).filter((doc) => doc.size && doc.size > 0));
-    } else {
-      console.error('Error fetching client documents:', result.error);
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to load documents',
-        variant: 'destructive',
-      });
+
+    try {
+      console.log('Client ID:', id);
+      console.log('Client bucket:', clientBucket);
+
+      const result = await documentApiRef.current.getDocumentsByBucket(clientBucket);
+
+      console.log('Documents API response:', result);
+
+      if (result.success) {
+        console.table(result.documents || []);
+
+        setDocuments(
+          (result.documents || []).filter(
+            (doc) => doc.size !== undefined && doc.size > 0
+          )
+        );
+      } else {
+        console.error('Error fetching client documents:', result.error);
+
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to load documents',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error fetching client documents:', error);
+    } finally {
+      setIsDocumentsLoading(false);
     }
-    setIsDocumentsLoading(false);
-  }, [id, clientBucketParam, toast]);
+  }, [id, clientBucket, toast]);
+
+
 
   const fetchViewManager = useCallback(async () => {
     try {
@@ -285,7 +307,7 @@ const ClientDetail = () => {
   const handleViewDocument = async (doc: ClientDocument) => {
     if (!id) return;
     setViewingKey(doc.key);
-    const result = await documentApiRef.current.getDocumentDownloadUrl(clientBucketParam, doc.key);
+    const result = await documentApiRef.current.getDocumentDownloadUrl(clientBucket, doc.key);
     setViewingKey(null);
 
     if (result.success && result.url) {
@@ -305,7 +327,7 @@ const ClientDetail = () => {
     setDownloadingKey(doc.key);
 
     try {
-      const result = await documentApiRef.current.getDocumentDownloadUrl(clientBucketParam, doc.key);
+      const result = await documentApiRef.current.getDocumentDownloadUrl(clientBucket, doc.key);
       if (!result.success || !result.url) {
         throw new Error(result.error || 'Failed to get download link');
       }
